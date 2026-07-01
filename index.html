@@ -254,24 +254,6 @@
       </a>
     </div>
 
-    <!-- ===================== TEAM DIRECTORY ===================== -->
-    <section class="block" id="directorySection">
-      <div class="section-header">
-        <h2>🗂 Team Directory</h2>
-        <button class="secondary" id="directoryEditBtn" onclick="toggleDirectoryEdit()">✏️ Edit Directory</button>
-      </div>
-      <p style="font-size:12px;color:var(--text-muted);margin:-6px 0 12px;">Who's who, who reports to whom, and who's in today. Anyone can tap a status badge to update it — only owners (with the admin passcode) can add, edit, or remove people.</p>
-      <div class="card td-scope td-scope-pad">
-        <div class="td-legend">
-          <div><span class="dot" style="background:#52A46F;"></span>In</div>
-          <div><span class="dot" style="background:#E2B341;"></span>On-call</div>
-          <div><span class="dot" style="background:#A2B0C1;"></span>Out</div>
-          <div style="margin-left:auto;color:#A2B0C1;">Tap a name for details</div>
-        </div>
-        <div id="directoryListWrap"></div>
-      </div>
-    </section>
-
     <!-- ===================== STAND-UP BOARD ===================== -->
     <section class="block" id="standupSection">
       <div class="section-header">
@@ -305,6 +287,24 @@
         <button class="primary" onclick="startVideoMeeting()">Start / Join Video Meeting</button>
       </div>
       <div class="card"><div id="meetingsListWrap"></div></div>
+    </section>
+
+    <!-- ===================== TEAM DIRECTORY ===================== -->
+    <section class="block" id="directorySection">
+      <div class="section-header">
+        <h2>🗂 Team Directory</h2>
+        <button class="secondary" id="directoryEditBtn" onclick="toggleDirectoryEdit()">✏️ Edit Directory</button>
+      </div>
+      <p style="font-size:12px;color:var(--text-muted);margin:-6px 0 12px;">Who's who, who reports to whom, and who's in today. Anyone can tap a status badge to update it — only owners (with the admin passcode) can add, edit, or remove people.</p>
+      <div class="card td-scope td-scope-pad">
+        <div class="td-legend">
+          <div><span class="dot" style="background:#52A46F;"></span>In</div>
+          <div><span class="dot" style="background:#E2B341;"></span>On-call</div>
+          <div><span class="dot" style="background:#A2B0C1;"></span>Out</div>
+          <div style="margin-left:auto;color:#A2B0C1;">Tap a name for details</div>
+        </div>
+        <div id="directoryListWrap"></div>
+      </div>
     </section>
 
   </main>
