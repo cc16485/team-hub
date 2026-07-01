@@ -175,7 +175,7 @@
         </div>
         <div class="arrow">↗</div>
       </a>
-      <a class="quicklink-card" id="staffingHubLink" href="https://hub.mo-care.com" target="_blank" rel="noopener">
+      <a class="quicklink-card" id="staffingHubLink" href="https://sc.mo-care.com" target="_blank" rel="noopener">
         <div class="emoji">🗓</div>
         <div>
           <div class="label">Staffing Hub</div>
@@ -300,7 +300,7 @@
       <h3>Hub Links</h3>
       <p class="hint">Where the two quick-link buttons point. Update here if either hub's domain ever changes.</p>
       <label>Care Coordinator's Hub URL</label><input id="set_cc_hub_url" placeholder="https://cc.mo-care.com">
-      <label>Staffing Hub URL</label><input id="set_staffing_hub_url" placeholder="https://hub.mo-care.com">
+      <label>Staffing Hub URL</label><input id="set_staffing_hub_url" placeholder="https://sc.mo-care.com">
     </div>
 
     <div class="settings-section">
@@ -323,7 +323,7 @@ let sb = null;
 let CONFIG = JSON.parse(localStorage.getItem('th_config') || '{}');
 CONFIG.admin_passcode = CONFIG.admin_passcode || '';
 CONFIG.cc_hub_url = CONFIG.cc_hub_url || 'https://cc.mo-care.com';
-CONFIG.staffing_hub_url = CONFIG.staffing_hub_url || 'https://hub.mo-care.com';
+CONFIG.staffing_hub_url = CONFIG.staffing_hub_url || 'https://sc.mo-care.com';
 // Same Supabase project as Care Coordinator's Hub and Staffing Hub — shared backend, shared staff logins.
 CONFIG.supabase_url = CONFIG.supabase_url || 'https://zngsgedlsxinbygwmxwn.supabase.co';
 CONFIG.supabase_anon_key = CONFIG.supabase_anon_key || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpuZ3NnZWRsc3hpbmJ5Z3dteHduIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1NDIzNDQsImV4cCI6MjA5ODExODM0NH0.L_31_UKdccyRH9n7p1GaBlZTqcJipB008H-GIvxwLxM';
@@ -601,7 +601,7 @@ function saveSettings(){
   CONFIG.supabase_url = document.getElementById('set_supabase_url').value.trim();
   CONFIG.supabase_anon_key = document.getElementById('set_supabase_anon_key').value.trim();
   CONFIG.cc_hub_url = document.getElementById('set_cc_hub_url').value.trim() || 'https://cc.mo-care.com';
-  CONFIG.staffing_hub_url = document.getElementById('set_staffing_hub_url').value.trim() || 'https://hub.mo-care.com';
+  CONFIG.staffing_hub_url = document.getElementById('set_staffing_hub_url').value.trim() || 'https://sc.mo-care.com';
   if(newCode) CONFIG.admin_passcode = newCode;
   localStorage.setItem('th_config', JSON.stringify(CONFIG));
   initSupabase();
