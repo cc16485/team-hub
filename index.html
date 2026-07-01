@@ -109,6 +109,16 @@
   .meeting-item .meta{font-size:11px;color:var(--text-muted);margin-bottom:6px;}
   .meeting-item .notes{font-size:13px;white-space:pre-wrap;color:var(--text);}
   .meeting-item .action-items{font-size:12px;color:var(--text-muted);margin-top:6px;white-space:pre-wrap;}
+  .month-group{border-bottom:1px solid var(--border);}
+  .month-group:last-child{border-bottom:none;}
+  .month-header{display:flex;align-items:center;gap:10px;padding:12px 16px;cursor:pointer;background:#FAFBFC;user-select:none;}
+  .month-header:hover{background:#F1F5F9;}
+  .month-header .chevron{font-weight:700;color:var(--text-muted);width:14px;flex:none;}
+  .month-header .title{font-weight:700;font-size:13px;color:var(--navy);flex:1;}
+  .month-header .count{font-size:11px;color:var(--text-muted);background:#EEF1F5;padding:2px 8px;border-radius:10px;}
+  .month-body{display:none;}
+  .month-body.open{display:block;}
+  .search-empty{padding:30px 20px;text-align:center;color:var(--text-muted);font-size:13px;}
 
   /* ---- Modal ---- */
   .modal-backdrop{display:none;position:fixed;inset:0;background:rgba(15,23,42,.5);align-items:flex-start;justify-content:center;padding:40px 16px;overflow-y:auto;z-index:50;}
@@ -217,6 +227,7 @@
     .video-modal{padding:12px;}
     .add-portal-row{grid-template-columns:1fr;}
     table{display:block;overflow-x:auto;white-space:nowrap;}
+    #meetingSearchInput{max-width:100%;width:100%;}
   }
 </style>
 </head>
@@ -302,6 +313,11 @@
           <div class="sub">One click, everyone lands in the same call — remote or in-office.</div>
         </div>
         <button class="primary" onclick="startVideoMeeting()">Start / Join Video Meeting</button>
+      </div>
+      <div class="toolbar">
+        <input id="meetingSearchInput" type="text" placeholder="🔍 Search meeting notes, decisions, action items…" style="max-width:340px;" oninput="setMeetingSearch(this.value)">
+        <div class="spacer"></div>
+        <button class="linklike" onclick="toggleAllMeetingMonths()" id="meetingsExpandToggle">Expand All</button>
       </div>
       <div class="card"><div id="meetingsListWrap"></div></div>
     </section>
@@ -1335,17 +1351,95 @@ async function removeStandupItem(id){
 }
 
 /* ---------------- TEAM MEETINGS ---------------- */
+let meetingSearchQuery = '';
+let meetingsOpenMonths = new Set();
+let meetingsOpenMonthsInitialized = false;
+
+function monthKeyOf(dateStr){ return (dateStr||'').slice(0,7) || 'unknown'; }
+function monthLabelOf(dateStr){
+  if(!dateStr) return 'No date';
+  const d = new Date(dateStr+'T00:00:00');
+  if(isNaN(d)) return 'No date';
+  return d.toLocaleDateString('en-US', { month:'long', year:'numeric' });
+}
+function setMeetingSearch(v){ meetingSearchQuery = v; renderMeetings(); }
+function clearMeetingSearch(){ meetingSearchQuery=''; document.getElementById('meetingSearchInput').value=''; renderMeetings(); }
+function toggleMonthGroup(key){
+  if(meetingsOpenMonths.has(key)) meetingsOpenMonths.delete(key); else meetingsOpenMonths.add(key);
+  renderMeetings();
+}
+function toggleAllMeetingMonths(){
+  const rows = DATA.team_meetings||[];
+  const allKeys = [...new Set(rows.map(m=>monthKeyOf(m.meeting_date)))];
+  const allOpen = allKeys.length>0 && allKeys.every(k=>meetingsOpenMonths.has(k));
+  meetingsOpenMonths = allOpen ? new Set() : new Set(allKeys);
+  renderMeetings();
+}
+function renderMeetingItemHtml(m){
+  const actionLines = (m.action_items||'').split('\n').filter(Boolean);
+  return `<div class="meeting-item">
+    <h4>${m.meeting_name||'Meeting'} — ${m.meeting_date||''} <button class="linklike" style="float:right;" onclick="removeMeeting('${m.id}')">Remove</button></h4>
+    <div class="meta">
+      ${m.attendees ? 'Attendees: '+m.attendees : 'No attendees logged'}
+      ${m.source==='fireflies' ? ' · <span class="badge new">🤖 Auto-generated via Fireflies</span>' : ''}
+      ${m.transcript_url ? ` · <a href="${m.transcript_url}" target="_blank" rel="noopener">🎙 View Full Transcript ↗</a>` : ''}
+    </div>
+    ${m.notes ? `<div class="notes">${m.notes.replace(/</g,'&lt;')}</div>` : ''}
+    ${actionLines.length ? `<div class="action-items"><b>Action items:</b><br>${actionLines.map(l=>'• '+l.replace(/</g,'&lt;')).join('<br>')}</div>` : ''}
+  </div>`;
+}
 function renderMeetings(){
-  const rows = (DATA.team_meetings||[]).slice().sort((a,b)=>(b.meeting_date||'').localeCompare(a.meeting_date||''));
   const wrap = document.getElementById('meetingsListWrap');
-  if(rows.length===0){ wrap.innerHTML = '<div class="empty">No meeting notes logged yet.</div>'; return; }
-  wrap.innerHTML = rows.map(m=>{
-    const actionLines = (m.action_items||'').split('\n').filter(Boolean);
-    return `<div class="meeting-item">
-      <h4>${m.meeting_name||'Meeting'} — ${m.meeting_date||''} <button class="linklike" style="float:right;" onclick="removeMeeting('${m.id}')">Remove</button></h4>
-      <div class="meta">${m.attendees ? 'Attendees: '+m.attendees : 'No attendees logged'}</div>
-      ${m.notes ? `<div class="notes">${m.notes.replace(/</g,'&lt;')}</div>` : ''}
-      ${actionLines.length ? `<div class="action-items"><b>Action items:</b><br>${actionLines.map(l=>'• '+l.replace(/</g,'&lt;')).join('<br>')}</div>` : ''}
+  const allRows = (DATA.team_meetings||[]).slice().sort((a,b)=>(b.meeting_date||'').localeCompare(a.meeting_date||''));
+
+  if(allRows.length===0){ wrap.innerHTML = '<div class="empty">No meeting notes logged yet.</div>'; return; }
+
+  // Default the most recent month open the first time there's data to show —
+  // after that, respect whatever the user has expanded/collapsed themselves.
+  if(!meetingsOpenMonthsInitialized){
+    meetingsOpenMonths.add(monthKeyOf(allRows[0].meeting_date));
+    meetingsOpenMonthsInitialized = true;
+  }
+
+  const q = meetingSearchQuery.trim().toLowerCase();
+  if(q){
+    const matches = allRows.filter(m =>
+      (m.meeting_name||'').toLowerCase().includes(q) ||
+      (m.notes||'').toLowerCase().includes(q) ||
+      (m.action_items||'').toLowerCase().includes(q) ||
+      (m.attendees||'').toLowerCase().includes(q)
+    );
+    const header = `<div style="padding:10px 16px;font-size:12px;color:var(--text-muted);border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+      <span>${matches.length} result${matches.length===1?'':'s'} for "${escapeHtml(meetingSearchQuery)}"</span>
+      <button class="linklike" onclick="clearMeetingSearch()">Clear search</button>
+    </div>`;
+    wrap.innerHTML = header + (matches.length
+      ? matches.map(renderMeetingItemHtml).join('')
+      : `<div class="search-empty">No meetings mention that. Try a different word, or check the full transcript on any Fireflies-recorded meeting.</div>`);
+    return;
+  }
+
+  // Grouped "folder by month" view.
+  const order = [];
+  const groups = {};
+  allRows.forEach(m=>{
+    const key = monthKeyOf(m.meeting_date);
+    if(!groups[key]){ groups[key] = []; order.push(key); }
+    groups[key].push(m);
+  });
+  const btn = document.getElementById('meetingsExpandToggle');
+  if(btn) btn.textContent = order.every(k=>meetingsOpenMonths.has(k)) ? 'Collapse All' : 'Expand All';
+
+  wrap.innerHTML = order.map(key=>{
+    const rows = groups[key];
+    const isOpen = meetingsOpenMonths.has(key);
+    return `<div class="month-group">
+      <div class="month-header" onclick="toggleMonthGroup('${key}')">
+        <span class="chevron">${isOpen?'▾':'▸'}</span>
+        <span class="title">📁 ${monthLabelOf(rows[0].meeting_date)}</span>
+        <span class="count">${rows.length} meeting${rows.length===1?'':'s'}</span>
+      </div>
+      <div class="month-body ${isOpen?'open':''}">${rows.map(renderMeetingItemHtml).join('')}</div>
     </div>`;
   }).join('');
 }
@@ -1365,6 +1459,8 @@ async function saveMeeting(){
     attendees: document.getElementById('tm_attendees').value.trim(),
     notes: document.getElementById('tm_notes').value.trim(),
     action_items: document.getElementById('tm_action_items').value.trim(),
+    transcript_url: existing.transcript_url || '',
+    source: existing.source || 'manual',
     created_at: existing.created_at || new Date().toISOString(),
   };
   DATA.team_meetings = DATA.team_meetings || [];
