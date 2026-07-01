@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Team Hub — Caring Companions</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --navy:#0E3860;
+    --navy-dark:#092744;
+    --bg:#F4F6F8;
+    --card:#FFFFFF;
+    --border:#E2E8F0;
+    --text:#1E293B;
+    --text-muted:#64748B;
+    --green:#15803D;
+    --green-bg:#DCFCE7;
+    --amber:#B45309;
+    --amber-bg:#FEF3C7;
+    --red:#DC2626;
+    --red-bg:#FEE2E2;
+    --blue-bg:#DBEAFE;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text);}
+  a{color:var(--navy);}
+  img.logo{height:42px;display:block;}
+  button{cursor:pointer;font-family:inherit;}
+  input,select,textarea{font-family:inherit;font-size:14px;padding:8px 10px;border:1px solid var(--border);border-radius:6px;width:100%;background:#fff;color:var(--text);}
+  label{font-size:12px;font-weight:600;color:var(--text-muted);display:block;margin:10px 0 4px;}
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  th{text-align:left;padding:10px 12px;background:#F1F5F9;color:var(--text-muted);font-weight:600;border-bottom:1px solid var(--border);white-space:nowrap;}
+  td{padding:10px 12px;border-bottom:1px solid var(--border);vertical-align:top;}
+  tr:hover td{background:#FAFBFC;}
+
+  /* ---- Sign-in screen ---- */
+  #signinScreen{min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--navy);}
+  .signin-card{background:#fff;border-radius:12px;padding:36px 32px;width:340px;text-align:center;box-shadow:0 10px 30px rgba(0,0,0,.25);}
+  .signin-card h1{font-size:20px;margin:16px 0 4px;color:var(--navy);}
+  .signin-card p.sub{color:var(--text-muted);font-size:13px;margin:0 0 20px;}
+  .signin-card button.primary{width:100%;margin-top:14px;}
+  .signin-card .forgot{display:block;margin-top:12px;font-size:12px;}
+
+  /* ---- App shell ---- */
+  #appScreen{display:none;}
+  header.topbar{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-items:center;gap:16px;}
+  header.topbar h1{font-size:17px;margin:0;font-weight:600;flex:0 0 auto;}
+  header.topbar .spacer{flex:1;}
+  header.topbar .pill{font-size:12px;background:rgba(255,255,255,.12);padding:5px 10px;border-radius:20px;}
+  header.topbar button.ghost{background:transparent;border:1px solid rgba(255,255,255,.3);color:#fff;padding:6px 12px;border-radius:6px;font-size:13px;}
+  header.topbar button.ghost:hover{background:rgba(255,255,255,.1);}
+
+  main{padding:20px;max-width:1100px;margin:0 auto;}
+
+  /* ---- Quick links ---- */
+  .quicklink-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:28px;}
+  .quicklink-card{display:flex;align-items:center;gap:14px;background:var(--navy);color:#fff;border-radius:12px;padding:26px 24px;text-decoration:none;box-shadow:0 2px 6px rgba(14,56,96,.15);}
+  .quicklink-card:hover{background:var(--navy-dark);}
+  .quicklink-card .emoji{font-size:30px;}
+  .quicklink-card .label{font-size:17px;font-weight:700;}
+  .quicklink-card .sub{font-size:12px;color:rgba(255,255,255,.7);font-weight:400;margin-top:2px;}
+  .quicklink-card .arrow{margin-left:auto;font-size:22px;opacity:.8;}
+
+  .section-header{display:flex;align-items:center;gap:10px;margin:0 0 12px;}
+  .section-header h2{font-size:16px;margin:0;color:var(--navy);flex:1;}
+
+  .card{background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden;}
+  .empty{padding:40px;text-align:center;color:var(--text-muted);font-size:13px;}
+
+  section.block{margin-bottom:30px;}
+
+  .toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:14px;}
+  .filter-pill{background:#fff;border:1px solid var(--border);padding:6px 12px;border-radius:20px;font-size:12px;font-weight:500;color:var(--text-muted);}
+  .filter-pill.active{background:var(--navy);border-color:var(--navy);color:#fff;}
+  .toolbar .spacer{flex:1;}
+  button.primary{background:var(--navy);color:#fff;border:none;padding:8px 16px;border-radius:6px;font-size:13px;font-weight:600;}
+  button.primary:hover{background:var(--navy-dark);}
+  button.secondary{background:#fff;border:1px solid var(--border);padding:8px 14px;border-radius:6px;font-size:13px;font-weight:500;color:var(--text);}
+  button.secondary:hover{background:#F1F5F9;}
+  button.linklike{background:none;border:none;color:var(--navy);font-size:12px;font-weight:600;padding:4px 6px;}
+  button.linklike:hover{text-decoration:underline;}
+
+  .badge{display:inline-block;padding:3px 9px;border-radius:12px;font-size:11px;font-weight:700;}
+  .badge.new{background:var(--blue-bg);color:#1D4ED8;}
+  .badge.ok{background:var(--green-bg);color:var(--green);}
+  .badge.warn{background:var(--amber-bg);color:var(--amber);}
+  .badge.bad{background:var(--red-bg);color:var(--red);}
+  .badge.muted{background:#F1F5F9;color:var(--text-muted);}
+
+  /* ---- Stand-up items ---- */
+  .standup-item{display:flex;gap:12px;padding:14px 16px;border-bottom:1px solid var(--border);}
+  .standup-item:last-child{border-bottom:none;}
+  .standup-item.open{border-left:4px solid var(--amber);}
+  .standup-item.resolved{border-left:4px solid var(--green);opacity:.75;}
+  .standup-item .body{flex:1;}
+  .standup-item .meta{font-size:11px;color:var(--text-muted);margin-top:4px;}
+  .standup-item .summary{font-size:13px;color:var(--text);}
+  .standup-item .actions{flex:0 0 auto;}
+
+  .meeting-item{padding:14px 16px;border-bottom:1px solid var(--border);}
+  .meeting-item:last-child{border-bottom:none;}
+  .meeting-item h4{margin:0 0 2px;font-size:14px;color:var(--navy);}
+  .meeting-item .meta{font-size:11px;color:var(--text-muted);margin-bottom:6px;}
+  .meeting-item .notes{font-size:13px;white-space:pre-wrap;color:var(--text);}
+  .meeting-item .action-items{font-size:12px;color:var(--text-muted);margin-top:6px;white-space:pre-wrap;}
+
+  /* ---- Modal ---- */
+  .modal-backdrop{display:none;position:fixed;inset:0;background:rgba(15,23,42,.5);align-items:flex-start;justify-content:center;padding:40px 16px;overflow-y:auto;z-index:50;}
+  .modal-backdrop.open{display:flex;}
+  .modal{background:#fff;border-radius:12px;width:100%;max-width:560px;padding:24px;}
+  .modal h2{margin:0 0 4px;font-size:17px;color:var(--navy);}
+  .modal .modal-sub{font-size:12px;color:var(--text-muted);margin-bottom:14px;}
+  .modal .grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 14px;}
+  .modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:20px;}
+  .settings-section{margin-bottom:24px;}
+  .settings-section h3{font-size:14px;color:var(--navy);margin-bottom:6px;}
+  .settings-section p.hint{font-size:12px;color:var(--text-muted);margin:0 0 10px;}
+
+  .lock-screen{position:fixed;inset:0;background:rgba(15,23,42,.6);display:none;align-items:center;justify-content:center;z-index:60;}
+  .lock-screen.open{display:flex;}
+  .lock-card{background:#fff;border-radius:12px;padding:28px;width:300px;text-align:center;}
+
+  @media(max-width:720px){
+    .quicklink-grid{grid-template-columns:1fr;}
+    .modal .grid2{grid-template-columns:1fr;}
+    input,select,textarea{font-size:16px;padding:11px 12px;}
+    button.primary,button.secondary{padding:11px 16px;min-height:44px;}
+    .modal{padding:18px;max-width:100%;border-radius:0;min-height:100vh;}
+    .modal-actions{flex-direction:column-reverse;align-items:stretch;}
+    .modal-actions button{width:100%;}
+    header.topbar{flex-wrap:wrap;gap:8px;}
+    .standup-item{flex-direction:column;}
+  }
+</style>
+</head>
+<body>
+
+<!-- ============================= SIGN-IN ============================= -->
+<div id="signinScreen">
+  <div class="signin-card">
+    <img class="logo" style="margin:0 auto" src="https://images.leadconnectorhq.com/image/f_webp/q_80/r_1200/u_https://assets.cdn.filesafe.space/Recp0AhyMh8lrtKJ9kaj/media/691b9707bb3d037e0ad689bf.png" alt="Caring Companions">
+    <h1>Team Hub</h1>
+    <p class="sub">Caring Companions · Whole-Office Access</p>
+    <label style="text-align:left">Email</label>
+    <input type="email" id="loginEmail" placeholder="you@mo-care.com">
+    <label style="text-align:left">Password</label>
+    <input type="password" id="loginPassword" placeholder="••••••••">
+    <button class="primary" style="width:100%;margin-top:16px;padding:10px;" onclick="signIn()">Sign In</button>
+    <div id="loginError" style="color:var(--red);font-size:12px;margin-top:10px;display:none;"></div>
+    <a class="forgot" href="#" onclick="alert('Ask your admin to reset your password from Supabase → Authentication → Users.');return false;">Forgot password?</a>
+  </div>
+</div>
+
+<!-- ============================= APP SHELL ============================= -->
+<div id="appScreen">
+  <header class="topbar">
+    <img class="logo" src="https://images.leadconnectorhq.com/image/f_webp/q_80/r_1200/u_https://assets.cdn.filesafe.space/Recp0AhyMh8lrtKJ9kaj/media/691b9707bb3d037e0ad689bf.png" alt="Caring Companions">
+    <h1>Team Hub</h1>
+    <div class="spacer"></div>
+    <span class="pill" id="syncPill">☁ Synced</span>
+    <button class="ghost" onclick="openSettings()">⚙️ Settings</button>
+    <button class="ghost" onclick="signOut()">Sign Out</button>
+  </header>
+
+  <main>
+
+    <!-- ===================== QUICK LINKS ===================== -->
+    <div class="quicklink-grid">
+      <a class="quicklink-card" id="ccHubLink" href="https://cc.mo-care.com" target="_blank" rel="noopener">
+        <div class="emoji">📞</div>
+        <div>
+          <div class="label">Care Coordinator's Hub</div>
+          <div class="sub">Leads, assessments, check-ins, supervisory visits</div>
+        </div>
+        <div class="arrow">↗</div>
+      </a>
+      <a class="quicklink-card" id="staffingHubLink" href="https://hub.mo-care.com" target="_blank" rel="noopener">
+        <div class="emoji">🗓</div>
+        <div>
+          <div class="label">Staffing Hub</div>
+          <div class="sub">Candidates, training, compliance, scheduling</div>
+        </div>
+        <div class="arrow">↗</div>
+      </a>
+    </div>
+
+    <!-- ===================== STAND-UP BOARD ===================== -->
+    <section class="block" id="standupSection">
+      <div class="section-header">
+        <h2>🚨 Stand-Up Board</h2>
+        <button class="primary" onclick="openStandupModal()">+ Add Item</button>
+      </div>
+      <p style="font-size:12px;color:var(--text-muted);margin:-6px 0 12px;">Anything that happened after hours or over the weekend that the daytime team needs to know — a caregiver call-out, a client concern, a scheduling issue. Care coordinators and staffing coordinators both post and read here.</p>
+      <div class="toolbar" id="standupFilters"></div>
+      <div class="card"><div id="standupListWrap"></div></div>
+    </section>
+
+    <!-- ===================== TEAM MEETINGS ===================== -->
+    <section class="block" id="meetingsSection">
+      <div class="section-header">
+        <h2>📅 Team Meetings</h2>
+        <button class="primary" onclick="openMeetingModal()">+ Log Meeting</button>
+      </div>
+      <p style="font-size:12px;color:var(--text-muted);margin:-6px 0 12px;">Notes, decisions, and action items from team meetings — so anyone who missed one can catch up without chasing someone down.</p>
+      <div class="card"><div id="meetingsListWrap"></div></div>
+    </section>
+
+  </main>
+</div>
+
+<!-- ============================= STAND-UP MODAL ============================= -->
+<div class="modal-backdrop" id="standupModalBackdrop">
+  <div class="modal">
+    <h2>Stand-Up Item</h2>
+    <input type="hidden" id="su_id">
+    <label>What happened</label>
+    <textarea id="su_summary" rows="3" placeholder="e.g. Maria called out for tomorrow's 8am shift with Mrs. Thompson — no coverage confirmed yet"></textarea>
+    <div class="grid2">
+      <div>
+        <label>Category</label>
+        <select id="su_category">
+          <option>Caregiver / Scheduling</option>
+          <option>Client</option>
+          <option>Incident</option>
+          <option>General</option>
+        </select>
+      </div>
+      <div><label>Related client/caregiver (optional)</label><input id="su_related_to"></div>
+    </div>
+    <div class="grid2">
+      <div><label>When it happened</label><input type="datetime-local" id="su_occurred_at"></div>
+      <div><label>Reported by</label><input id="su_reported_by"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="secondary" onclick="closeModal('standupModalBackdrop')">Cancel</button>
+      <button class="primary" onclick="saveStandupItem()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================= TEAM MEETING MODAL ============================= -->
+<div class="modal-backdrop" id="meetingModalBackdrop">
+  <div class="modal">
+    <h2>Team Meeting</h2>
+    <input type="hidden" id="tm_id">
+    <div class="grid2">
+      <div><label>Meeting Date</label><input type="date" id="tm_date"></div>
+      <div>
+        <label>Meeting</label>
+        <select id="tm_name">
+          <option>Weekly Team Meeting</option>
+          <option>Care Coordination Sync</option>
+          <option>Staffing Sync</option>
+          <option>All-Staff Meeting</option>
+          <option>Other</option>
+        </select>
+      </div>
+    </div>
+    <label>Attendees</label>
+    <input id="tm_attendees" placeholder="e.g. Samantha, Maria, James">
+    <label>Notes / Agenda</label>
+    <textarea id="tm_notes" rows="4"></textarea>
+    <label>Action Items</label>
+    <textarea id="tm_action_items" rows="3" placeholder="One per line"></textarea>
+    <div class="modal-actions">
+      <button class="secondary" onclick="closeModal('meetingModalBackdrop')">Cancel</button>
+      <button class="primary" onclick="saveMeeting()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================= SETTINGS (passcode-gated) ============================= -->
+<div class="lock-screen" id="settingsLock">
+  <div class="lock-card">
+    <div style="font-size:28px;">🔒</div>
+    <h2 style="font-size:16px;margin:8px 0 4px;">Admin Access Required</h2>
+    <p style="font-size:12px;color:var(--text-muted);margin:0 0 14px;">Settings are restricted to admins only.</p>
+    <input type="password" id="settingsPasscodeInput" placeholder="Admin passcode">
+    <div id="settingsLockError" style="color:var(--red);font-size:12px;margin-top:8px;display:none;">Incorrect passcode.</div>
+    <div class="modal-actions" style="justify-content:center;">
+      <button class="secondary" onclick="closeModal('settingsLock')">Cancel</button>
+      <button class="primary" onclick="checkSettingsPasscode()">Enter</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="settingsModalBackdrop">
+  <div class="modal" style="max-width:600px;">
+    <h2>⚙️ Settings</h2>
+
+    <div class="settings-section">
+      <h3>Supabase Connection</h3>
+      <p class="hint">Same project as Care Coordinator's Hub and Staffing Hub — same staff logins, shared <code>app_data</code> table.</p>
+      <label>Project URL</label><input id="set_supabase_url" placeholder="https://abcdefghijkl.supabase.co">
+      <label>Anon / Public Key</label><input id="set_supabase_anon_key" placeholder="eyJ...">
+    </div>
+
+    <div class="settings-section">
+      <h3>Hub Links</h3>
+      <p class="hint">Where the two quick-link buttons point. Update here if either hub's domain ever changes.</p>
+      <label>Care Coordinator's Hub URL</label><input id="set_cc_hub_url" placeholder="https://cc.mo-care.com">
+      <label>Staffing Hub URL</label><input id="set_staffing_hub_url" placeholder="https://hub.mo-care.com">
+    </div>
+
+    <div class="settings-section">
+      <h3>Admin Passcode</h3>
+      <p class="hint">Keep this separate from staff login passwords.</p>
+      <label>Current</label><input type="password" id="set_current_passcode">
+      <label>New</label><input type="password" id="set_new_passcode">
+      <label>Confirm</label><input type="password" id="set_confirm_passcode">
+    </div>
+
+    <div class="modal-actions">
+      <button class="secondary" onclick="closeModal('settingsModalBackdrop')">Cancel</button>
+      <button class="primary" onclick="saveSettings()">Save Settings</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let sb = null;
+let CONFIG = JSON.parse(localStorage.getItem('th_config') || '{}');
+CONFIG.admin_passcode = CONFIG.admin_passcode || '';
+CONFIG.cc_hub_url = CONFIG.cc_hub_url || 'https://cc.mo-care.com';
+CONFIG.staffing_hub_url = CONFIG.staffing_hub_url || 'https://hub.mo-care.com';
+// Same Supabase project as Care Coordinator's Hub and Staffing Hub — shared backend, shared staff logins.
+CONFIG.supabase_url = CONFIG.supabase_url || 'https://zngsgedlsxinbygwmxwn.supabase.co';
+CONFIG.supabase_anon_key = CONFIG.supabase_anon_key || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpuZ3NnZWRsc3hpbmJ5Z3dteHduIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1NDIzNDQsImV4cCI6MjA5ODExODM0NH0.L_31_UKdccyRH9n7p1GaBlZTqcJipB008H-GIvxwLxM';
+
+let DATA = { standup_notes: [], team_meetings: [] };
+let standupFilter = 'Open';
+
+function uid(){ return 'id_' + Math.random().toString(36).slice(2,10) + Date.now().toString(36); }
+function today(){ return new Date().toISOString().slice(0,10); }
+function nowLocalInput(){
+  const d = new Date();
+  d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+  return d.toISOString().slice(0,16);
+}
+
+function initSupabase(){
+  if(!CONFIG.supabase_url || !CONFIG.supabase_anon_key) return;
+  sb = window.supabase.createClient(CONFIG.supabase_url, CONFIG.supabase_anon_key);
+}
+initSupabase();
+
+function applyHubLinks(){
+  document.getElementById('ccHubLink').href = CONFIG.cc_hub_url;
+  document.getElementById('staffingHubLink').href = CONFIG.staffing_hub_url;
+}
+applyHubLinks();
+
+/* ---------------- AUTH ---------------- */
+async function signIn(){
+  const email = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  const errEl = document.getElementById('loginError');
+  errEl.style.display = 'none';
+  if(!sb){ errEl.textContent = 'Connect Supabase in Settings first (ask your admin).'; errEl.style.display='block'; return; }
+  const { data, error } = await sb.auth.signInWithPassword({ email, password });
+  if(error){ errEl.textContent = error.message; errEl.style.display = 'block'; return; }
+  document.getElementById('signinScreen').style.display = 'none';
+  document.getElementById('appScreen').style.display = 'block';
+  await loadAllData();
+  await flushPendingSync();
+  renderAll();
+}
+async function signOut(){
+  if(sb) await sb.auth.signOut();
+  document.getElementById('appScreen').style.display = 'none';
+  document.getElementById('signinScreen').style.display = 'flex';
+}
+
+/* ---------------- DATA LOAD / SAVE (app_data key/JSONB pattern, same atomic RPCs as the other two hubs) ---------------- */
+async function loadAllData(){
+  if(!sb) return;
+  const keys = ['standup_notes','team_meetings'];
+  for(const key of keys){
+    const { data, error } = await sb.from('app_data').select('data').eq('key', key).single();
+    if(!error && data) DATA[key] = data.data || [];
+  }
+  document.getElementById('syncPill').textContent = '☁ Synced';
+}
+async function persist(key, item){
+  if(!sb){ document.getElementById('syncPill').textContent = '⚠ Not connected'; return; }
+  if(!item){ console.warn('persist() called without an item for key', key, '— nothing sent.'); return; }
+  document.getElementById('syncPill').textContent = '⏳ Saving…';
+  try{
+    const { error } = await sb.rpc('upsert_app_data_item', { target_key: key, item });
+    if(error) throw error;
+    document.getElementById('syncPill').textContent = '☁ Synced';
+    clearPendingSync(key, item.id);
+  }catch(e){
+    queuePendingSync(key, item);
+    document.getElementById('syncPill').textContent = '🕓 Saved on this device — will sync when back online';
+  }
+}
+async function removeItem(key, itemId){
+  if(!sb){ document.getElementById('syncPill').textContent = '⚠ Not connected'; return; }
+  document.getElementById('syncPill').textContent = '⏳ Saving…';
+  try{
+    const { error } = await sb.rpc('delete_app_data_item', { target_key: key, item_id: itemId });
+    if(error) throw error;
+    document.getElementById('syncPill').textContent = '☁ Synced';
+  }catch(e){
+    document.getElementById('syncPill').textContent = '⚠ Delete failed — try again once back online';
+  }
+}
+function queuePendingSync(key, item){
+  const pending = JSON.parse(localStorage.getItem('th_pending_sync') || '{}');
+  pending[key+':'+item.id] = { key, item, ts: new Date().toISOString() };
+  localStorage.setItem('th_pending_sync', JSON.stringify(pending));
+}
+function clearPendingSync(key, itemId){
+  const pending = JSON.parse(localStorage.getItem('th_pending_sync') || '{}');
+  const pk = key+':'+itemId;
+  if(pending[pk]){ delete pending[pk]; localStorage.setItem('th_pending_sync', JSON.stringify(pending)); }
+}
+async function flushPendingSync(){
+  if(!sb) return;
+  const pending = JSON.parse(localStorage.getItem('th_pending_sync') || '{}');
+  const pendingKeys = Object.keys(pending);
+  if(pendingKeys.length===0) return;
+  document.getElementById('syncPill').textContent = '⏳ Syncing offline changes…';
+  for(const pk of pendingKeys){
+    const entry = pending[pk];
+    try{
+      const { error } = await sb.rpc('upsert_app_data_item', { target_key: entry.key, item: entry.item });
+      if(!error){ delete pending[pk]; localStorage.setItem('th_pending_sync', JSON.stringify(pending)); }
+    }catch(e){ /* still offline */ }
+  }
+  const remaining = JSON.parse(localStorage.getItem('th_pending_sync') || '{}');
+  document.getElementById('syncPill').textContent = Object.keys(remaining).length ? '🕓 Saved on this device — will sync when back online' : '☁ Synced';
+}
+window.addEventListener('online', flushPendingSync);
+
+function renderAll(){ renderStandup(); renderMeetings(); }
+
+/* ---------------- STAND-UP BOARD ---------------- */
+function renderFilterPills(containerId, options, activeVal, onClick){
+  const el = document.getElementById(containerId);
+  el.innerHTML = options.map(o =>
+    `<button class="filter-pill ${activeVal===o?'active':''}" onclick="${onClick}('${o}')">${o}</button>`
+  ).join('');
+}
+function setStandupFilter(v){ standupFilter = v; renderStandup(); }
+function renderStandup(){
+  renderFilterPills('standupFilters', ['Open','Resolved','All'], standupFilter, 'setStandupFilter');
+  let rows = (DATA.standup_notes||[]).slice();
+  if(standupFilter==='Open') rows = rows.filter(i=>!i.resolved);
+  if(standupFilter==='Resolved') rows = rows.filter(i=>i.resolved);
+  rows.sort((a,b)=>(b.occurred_at||b.created_at||'').localeCompare(a.occurred_at||a.created_at||''));
+
+  const wrap = document.getElementById('standupListWrap');
+  if(rows.length===0){
+    wrap.innerHTML = `<div class="empty">${standupFilter==='Open' ? 'Nothing open right now — board is clear.' : 'No items here yet.'}</div>`;
+    return;
+  }
+  wrap.innerHTML = rows.map(i=>{
+    const when = i.occurred_at ? new Date(i.occurred_at).toLocaleString('en-US',{weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}) : '';
+    return `<div class="standup-item ${i.resolved?'resolved':'open'}">
+      <div class="body">
+        <div class="summary">${(i.summary||'').replace(/</g,'&lt;')}</div>
+        <div class="meta">
+          <span class="badge ${i.resolved?'ok':'warn'}">${i.category||'General'}</span>
+          ${i.related_to ? ' · '+i.related_to : ''}
+          ${when ? ' · '+when : ''}
+          ${i.reported_by ? ' · reported by '+i.reported_by : ''}
+          ${i.resolved ? ' · ✅ resolved by '+(i.resolved_by||'—') : ''}
+        </div>
+      </div>
+      <div class="actions">
+        ${!i.resolved ? `<button class="linklike" onclick="resolveStandupItem('${i.id}')">Mark Resolved</button>` : ''}
+        <button class="linklike" onclick="removeStandupItem('${i.id}')">Remove</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+function openStandupModal(){
+  ['su_id','su_summary','su_related_to'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('su_category').value = 'Caregiver / Scheduling';
+  document.getElementById('su_occurred_at').value = nowLocalInput();
+  document.getElementById('su_reported_by').value = '';
+  document.getElementById('standupModalBackdrop').classList.add('open');
+}
+async function saveStandupItem(){
+  const summary = document.getElementById('su_summary').value.trim();
+  if(!summary){ alert('Describe what happened first.'); return; }
+  const id = document.getElementById('su_id').value || uid();
+  const existing = (DATA.standup_notes||[]).find(x=>x.id===id) || {};
+  const record = {
+    id,
+    summary,
+    category: document.getElementById('su_category').value,
+    related_to: document.getElementById('su_related_to').value.trim(),
+    occurred_at: document.getElementById('su_occurred_at').value ? new Date(document.getElementById('su_occurred_at').value).toISOString() : new Date().toISOString(),
+    reported_by: document.getElementById('su_reported_by').value.trim(),
+    resolved: existing.resolved || false,
+    resolved_by: existing.resolved_by || '',
+    resolved_at: existing.resolved_at || '',
+    created_at: existing.created_at || new Date().toISOString(),
+  };
+  DATA.standup_notes = DATA.standup_notes || [];
+  const idx = DATA.standup_notes.findIndex(x=>x.id===id);
+  if(idx>=0) DATA.standup_notes[idx]=record; else DATA.standup_notes.push(record);
+  await persist('standup_notes', record);
+  closeModal('standupModalBackdrop');
+  renderStandup();
+}
+async function resolveStandupItem(id){
+  const item = (DATA.standup_notes||[]).find(x=>x.id===id);
+  if(!item) return;
+  const who = prompt('Your name (for the record):','');
+  if(who===null) return;
+  item.resolved = true;
+  item.resolved_by = who.trim() || 'Unknown';
+  item.resolved_at = new Date().toISOString();
+  await persist('standup_notes', item);
+  renderStandup();
+}
+async function removeStandupItem(id){
+  if(!confirm('Remove this stand-up item?')) return;
+  DATA.standup_notes = (DATA.standup_notes||[]).filter(i=>i.id!==id);
+  await removeItem('standup_notes', id);
+  renderStandup();
+}
+
+/* ---------------- TEAM MEETINGS ---------------- */
+function renderMeetings(){
+  const rows = (DATA.team_meetings||[]).slice().sort((a,b)=>(b.meeting_date||'').localeCompare(a.meeting_date||''));
+  const wrap = document.getElementById('meetingsListWrap');
+  if(rows.length===0){ wrap.innerHTML = '<div class="empty">No meeting notes logged yet.</div>'; return; }
+  wrap.innerHTML = rows.map(m=>{
+    const actionLines = (m.action_items||'').split('\n').filter(Boolean);
+    return `<div class="meeting-item">
+      <h4>${m.meeting_name||'Meeting'} — ${m.meeting_date||''} <button class="linklike" style="float:right;" onclick="removeMeeting('${m.id}')">Remove</button></h4>
+      <div class="meta">${m.attendees ? 'Attendees: '+m.attendees : 'No attendees logged'}</div>
+      ${m.notes ? `<div class="notes">${m.notes.replace(/</g,'&lt;')}</div>` : ''}
+      ${actionLines.length ? `<div class="action-items"><b>Action items:</b><br>${actionLines.map(l=>'• '+l.replace(/</g,'&lt;')).join('<br>')}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+function openMeetingModal(){
+  ['tm_id','tm_attendees','tm_notes','tm_action_items'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('tm_date').value = today();
+  document.getElementById('tm_name').value = 'Weekly Team Meeting';
+  document.getElementById('meetingModalBackdrop').classList.add('open');
+}
+async function saveMeeting(){
+  const id = document.getElementById('tm_id').value || uid();
+  const existing = (DATA.team_meetings||[]).find(x=>x.id===id) || {};
+  const record = {
+    id,
+    meeting_date: document.getElementById('tm_date').value || today(),
+    meeting_name: document.getElementById('tm_name').value,
+    attendees: document.getElementById('tm_attendees').value.trim(),
+    notes: document.getElementById('tm_notes').value.trim(),
+    action_items: document.getElementById('tm_action_items').value.trim(),
+    created_at: existing.created_at || new Date().toISOString(),
+  };
+  DATA.team_meetings = DATA.team_meetings || [];
+  const idx = DATA.team_meetings.findIndex(x=>x.id===id);
+  if(idx>=0) DATA.team_meetings[idx]=record; else DATA.team_meetings.push(record);
+  await persist('team_meetings', record);
+  closeModal('meetingModalBackdrop');
+  renderMeetings();
+}
+async function removeMeeting(id){
+  if(!confirm('Remove this meeting record?')) return;
+  DATA.team_meetings = (DATA.team_meetings||[]).filter(m=>m.id!==id);
+  await removeItem('team_meetings', id);
+  renderMeetings();
+}
+
+/* ---------------- SETTINGS ---------------- */
+function openSettings(){
+  if(!CONFIG.admin_passcode){ openSettingsModal(); return; }
+  document.getElementById('settingsLock').classList.add('open');
+}
+function checkSettingsPasscode(){
+  const val = document.getElementById('settingsPasscodeInput').value;
+  if(val === CONFIG.admin_passcode){
+    closeModal('settingsLock');
+    openSettingsModal();
+  } else {
+    document.getElementById('settingsLockError').style.display = 'block';
+  }
+}
+function openSettingsModal(){
+  document.getElementById('set_supabase_url').value = CONFIG.supabase_url||'';
+  document.getElementById('set_supabase_anon_key').value = CONFIG.supabase_anon_key||'';
+  document.getElementById('set_cc_hub_url').value = CONFIG.cc_hub_url||'';
+  document.getElementById('set_staffing_hub_url').value = CONFIG.staffing_hub_url||'';
+  document.getElementById('settingsModalBackdrop').classList.add('open');
+}
+function saveSettings(){
+  const newCode = document.getElementById('set_new_passcode').value;
+  const confirmCode = document.getElementById('set_confirm_passcode').value;
+  if(newCode && newCode !== confirmCode){ alert('Passcodes do not match.'); return; }
+  CONFIG.supabase_url = document.getElementById('set_supabase_url').value.trim();
+  CONFIG.supabase_anon_key = document.getElementById('set_supabase_anon_key').value.trim();
+  CONFIG.cc_hub_url = document.getElementById('set_cc_hub_url').value.trim() || 'https://cc.mo-care.com';
+  CONFIG.staffing_hub_url = document.getElementById('set_staffing_hub_url').value.trim() || 'https://hub.mo-care.com';
+  if(newCode) CONFIG.admin_passcode = newCode;
+  localStorage.setItem('th_config', JSON.stringify(CONFIG));
+  initSupabase();
+  applyHubLinks();
+  closeModal('settingsModalBackdrop');
+  alert('Settings saved. Reload the page if you just connected Supabase for the first time.');
+}
+
+/* ---------------- MODAL HELPERS ---------------- */
+function closeModal(id){ document.getElementById(id).classList.remove('open'); }
+document.addEventListener('keydown', e=>{ if(e.key==='Escape'){ document.querySelectorAll('.modal-backdrop.open, .lock-screen.open').forEach(m=>m.classList.remove('open')); }});
+
+/* ---------------- BOOT ---------------- */
+(async function boot(){
+  if(sb){
+    const { data:{ session } } = await sb.auth.getSession();
+    if(session){
+      document.getElementById('signinScreen').style.display = 'none';
+      document.getElementById('appScreen').style.display = 'block';
+      await loadAllData();
+      await flushPendingSync();
+      renderAll();
+    }
+  }
+})();
+</script>
+</body>
+</html>
