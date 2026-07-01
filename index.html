@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Team Hub — Caring Companions</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
 <style>
   :root{
     --navy:#0E3860;
@@ -121,6 +124,40 @@
   .lock-screen.open{display:flex;}
   .lock-card{background:#fff;border-radius:12px;padding:28px;width:300px;text-align:center;}
 
+  /* ---- Team Directory ---- */
+  .td-scope{font-family:'Nunito',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;}
+  .td-legend{display:flex;align-items:center;gap:14px;background:#EAF0F7;border-radius:12px;padding:8px 13px;font-size:11.5px;font-weight:800;color:#5E7186;margin-bottom:14px;flex-wrap:wrap;}
+  .td-legend .dot{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:5px;}
+  .td-card-wrap{position:relative;display:flex;flex-direction:column;gap:10px;}
+  .td-line{position:absolute;top:8px;bottom:8px;left:27px;width:0;border-left:3px dotted #C6D3E2;z-index:0;}
+  .td-card{position:relative;z-index:1;background:#fff;border:1px solid #E3EAF2;border-radius:16px;padding:12px 14px;box-shadow:0 6px 16px rgba(23,57,91,.08);}
+  .td-card.td-group{background:linear-gradient(180deg,#F4F8FC 0%,#EAF0F7 100%);}
+  .td-card-header{display:flex;align-items:center;gap:12px;cursor:pointer;}
+  .td-avatar{position:relative;width:46px;height:46px;flex:none;border-radius:50%;box-shadow:inset 0 0 0 3px rgba(255,255,255,.75);}
+  .td-avatar .head{position:absolute;top:9px;left:50%;transform:translateX(-50%);width:15px;height:15px;border-radius:50%;background:#2A557F;}
+  .td-avatar .shoulders{position:absolute;bottom:-2px;left:50%;transform:translateX(-50%);width:27px;height:19px;border-radius:14px 14px 0 0;background:#2A557F;overflow:hidden;}
+  .td-status-dot{position:absolute;right:-1px;bottom:-1px;width:13px;height:13px;border-radius:50%;border:2px solid #fff;}
+  .td-name{font-weight:800;font-size:15px;color:#17395B;line-height:1.15;}
+  .td-role{font-size:11.5px;font-weight:700;color:#728196;margin-top:2px;}
+  .td-location-tag{font-size:10.5px;color:#9AA8BB;font-weight:700;margin-top:3px;}
+  .td-status-pill{display:inline-flex;align-items:center;gap:5px;padding:5px 10px;border-radius:999px;font-size:11px;font-weight:800;white-space:nowrap;border:none;cursor:pointer;font-family:inherit;flex:none;}
+  .td-status-pill .dot{width:7px;height:7px;border-radius:50%;}
+  .td-chevron{width:22px;height:22px;border-radius:50%;background:#EAF0F7;color:#5E7186;font-weight:800;font-size:14px;display:flex;align-items:center;justify-content:center;flex:none;line-height:1;}
+  .td-detail{margin-top:10px;padding-top:10px;border-top:1px dashed #E3EAF2;display:flex;flex-direction:column;gap:7px;}
+  .td-detail-row{display:flex;justify-content:space-between;gap:12px;align-items:baseline;}
+  .td-detail-row .k{font-size:10.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:#9AA8BB;flex:none;}
+  .td-detail-row .v{font-size:13.5px;font-weight:700;color:#3A4B5E;text-align:right;}
+  .td-edit-actions{display:flex;gap:8px;margin-top:10px;}
+  .td-group-top{display:flex;align-items:center;justify-content:space-between;gap:10px;}
+  .td-group-count{display:flex;flex-direction:column;align-items:flex-end;line-height:1;flex:none;}
+  .td-group-count .n{font-size:24px;font-weight:900;color:#17395B;letter-spacing:-0.02em;}
+  .td-group-count .lbl{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#A2B0C1;margin-top:2px;}
+  .td-stack{display:flex;align-items:center;margin-top:12px;padding-left:4px;}
+  .td-stack .chip{width:34px;height:34px;border-radius:50%;border:2.5px solid #F4F8FC;margin-left:-10px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#17395B;}
+  .td-stack .chip:first-child{margin-left:0;}
+  .td-stack .more{min-width:36px;height:34px;padding:0 8px;border-radius:999px;background:#17395B;color:#fff;font-weight:800;font-size:12px;display:flex;align-items:center;justify-content:center;border:2.5px solid #F4F8FC;margin-left:-10px;}
+  .td-caregiver-list{margin-top:12px;padding-top:12px;border-top:1px dashed #E3EAF2;display:flex;flex-direction:column;gap:10px;}
+
   @media(max-width:720px){
     .quicklink-grid{grid-template-columns:1fr;}
     .modal .grid2{grid-template-columns:1fr;}
@@ -131,6 +168,7 @@
     .modal-actions button{width:100%;}
     header.topbar{flex-wrap:wrap;gap:8px;}
     .standup-item{flex-direction:column;}
+    .td-status-pill{min-height:30px;}
   }
 </style>
 </head>
@@ -185,6 +223,24 @@
       </a>
     </div>
 
+    <!-- ===================== TEAM DIRECTORY ===================== -->
+    <section class="block" id="directorySection">
+      <div class="section-header">
+        <h2>🗂 Team Directory</h2>
+        <button class="secondary" id="directoryEditBtn" onclick="toggleDirectoryEdit()">✏️ Edit Directory</button>
+      </div>
+      <p style="font-size:12px;color:var(--text-muted);margin:-6px 0 12px;">Who's who, who reports to whom, and who's in today. Anyone can tap a status badge to update it — only owners (with the admin passcode) can add, edit, or remove people.</p>
+      <div class="card td-scope" style="padding:16px 18px 18px;">
+        <div class="td-legend">
+          <div><span class="dot" style="background:#52A46F;"></span>In</div>
+          <div><span class="dot" style="background:#E2B341;"></span>On-call</div>
+          <div><span class="dot" style="background:#A2B0C1;"></span>Out</div>
+          <div style="margin-left:auto;color:#A2B0C1;">Tap a name for details</div>
+        </div>
+        <div id="directoryListWrap"></div>
+      </div>
+    </section>
+
     <!-- ===================== STAND-UP BOARD ===================== -->
     <section class="block" id="standupSection">
       <div class="section-header">
@@ -192,6 +248,13 @@
         <button class="primary" onclick="openStandupModal()">+ Add Item</button>
       </div>
       <p style="font-size:12px;color:var(--text-muted);margin:-6px 0 12px;">Anything that happened after hours or over the weekend that the daytime team needs to know — a caregiver call-out, a client concern, a scheduling issue. Care coordinators and staffing coordinators both post and read here.</p>
+      <div class="card" style="padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:200px;">
+          <div style="font-size:13px;font-weight:600;color:var(--navy);">📱 Away from a computer?</div>
+          <div style="font-size:12px;color:var(--text-muted);">Bookmark the no-login quick-add page to your phone — add an item in one tap, no sign-in.</div>
+        </div>
+        <button class="secondary" onclick="copyQuickAddLink()">Copy Quick-Add Link</button>
+      </div>
       <div class="toolbar" id="standupFilters"></div>
       <div class="card"><div id="standupListWrap"></div></div>
     </section>
@@ -270,6 +333,81 @@
   </div>
 </div>
 
+<!-- ============================= TEAM DIRECTORY: ADD/EDIT PERSON MODAL ============================= -->
+<div class="modal-backdrop" id="directoryModalBackdrop">
+  <div class="modal td-scope">
+    <h2>Team Member</h2>
+    <input type="hidden" id="td_id">
+    <label>Role</label>
+    <select id="td_role_key" onchange="directoryRoleChanged()">
+      <option value="owner">Owner</option>
+      <option value="manager">Care Manager</option>
+      <option value="coordinator">Care Coordinator</option>
+      <option value="staffing">Staffing Coordinator</option>
+      <option value="lead">Lead Caregiver</option>
+      <option value="caregiver" selected>Caregiver</option>
+      <option value="other">Other Team Member</option>
+    </select>
+    <div class="grid2">
+      <div><label>Name</label><input id="td_name" placeholder="Full name"></div>
+      <div><label>Title (shown on card)</label><input id="td_role_title" placeholder="e.g. Care Coordinator"></div>
+    </div>
+    <label>Reports to</label>
+    <input id="td_reports_to" placeholder="e.g. Care Manager">
+    <div class="grid2">
+      <div><label>Phone</label><input id="td_phone" placeholder="(417) 234-8494"></div>
+      <div><label>Email</label><input id="td_email" placeholder="name@mo-care.com"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="secondary" onclick="closeModal('directoryModalBackdrop')">Cancel</button>
+      <button class="primary" onclick="saveDirectoryPerson()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================= TEAM DIRECTORY: QUICK STATUS UPDATE MODAL ============================= -->
+<div class="modal-backdrop" id="statusModalBackdrop">
+  <div class="modal td-scope" style="max-width:380px;">
+    <h2 id="statusModalTitle">Update Status</h2>
+    <p class="modal-sub">Anyone on the team can update this — no admin passcode needed.</p>
+    <input type="hidden" id="ts_id">
+    <label>Status</label>
+    <select id="ts_status">
+      <option value="in">🟢 In</option>
+      <option value="on_call">🟡 On-call</option>
+      <option value="out">⚪ Out</option>
+    </select>
+    <label>Working from (optional)</label>
+    <select id="ts_location">
+      <option value="">— Not set —</option>
+      <option value="office">🏢 In Office</option>
+      <option value="remote">🌐 Remote</option>
+      <option value="home">🏠 Work From Home</option>
+    </select>
+    <label>Your name</label>
+    <input id="ts_your_name" placeholder="So the team knows who updated it">
+    <div class="modal-actions">
+      <button class="secondary" onclick="closeModal('statusModalBackdrop')">Cancel</button>
+      <button class="primary" onclick="saveStatusUpdate()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================= TEAM DIRECTORY: EDIT ACCESS (passcode-gated) ============================= -->
+<div class="lock-screen" id="directoryLock">
+  <div class="lock-card">
+    <div style="font-size:28px;">🔒</div>
+    <h2 style="font-size:16px;margin:8px 0 4px;">Owner Access Required</h2>
+    <p style="font-size:12px;color:var(--text-muted);margin:0 0 14px;">Adding, editing, or removing people is restricted to owners.</p>
+    <input type="password" id="directoryPasscodeInput" placeholder="Admin passcode">
+    <div id="directoryLockError" style="color:var(--red);font-size:12px;margin-top:8px;display:none;">Incorrect passcode.</div>
+    <div class="modal-actions" style="justify-content:center;">
+      <button class="secondary" onclick="closeModal('directoryLock')">Cancel</button>
+      <button class="primary" onclick="checkDirectoryPasscode()">Enter</button>
+    </div>
+  </div>
+</div>
+
 <!-- ============================= SETTINGS (passcode-gated) ============================= -->
 <div class="lock-screen" id="settingsLock">
   <div class="lock-card">
@@ -328,7 +466,7 @@ CONFIG.staffing_hub_url = CONFIG.staffing_hub_url || 'https://sc.mo-care.com';
 CONFIG.supabase_url = CONFIG.supabase_url || 'https://zngsgedlsxinbygwmxwn.supabase.co';
 CONFIG.supabase_anon_key = CONFIG.supabase_anon_key || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpuZ3NnZWRsc3hpbmJ5Z3dteHduIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1NDIzNDQsImV4cCI6MjA5ODExODM0NH0.L_31_UKdccyRH9n7p1GaBlZTqcJipB008H-GIvxwLxM';
 
-let DATA = { standup_notes: [], team_meetings: [] };
+let DATA = { standup_notes: [], team_meetings: [], team_directory: [] };
 let standupFilter = 'Open';
 
 function uid(){ return 'id_' + Math.random().toString(36).slice(2,10) + Date.now().toString(36); }
@@ -338,6 +476,7 @@ function nowLocalInput(){
   d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
   return d.toISOString().slice(0,16);
 }
+function escapeHtml(s){ return (s||'').toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
 function initSupabase(){
   if(!CONFIG.supabase_url || !CONFIG.supabase_anon_key) return;
@@ -350,6 +489,21 @@ function applyHubLinks(){
   document.getElementById('staffingHubLink').href = CONFIG.staffing_hub_url;
 }
 applyHubLinks();
+
+// quick-add.html deploys alongside this file in the same repo, so it's
+// always at the same origin — no separate URL to configure.
+function quickAddUrl(){
+  return window.location.origin + '/quick-add.html';
+}
+async function copyQuickAddLink(){
+  const url = quickAddUrl();
+  try{
+    await navigator.clipboard.writeText(url);
+    alert('Copied! Open it on your phone and add it to your home screen:\n\n' + url);
+  }catch(e){
+    prompt('Copy this link:', url);
+  }
+}
 
 /* ---------------- AUTH ---------------- */
 async function signIn(){
@@ -375,7 +529,7 @@ async function signOut(){
 /* ---------------- DATA LOAD / SAVE (app_data key/JSONB pattern, same atomic RPCs as the other two hubs) ---------------- */
 async function loadAllData(){
   if(!sb) return;
-  const keys = ['standup_notes','team_meetings'];
+  const keys = ['standup_notes','team_meetings','team_directory'];
   for(const key of keys){
     const { data, error } = await sb.from('app_data').select('data').eq('key', key).single();
     if(!error && data) DATA[key] = data.data || [];
@@ -435,7 +589,269 @@ async function flushPendingSync(){
 }
 window.addEventListener('online', flushPendingSync);
 
-function renderAll(){ renderStandup(); renderMeetings(); }
+function renderAll(){ renderDirectory(); renderStandup(); renderMeetings(); }
+
+/* ---------------- TEAM DIRECTORY ---------------- */
+const TD_ROLE_META = {
+  owner:       { label:'Owner',               color:'#DEE8F3' },
+  manager:     { label:'Care Manager',         color:'#D6ECE7' },
+  coordinator: { label:'Care Coordinator',     color:'#E6EAF2' },
+  staffing:    { label:'Staffing Coordinator', color:'#F4EAC6' },
+  lead:        { label:'Lead Caregiver',       color:'#DEE8F3' },
+  caregiver:   { label:'Caregiver',            color:'#D6ECE7' },
+  other:       { label:'Team Member',          color:'#E6EAF2' }
+};
+const TD_MAIN_CHAIN = ['owner','manager','coordinator','staffing','lead'];
+const TD_REPORTS_TO_SUGGEST = { owner:'', manager:'Owners', coordinator:'Care Manager', staffing:'Care Coordinator', lead:'Staffing Coordinator', caregiver:'Lead Caregiver', other:'' };
+const TD_STATUS_META = {
+  in:      { dot:'#52A46F', bg:'#E1F0E4', text:'#2E6B44', label:'In' },
+  on_call: { dot:'#E2B341', bg:'#F7EEC9', text:'#876418', label:'On-call' },
+  out:     { dot:'#A2B0C1', bg:'#E9EDF2', text:'#64748A', label:'Out' }
+};
+const TD_LOCATION_LABEL = { office:'🏢 In Office', remote:'🌐 Remote', home:'🏠 WFH' };
+const TD_CHIP_COLORS = ['#DEE8F3','#D6ECE7','#F4EAC6','#E6EAF2'];
+
+let directoryEditMode = false;
+let directoryOpenId = null; // id of the single expanded card ('__caregivers__' for the group)
+
+function tdSortFn(a,b){ return (a.sort_order||0)-(b.sort_order||0) || (a.created_at||'').localeCompare(b.created_at||''); }
+function tdInitials(name){
+  const parts = (name||'').trim().split(/\s+/).filter(Boolean);
+  if(parts.length===0) return '?';
+  return (parts[0][0] + (parts[1] ? parts[1][0] : '')).toUpperCase();
+}
+
+function toggleDirectoryEdit(){
+  if(directoryEditMode){ directoryEditMode = false; renderDirectory(); return; }
+  if(!CONFIG.admin_passcode){ directoryEditMode = true; renderDirectory(); return; }
+  document.getElementById('directoryPasscodeInput').value = '';
+  document.getElementById('directoryLockError').style.display = 'none';
+  document.getElementById('directoryLock').classList.add('open');
+}
+function checkDirectoryPasscode(){
+  const val = document.getElementById('directoryPasscodeInput').value;
+  if(val === CONFIG.admin_passcode){
+    closeModal('directoryLock');
+    directoryEditMode = true;
+    renderDirectory();
+  } else {
+    document.getElementById('directoryLockError').style.display = 'block';
+  }
+}
+
+function toggleDirectoryCard(id){
+  directoryOpenId = (directoryOpenId===id) ? null : id;
+  renderDirectory();
+}
+
+function renderDirectory(){
+  const btn = document.getElementById('directoryEditBtn');
+  if(btn) btn.textContent = directoryEditMode ? '✅ Done Editing' : '✏️ Edit Directory';
+
+  const list = (DATA.team_directory||[]);
+  const wrap = document.getElementById('directoryListWrap');
+
+  if(list.length===0){
+    wrap.innerHTML = `<div class="empty" style="padding:30px 20px;">
+      <div style="font-size:32px;">🗂️</div>
+      <div style="margin-top:8px;font-weight:700;color:var(--navy);">No one added yet</div>
+      <div style="font-size:12px;color:var(--text-muted);margin:6px 0 16px;">Owners can load a starter structure (Owners → Care Manager → Care Coordinator → Staffing Coordinator → Lead Caregiver → Caregivers) and fill in real names, or add people one at a time.</div>
+      ${directoryEditMode
+        ? `<button class="primary" onclick="loadDirectoryStarter()">Load Starter Structure</button> <button class="secondary" onclick="openDirectoryModal()">+ Add Person</button>`
+        : `<button class="secondary" onclick="toggleDirectoryEdit()">✏️ Owners: Set Up Directory</button>`}
+    </div>`;
+    return;
+  }
+
+  let cardsHtml = '';
+  TD_MAIN_CHAIN.forEach(key=>{
+    list.filter(p=>p.role_key===key).sort(tdSortFn).forEach(p=>{ cardsHtml += renderDirectoryCard(p); });
+  });
+  list.filter(p=>p.role_key==='other').sort(tdSortFn).forEach(p=>{ cardsHtml += renderDirectoryCard(p); });
+
+  const caregivers = list.filter(p=>p.role_key==='caregiver').sort(tdSortFn);
+  if(caregivers.length>0 || directoryEditMode){
+    cardsHtml += renderCaregiverGroup(caregivers);
+  }
+
+  wrap.innerHTML = `<div class="td-card-wrap"><div class="td-line"></div>${cardsHtml}</div>`
+    + (directoryEditMode ? `<button class="primary" style="margin-top:14px;width:100%;" onclick="openDirectoryModal()">+ Add Team Member</button>` : '');
+}
+
+function renderDirectoryCard(p){
+  const meta = TD_ROLE_META[p.role_key] || TD_ROLE_META.other;
+  const statusMeta = TD_STATUS_META[p.status] || TD_STATUS_META.in;
+  const isOpen = directoryOpenId === p.id;
+  const locLabel = TD_LOCATION_LABEL[p.location] || '';
+
+  return `<div class="td-card">
+    <div class="td-card-header" onclick="toggleDirectoryCard('${p.id}')">
+      <div class="td-avatar" style="background:${meta.color};">
+        <div class="head"></div><div class="shoulders"></div>
+        <div class="td-status-dot" style="background:${statusMeta.dot};"></div>
+      </div>
+      <div style="flex:1;min-width:0;">
+        <div class="td-name">${escapeHtml(p.name) || '(No name yet)'}</div>
+        <div class="td-role">${escapeHtml(p.role_title) || meta.label}</div>
+        ${locLabel ? `<div class="td-location-tag">${locLabel}</div>` : ''}
+      </div>
+      <button class="td-status-pill" style="background:${statusMeta.bg};color:${statusMeta.text};" onclick="event.stopPropagation();openStatusModal('${p.id}')">
+        <span class="dot" style="background:${statusMeta.dot};"></span>${statusMeta.label}
+      </button>
+      <div class="td-chevron">${isOpen?'–':'+'}</div>
+    </div>
+    ${isOpen ? `<div class="td-detail">
+        ${p.reports_to ? `<div class="td-detail-row"><span class="k">Reports to</span><span class="v">${escapeHtml(p.reports_to)}</span></div>` : ''}
+        ${p.phone ? `<div class="td-detail-row"><span class="k">Phone</span><span class="v">${escapeHtml(p.phone)}</span></div>` : ''}
+        ${p.email ? `<div class="td-detail-row"><span class="k">Email</span><span class="v">${escapeHtml(p.email)}</span></div>` : ''}
+        ${(!p.reports_to && !p.phone && !p.email) ? `<div style="font-size:12px;color:var(--text-muted);">No contact details yet.</div>` : ''}
+        ${p.status_updated_by ? `<div style="font-size:11px;color:var(--text-muted);">Status last updated by ${escapeHtml(p.status_updated_by)}</div>` : ''}
+        ${directoryEditMode ? `<div class="td-edit-actions">
+            <button class="secondary" onclick="event.stopPropagation();openDirectoryModal('${p.id}')">Edit</button>
+            <button class="secondary" onclick="event.stopPropagation();removeDirectoryPerson('${p.id}')">Remove</button>
+          </div>` : ''}
+      </div>` : ''}
+  </div>`;
+}
+
+function renderCaregiverGroup(caregivers){
+  const isOpen = directoryOpenId === '__caregivers__';
+  const count = caregivers.length;
+  const chips = caregivers.slice(0,8).map((c,i)=>
+    `<div class="chip" style="background:${TD_CHIP_COLORS[i%TD_CHIP_COLORS.length]};">${tdInitials(c.name)}</div>`
+  ).join('');
+  const more = count>8 ? `<div class="more">+${count-8}</div>` : '';
+
+  const listHtml = isOpen
+    ? `<div class="td-caregiver-list">
+        ${count===0 ? `<div style="font-size:12px;color:var(--text-muted);">No caregivers added yet.</div>` : caregivers.map(c=>renderDirectoryCard(c)).join('')}
+        ${directoryEditMode ? `<button class="secondary" onclick="event.stopPropagation();openDirectoryModal(null,'caregiver')">+ Add Caregiver</button>` : ''}
+      </div>`
+    : '';
+
+  return `<div class="td-card td-group">
+    <div class="td-card-header" onclick="toggleDirectoryCard('__caregivers__')" style="align-items:flex-start;">
+      <div class="td-group-top" style="flex:1;">
+        <div>
+          <div class="td-name">Caregivers</div>
+          <div class="td-role">Our frontline team · report to Lead Caregiver</div>
+        </div>
+        <div class="td-group-count"><span class="n">${count}</span><span class="lbl">Caregivers</span></div>
+      </div>
+      <div class="td-chevron">${isOpen?'–':'+'}</div>
+    </div>
+    ${count>0 && !isOpen ? `<div class="td-stack">${chips}${more}</div>` : ''}
+    ${listHtml}
+  </div>`;
+}
+
+function loadDirectoryStarter(){
+  const roles = ['owner','manager','coordinator','staffing','lead'];
+  let order = 0;
+  roles.forEach(async (key)=>{
+    const meta = TD_ROLE_META[key];
+    const record = {
+      id: uid(),
+      name: '',
+      role_key: key,
+      role_title: meta.label,
+      reports_to: TD_REPORTS_TO_SUGGEST[key] || '',
+      phone: '', email: '',
+      status: 'in', location: '',
+      sort_order: order++,
+      status_updated_by: '', status_updated_at: '',
+      created_at: new Date().toISOString(), updated_at: new Date().toISOString()
+    };
+    DATA.team_directory = DATA.team_directory || [];
+    DATA.team_directory.push(record);
+    await persist('team_directory', record);
+  });
+  renderDirectory();
+}
+
+function directoryRoleChanged(){
+  const key = document.getElementById('td_role_key').value;
+  const titleEl = document.getElementById('td_role_title');
+  const reportsEl = document.getElementById('td_reports_to');
+  if(!titleEl.value.trim()) titleEl.value = TD_ROLE_META[key].label;
+  if(!reportsEl.value.trim()) reportsEl.value = TD_REPORTS_TO_SUGGEST[key] || '';
+}
+
+function openDirectoryModal(id, presetRoleKey){
+  const existing = id ? (DATA.team_directory||[]).find(x=>x.id===id) : null;
+  document.getElementById('td_id').value = existing ? existing.id : '';
+  document.getElementById('td_role_key').value = existing ? existing.role_key : (presetRoleKey || 'caregiver');
+  document.getElementById('td_name').value = existing ? existing.name : '';
+  document.getElementById('td_role_title').value = existing ? existing.role_title : TD_ROLE_META[existing ? existing.role_key : (presetRoleKey || 'caregiver')].label;
+  document.getElementById('td_reports_to').value = existing ? existing.reports_to : (TD_REPORTS_TO_SUGGEST[presetRoleKey || 'caregiver'] || '');
+  document.getElementById('td_phone').value = existing ? existing.phone : '';
+  document.getElementById('td_email').value = existing ? existing.email : '';
+  document.getElementById('directoryModalBackdrop').classList.add('open');
+}
+
+async function saveDirectoryPerson(){
+  const name = document.getElementById('td_name').value.trim();
+  if(!name){ alert('Enter a name first.'); return; }
+  const id = document.getElementById('td_id').value || uid();
+  const roleKey = document.getElementById('td_role_key').value;
+  DATA.team_directory = DATA.team_directory || [];
+  const existing = DATA.team_directory.find(x=>x.id===id) || {};
+  const sameRole = DATA.team_directory.filter(x=>x.role_key===roleKey && x.id!==id);
+  const record = {
+    id, name,
+    role_key: roleKey,
+    role_title: document.getElementById('td_role_title').value.trim() || TD_ROLE_META[roleKey].label,
+    reports_to: document.getElementById('td_reports_to').value.trim(),
+    phone: document.getElementById('td_phone').value.trim(),
+    email: document.getElementById('td_email').value.trim(),
+    status: existing.status || 'in',
+    location: existing.location || '',
+    sort_order: (existing.sort_order!=null) ? existing.sort_order : (sameRole.length ? Math.max(...sameRole.map(x=>x.sort_order||0))+1 : 0),
+    status_updated_by: existing.status_updated_by || '',
+    status_updated_at: existing.status_updated_at || '',
+    created_at: existing.created_at || new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  };
+  const idx = DATA.team_directory.findIndex(x=>x.id===id);
+  if(idx>=0) DATA.team_directory[idx]=record; else DATA.team_directory.push(record);
+  await persist('team_directory', record);
+  closeModal('directoryModalBackdrop');
+  renderDirectory();
+}
+
+async function removeDirectoryPerson(id){
+  if(!confirm('Remove this person from the directory?')) return;
+  DATA.team_directory = (DATA.team_directory||[]).filter(p=>p.id!==id);
+  if(directoryOpenId===id) directoryOpenId = null;
+  await removeItem('team_directory', id);
+  renderDirectory();
+}
+
+function openStatusModal(id){
+  const p = (DATA.team_directory||[]).find(x=>x.id===id);
+  if(!p) return;
+  document.getElementById('statusModalTitle').textContent = 'Update Status — ' + (p.name || 'Team Member');
+  document.getElementById('ts_id').value = id;
+  document.getElementById('ts_status').value = p.status || 'in';
+  document.getElementById('ts_location').value = p.location || '';
+  document.getElementById('ts_your_name').value = localStorage.getItem('td_your_name') || '';
+  document.getElementById('statusModalBackdrop').classList.add('open');
+}
+async function saveStatusUpdate(){
+  const id = document.getElementById('ts_id').value;
+  const p = (DATA.team_directory||[]).find(x=>x.id===id);
+  if(!p) return;
+  const who = document.getElementById('ts_your_name').value.trim();
+  p.status = document.getElementById('ts_status').value;
+  p.location = document.getElementById('ts_location').value;
+  p.status_updated_by = who || p.status_updated_by || '';
+  p.status_updated_at = new Date().toISOString();
+  p.updated_at = new Date().toISOString();
+  if(who) localStorage.setItem('td_your_name', who);
+  await persist('team_directory', p);
+  closeModal('statusModalBackdrop');
+  renderDirectory();
+}
 
 /* ---------------- STAND-UP BOARD ---------------- */
 function renderFilterPills(containerId, options, activeVal, onClick){
