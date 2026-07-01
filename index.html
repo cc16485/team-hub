@@ -38,8 +38,8 @@
   tr:hover td{background:#FAFBFC;}
 
   /* ---- Sign-in screen ---- */
-  #signinScreen{min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--navy);}
-  .signin-card{background:#fff;border-radius:12px;padding:36px 32px;width:340px;text-align:center;box-shadow:0 10px 30px rgba(0,0,0,.25);}
+  #signinScreen{min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--navy);padding:20px;}
+  .signin-card{background:#fff;border-radius:12px;padding:36px 32px;width:100%;max-width:340px;text-align:center;box-shadow:0 10px 30px rgba(0,0,0,.25);}
   .signin-card h1{font-size:20px;margin:16px 0 4px;color:var(--navy);}
   .signin-card p.sub{color:var(--text-muted);font-size:13px;margin:0 0 20px;}
   .signin-card button.primary{width:100%;margin-top:14px;}
@@ -65,8 +65,8 @@
   .quicklink-card .sub{font-size:12px;color:rgba(255,255,255,.7);font-weight:400;margin-top:2px;}
   .quicklink-card .arrow{margin-left:auto;font-size:22px;opacity:.8;}
 
-  .section-header{display:flex;align-items:center;gap:10px;margin:0 0 12px;}
-  .section-header h2{font-size:16px;margin:0;color:var(--navy);flex:1;}
+  .section-header{display:flex;align-items:center;gap:10px;margin:0 0 12px;flex-wrap:wrap;}
+  .section-header h2{font-size:16px;margin:0;color:var(--navy);flex:1;min-width:160px;}
 
   .card{background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden;}
   .empty{padding:40px;text-align:center;color:var(--text-muted);font-size:13px;}
@@ -112,6 +112,7 @@
   .modal-backdrop{display:none;position:fixed;inset:0;background:rgba(15,23,42,.5);align-items:flex-start;justify-content:center;padding:40px 16px;overflow-y:auto;z-index:50;}
   .modal-backdrop.open{display:flex;}
   .modal{background:#fff;border-radius:12px;width:100%;max-width:560px;padding:24px;}
+  .modal.narrow{max-width:380px;}
   .modal h2{margin:0 0 4px;font-size:17px;color:var(--navy);}
   .modal .modal-sub{font-size:12px;color:var(--text-muted);margin-bottom:14px;}
   .modal .grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 14px;}
@@ -120,12 +121,13 @@
   .settings-section h3{font-size:14px;color:var(--navy);margin-bottom:6px;}
   .settings-section p.hint{font-size:12px;color:var(--text-muted);margin:0 0 10px;}
 
-  .lock-screen{position:fixed;inset:0;background:rgba(15,23,42,.6);display:none;align-items:center;justify-content:center;z-index:60;}
+  .lock-screen{position:fixed;inset:0;background:rgba(15,23,42,.6);display:none;align-items:center;justify-content:center;z-index:60;padding:20px;}
   .lock-screen.open{display:flex;}
-  .lock-card{background:#fff;border-radius:12px;padding:28px;width:300px;text-align:center;}
+  .lock-card{background:#fff;border-radius:12px;padding:28px;width:100%;max-width:300px;text-align:center;}
 
   /* ---- Team Directory ---- */
   .td-scope{font-family:'Nunito',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;}
+  .td-scope-pad{padding:16px 18px 18px;}
   .td-legend{display:flex;align-items:center;gap:14px;background:#EAF0F7;border-radius:12px;padding:8px 13px;font-size:11.5px;font-weight:800;color:#5E7186;margin-bottom:14px;flex-wrap:wrap;}
   .td-legend .dot{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:5px;}
   .td-card-wrap{position:relative;display:flex;flex-direction:column;gap:10px;}
@@ -133,6 +135,7 @@
   .td-card{position:relative;z-index:1;background:#fff;border:1px solid #E3EAF2;border-radius:16px;padding:12px 14px;box-shadow:0 6px 16px rgba(23,57,91,.08);}
   .td-card.td-group{background:linear-gradient(180deg,#F4F8FC 0%,#EAF0F7 100%);}
   .td-card-header{display:flex;align-items:center;gap:12px;cursor:pointer;}
+  .td-name-block{flex:1;min-width:0;}
   .td-avatar{position:relative;width:46px;height:46px;flex:none;border-radius:50%;box-shadow:inset 0 0 0 3px rgba(255,255,255,.75);}
   .td-avatar .head{position:absolute;top:9px;left:50%;transform:translateX(-50%);width:15px;height:15px;border-radius:50%;background:#2A557F;}
   .td-avatar .shoulders{position:absolute;bottom:-2px;left:50%;transform:translateX(-50%);width:27px;height:19px;border-radius:14px 14px 0 0;background:#2A557F;overflow:hidden;}
@@ -146,8 +149,9 @@
   .td-detail{margin-top:10px;padding-top:10px;border-top:1px dashed #E3EAF2;display:flex;flex-direction:column;gap:7px;}
   .td-detail-row{display:flex;justify-content:space-between;gap:12px;align-items:baseline;}
   .td-detail-row .k{font-size:10.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:#9AA8BB;flex:none;}
-  .td-detail-row .v{font-size:13.5px;font-weight:700;color:#3A4B5E;text-align:right;}
+  .td-detail-row .v{font-size:13.5px;font-weight:700;color:#3A4B5E;text-align:right;flex:1;min-width:0;overflow-wrap:break-word;word-break:break-word;}
   .td-edit-actions{display:flex;gap:8px;margin-top:10px;}
+  .td-edit-actions button{flex:1;}
   .td-group-top{display:flex;align-items:center;justify-content:space-between;gap:10px;}
   .td-group-count{display:flex;flex-direction:column;align-items:flex-end;line-height:1;flex:none;}
   .td-group-count .n{font-size:24px;font-weight:900;color:#17395B;letter-spacing:-0.02em;}
@@ -159,16 +163,29 @@
   .td-caregiver-list{margin-top:12px;padding-top:12px;border-top:1px dashed #E3EAF2;display:flex;flex-direction:column;gap:10px;}
 
   @media(max-width:720px){
+    main{padding:14px;}
     .quicklink-grid{grid-template-columns:1fr;}
     .modal .grid2{grid-template-columns:1fr;}
     input,select,textarea{font-size:16px;padding:11px 12px;}
     button.primary,button.secondary{padding:11px 16px;min-height:44px;}
     .modal{padding:18px;max-width:100%;border-radius:0;min-height:100vh;}
+    .modal.narrow{max-width:100%;}
     .modal-actions{flex-direction:column-reverse;align-items:stretch;}
     .modal-actions button{width:100%;}
-    header.topbar{flex-wrap:wrap;gap:8px;}
+    header.topbar{flex-wrap:wrap;gap:8px;padding:10px 14px;}
+    img.logo{height:32px;}
     .standup-item{flex-direction:column;}
-    .td-status-pill{min-height:30px;}
+    .filter-pill{padding:8px 14px;min-height:36px;}
+    button.linklike{padding:8px 10px;min-height:36px;}
+    .td-scope-pad{padding:12px 12px 14px;}
+    .td-card{padding:10px 12px;}
+    .td-card-header{gap:9px;}
+    .td-avatar{width:40px;height:40px;}
+    .td-avatar .head{top:8px;width:13px;height:13px;}
+    .td-avatar .shoulders{width:23px;height:16px;}
+    .td-status-dot{width:12px;height:12px;}
+    .td-status-pill{min-height:36px;padding:5px 9px;font-size:10.5px;}
+    .td-chevron{width:26px;height:26px;}
   }
 </style>
 </head>
@@ -230,7 +247,7 @@
         <button class="secondary" id="directoryEditBtn" onclick="toggleDirectoryEdit()">✏️ Edit Directory</button>
       </div>
       <p style="font-size:12px;color:var(--text-muted);margin:-6px 0 12px;">Who's who, who reports to whom, and who's in today. Anyone can tap a status badge to update it — only owners (with the admin passcode) can add, edit, or remove people.</p>
-      <div class="card td-scope" style="padding:16px 18px 18px;">
+      <div class="card td-scope td-scope-pad">
         <div class="td-legend">
           <div><span class="dot" style="background:#52A46F;"></span>In</div>
           <div><span class="dot" style="background:#E2B341;"></span>On-call</div>
@@ -367,7 +384,7 @@
 
 <!-- ============================= TEAM DIRECTORY: QUICK STATUS UPDATE MODAL ============================= -->
 <div class="modal-backdrop" id="statusModalBackdrop">
-  <div class="modal td-scope" style="max-width:380px;">
+  <div class="modal td-scope narrow">
     <h2 id="statusModalTitle">Update Status</h2>
     <p class="modal-sub">Anyone on the team can update this — no admin passcode needed.</p>
     <input type="hidden" id="ts_id">
@@ -657,7 +674,7 @@ function renderDirectory(){
       <div style="margin-top:8px;font-weight:700;color:var(--navy);">No one added yet</div>
       <div style="font-size:12px;color:var(--text-muted);margin:6px 0 16px;">Owners can load a starter structure (Owners → Care Manager → Care Coordinator → Staffing Coordinator → Lead Caregiver → Caregivers) and fill in real names, or add people one at a time.</div>
       ${directoryEditMode
-        ? `<button class="primary" onclick="loadDirectoryStarter()">Load Starter Structure</button> <button class="secondary" onclick="openDirectoryModal()">+ Add Person</button>`
+        ? `<div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;"><button class="primary" onclick="loadDirectoryStarter()">Load Starter Structure</button><button class="secondary" onclick="openDirectoryModal()">+ Add Person</button></div>`
         : `<button class="secondary" onclick="toggleDirectoryEdit()">✏️ Owners: Set Up Directory</button>`}
     </div>`;
     return;
@@ -690,7 +707,7 @@ function renderDirectoryCard(p){
         <div class="head"></div><div class="shoulders"></div>
         <div class="td-status-dot" style="background:${statusMeta.dot};"></div>
       </div>
-      <div style="flex:1;min-width:0;">
+      <div class="td-name-block">
         <div class="td-name">${escapeHtml(p.name) || '(No name yet)'}</div>
         <div class="td-role">${escapeHtml(p.role_title) || meta.label}</div>
         ${locLabel ? `<div class="td-location-tag">${locLabel}</div>` : ''}
@@ -725,7 +742,7 @@ function renderCaregiverGroup(caregivers){
   const listHtml = isOpen
     ? `<div class="td-caregiver-list">
         ${count===0 ? `<div style="font-size:12px;color:var(--text-muted);">No caregivers added yet.</div>` : caregivers.map(c=>renderDirectoryCard(c)).join('')}
-        ${directoryEditMode ? `<button class="secondary" onclick="event.stopPropagation();openDirectoryModal(null,'caregiver')">+ Add Caregiver</button>` : ''}
+        ${directoryEditMode ? `<button class="secondary" style="width:100%;" onclick="event.stopPropagation();openDirectoryModal(null,'caregiver')">+ Add Caregiver</button>` : ''}
       </div>`
     : '';
 
