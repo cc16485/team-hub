@@ -1,158 +1,1186 @@
--- Team Hub — Supabase additions
--- Caring Companions In-Home Senior Care
---
--- Run this in the SAME Supabase project as Care Coordinator's Hub and Staffing Hub
--- (SQL Editor → New query → paste → Run). Reuses the existing `app_data` table and
--- the `upsert_app_data_item` / `delete_app_data_item` RPCs from
--- Supabase_Atomic_Write_Functions.sql — nothing new to create there, this script
--- just seeds two more keys. Idempotent: safe to run even if app_data already exists.
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Team Hub — Caring Companions</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://meet.jit.si/external_api.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy:#0E3860;
+    --navy-dark:#092744;
+    --bg:#F4F6F8;
+    --card:#FFFFFF;
+    --border:#E2E8F0;
+    --text:#1E293B;
+    --text-muted:#64748B;
+    --green:#15803D;
+    --green-bg:#DCFCE7;
+    --amber:#B45309;
+    --amber-bg:#FEF3C7;
+    --red:#DC2626;
+    --red-bg:#FEE2E2;
+    --blue-bg:#DBEAFE;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text);}
+  a{color:var(--navy);}
+  img.logo{height:42px;display:block;}
+  button{cursor:pointer;font-family:inherit;}
+  input,select,textarea{font-family:inherit;font-size:14px;padding:8px 10px;border:1px solid var(--border);border-radius:6px;width:100%;background:#fff;color:var(--text);}
+  label{font-size:12px;font-weight:600;color:var(--text-muted);display:block;margin:10px 0 4px;}
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  th{text-align:left;padding:10px 12px;background:#F1F5F9;color:var(--text-muted);font-weight:600;border-bottom:1px solid var(--border);white-space:nowrap;}
+  td{padding:10px 12px;border-bottom:1px solid var(--border);vertical-align:top;}
+  tr:hover td{background:#FAFBFC;}
 
--- Make sure app_data exists (no-op if the other hubs already created it)
-create table if not exists app_data (
-  key text primary key,
-  data jsonb not null default '[]'::jsonb,
-  updated_at timestamptz not null default now()
-);
+  /* ---- Sign-in screen ---- */
+  #signinScreen{min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--navy);padding:20px;}
+  .signin-card{background:#fff;border-radius:12px;padding:36px 32px;width:100%;max-width:340px;text-align:center;box-shadow:0 10px 30px rgba(0,0,0,.25);}
+  .signin-card h1{font-size:20px;margin:16px 0 4px;color:var(--navy);}
+  .signin-card p.sub{color:var(--text-muted);font-size:13px;margin:0 0 20px;}
+  .signin-card button.primary{width:100%;margin-top:14px;}
+  .signin-card .forgot{display:block;margin-top:12px;font-size:12px;}
 
-alter table app_data enable row level security;
+  /* ---- App shell ---- */
+  #appScreen{display:none;}
+  header.topbar{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-items:center;gap:16px;}
+  header.topbar h1{font-size:17px;margin:0;font-weight:600;flex:0 0 auto;}
+  header.topbar .spacer{flex:1;}
+  header.topbar .pill{font-size:12px;background:rgba(255,255,255,.12);padding:5px 10px;border-radius:20px;}
+  header.topbar button.ghost{background:transparent;border:1px solid rgba(255,255,255,.3);color:#fff;padding:6px 12px;border-radius:6px;font-size:13px;}
+  header.topbar button.ghost:hover{background:rgba(255,255,255,.1);}
 
-drop policy if exists "Authenticated read/write" on app_data;
-create policy "Authenticated read/write" on app_data
-  for all
-  using (auth.role() = 'authenticated')
-  with check (auth.role() = 'authenticated');
+  main{padding:20px;max-width:1100px;margin:0 auto;}
 
--- Seed the keys this hub uses.
-insert into app_data (key, data) values
-  ('standup_notes', '[]'::jsonb),
-  ('team_meetings', '[]'::jsonb),
-  ('team_directory', '[]'::jsonb),
-  ('team_hub_settings', '[]'::jsonb)
-on conflict (key) do nothing;
+  /* ---- Quick links ---- */
+  .quicklink-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:28px;}
+  .quicklink-card{display:flex;align-items:center;gap:14px;background:var(--navy);color:#fff;border-radius:12px;padding:26px 24px;text-decoration:none;box-shadow:0 2px 6px rgba(14,56,96,.15);}
+  .quicklink-card:hover{background:var(--navy-dark);}
+  .quicklink-card .emoji{font-size:30px;}
+  .quicklink-card .label{font-size:17px;font-weight:700;}
+  .quicklink-card .sub{font-size:12px;color:rgba(255,255,255,.7);font-weight:400;margin-top:2px;}
+  .quicklink-card .arrow{margin-left:auto;font-size:22px;opacity:.8;}
 
--- Auto-update `updated_at` on every write (matches the other two hubs)
-create or replace function touch_app_data_updated_at()
-returns trigger as $$
-begin
-  new.updated_at = now();
-  return new;
-end;
-$$ language plpgsql;
+  .section-header{display:flex;align-items:center;gap:10px;margin:0 0 12px;flex-wrap:wrap;}
+  .section-header h2{font-size:16px;margin:0;color:var(--navy);flex:1;min-width:160px;}
 
-drop trigger if exists trg_touch_app_data on app_data;
-create trigger trg_touch_app_data
-  before update on app_data
-  for each row execute function touch_app_data_updated_at();
+  .card{background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden;}
+  .empty{padding:40px;text-align:center;color:var(--text-muted);font-size:13px;}
 
--- Make sure Team Hub can call the shared atomic RPCs (no-op if already granted
--- when you ran Supabase_Atomic_Write_Functions.sql for the other hubs).
-grant execute on function upsert_app_data_item(text, jsonb) to authenticated;
-grant execute on function delete_app_data_item(text, text) to authenticated;
+  section.block{margin-bottom:30px;}
 
--- ---------------------------------------------------------------------------
--- submit_standup_note_public(...)
---
--- Lets the no-login Quick-Add form (quick-add.html) post a stand-up item
--- WITHOUT a Supabase session. Everything else in this project requires
--- auth.role() = 'authenticated' — this is the one deliberate exception, and
--- it's scoped as narrowly as possible:
---   - SECURITY DEFINER means it runs with the function owner's privileges,
---     bypassing RLS internally — but the function body only ever does one
---     thing: append one well-formed item to the standup_notes array.
---   - It cannot read existing data, update an existing item, delete anything,
---     or touch any other app_data key. There's no way to use this function
---     to do anything except add a new stand-up note.
---   - Granted to the `anon` role specifically — not `authenticated` — since
---     the whole point is that no login is required.
---
--- Trade-off worth knowing: anyone with the quick-add.html URL can post an
--- item without identifying themselves beyond whatever they type in
--- "reported by." Treat that link as semi-private (don't post it publicly) —
--- share it directly with staff to bookmark. Since it can only ever add items
--- (never remove or edit), the worst case is a junk entry the team can just
--- delete from Team Hub once signed in.
--- ---------------------------------------------------------------------------
-create or replace function submit_standup_note_public(
-  p_summary text,
-  p_category text default 'General',
-  p_related_to text default '',
-  p_reported_by text default ''
-)
-returns jsonb as $$
-declare
-  new_item jsonb;
-begin
-  if p_summary is null or trim(p_summary) = '' then
-    raise exception 'summary is required';
-  end if;
+  .toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:14px;}
+  .filter-pill{background:#fff;border:1px solid var(--border);padding:6px 12px;border-radius:20px;font-size:12px;font-weight:500;color:var(--text-muted);}
+  .filter-pill.active{background:var(--navy);border-color:var(--navy);color:#fff;}
+  .toolbar .spacer{flex:1;}
+  button.primary{background:var(--navy);color:#fff;border:none;padding:8px 16px;border-radius:6px;font-size:13px;font-weight:600;}
+  button.primary:hover{background:var(--navy-dark);}
+  button.secondary{background:#fff;border:1px solid var(--border);padding:8px 14px;border-radius:6px;font-size:13px;font-weight:500;color:var(--text);}
+  button.secondary:hover{background:#F1F5F9;}
+  button.linklike{background:none;border:none;color:var(--navy);font-size:12px;font-weight:600;padding:4px 6px;}
+  button.linklike:hover{text-decoration:underline;}
 
-  new_item := jsonb_build_object(
-    'id', 'id_' || substr(md5(random()::text || clock_timestamp()::text), 1, 12),
-    'summary', left(trim(p_summary), 2000),
-    'category', coalesce(nullif(trim(p_category), ''), 'General'),
-    'related_to', left(trim(coalesce(p_related_to, '')), 200),
-    'occurred_at', to_char(now() at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
-    'reported_by', left(trim(coalesce(p_reported_by, '')), 100),
-    'resolved', false,
-    'resolved_by', '',
-    'resolved_at', '',
-    'created_at', to_char(now() at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
-    'source', 'quick_add_form'
-  );
+  .badge{display:inline-block;padding:3px 9px;border-radius:12px;font-size:11px;font-weight:700;}
+  .badge.new{background:var(--blue-bg);color:#1D4ED8;}
+  .badge.ok{background:var(--green-bg);color:var(--green);}
+  .badge.warn{background:var(--amber-bg);color:var(--amber);}
+  .badge.bad{background:var(--red-bg);color:var(--red);}
+  .badge.muted{background:#F1F5F9;color:var(--text-muted);}
 
-  insert into app_data (key, data) values ('standup_notes', '[]'::jsonb)
-  on conflict (key) do nothing;
+  /* ---- Stand-up items ---- */
+  .standup-item{display:flex;gap:12px;padding:14px 16px;border-bottom:1px solid var(--border);}
+  .standup-item:last-child{border-bottom:none;}
+  .standup-item.open{border-left:4px solid var(--amber);}
+  .standup-item.resolved{border-left:4px solid var(--green);opacity:.75;}
+  .standup-item .body{flex:1;}
+  .standup-item .meta{font-size:11px;color:var(--text-muted);margin-top:4px;}
+  .standup-item .summary{font-size:13px;color:var(--text);}
+  .standup-item .actions{flex:0 0 auto;}
 
-  update app_data
-  set data = coalesce(data, '[]'::jsonb) || jsonb_build_array(new_item)
-  where key = 'standup_notes';
+  .meeting-item{padding:14px 16px;border-bottom:1px solid var(--border);}
+  .meeting-item:last-child{border-bottom:none;}
+  .meeting-item h4{margin:0 0 2px;font-size:14px;color:var(--navy);}
+  .meeting-item .meta{font-size:11px;color:var(--text-muted);margin-bottom:6px;}
+  .meeting-item .notes{font-size:13px;white-space:pre-wrap;color:var(--text);}
+  .meeting-item .action-items{font-size:12px;color:var(--text-muted);margin-top:6px;white-space:pre-wrap;}
 
-  return new_item;
-end;
-$$ language plpgsql security definer set search_path = public;
+  /* ---- Modal ---- */
+  .modal-backdrop{display:none;position:fixed;inset:0;background:rgba(15,23,42,.5);align-items:flex-start;justify-content:center;padding:40px 16px;overflow-y:auto;z-index:50;}
+  .modal-backdrop.open{display:flex;}
+  .modal{background:#fff;border-radius:12px;width:100%;max-width:560px;padding:24px;}
+  .modal.narrow{max-width:380px;}
+  .modal h2{margin:0 0 4px;font-size:17px;color:var(--navy);}
+  .modal .modal-sub{font-size:12px;color:var(--text-muted);margin-bottom:14px;}
+  .modal .grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 14px;}
+  .modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:20px;}
+  .settings-section{margin-bottom:24px;}
+  .settings-section h3{font-size:14px;color:var(--navy);margin-bottom:6px;}
+  .settings-section p.hint{font-size:12px;color:var(--text-muted);margin:0 0 10px;}
 
-grant execute on function submit_standup_note_public(text, text, text, text) to anon;
+  .lock-screen{position:fixed;inset:0;background:rgba(15,23,42,.6);display:none;align-items:center;justify-content:center;z-index:60;padding:20px;}
+  .lock-screen.open{display:flex;}
+  .lock-card{background:#fff;border-radius:12px;padding:28px;width:100%;max-width:300px;text-align:center;}
 
--- ---------------------------------------------------------------------------
--- Record shapes (enforced in the app's JS, not by Postgres)
--- ---------------------------------------------------------------------------
---
--- standup_notes[] :
---   { id, summary, category ("Caregiver / Scheduling"|"Client"|"Incident"|"General"),
---     related_to, occurred_at (ISO timestamp of when it actually happened),
---     reported_by, resolved (bool), resolved_by, resolved_at, created_at }
---   Read/written by Team Hub only. Both care coordinators and staffing coordinators
---   see the same list — keep entries to operational facts, not detailed client
---   health information, since visibility here is broader than either hub alone.
---
--- team_meetings[] :
---   { id, meeting_date, meeting_name, attendees, notes, action_items, created_at }
---   One row per logged meeting. `action_items` is free text, one item per line.
---
--- team_directory[] :
---   { id, name, role_key, role_title, reports_to, phone, email,
---     status ("in"|"on_call"|"out"), location (""|"office"|"remote"|"home"),
---     sort_order, status_updated_by, status_updated_at, created_at, updated_at }
---   role_key is one of: owner, manager, coordinator, staffing, lead, caregiver, other —
---   it drives the card's position in the reporting chain and its avatar color.
---   role_title is the free-text label actually shown on the card (defaults to the
---   role_key's standard title but can be customized, e.g. a specific person's name
---   for their title). Read/written through the same upsert_app_data_item /
---   delete_app_data_item RPCs as everything else — no new function needed. Adding,
---   editing, or removing a person is gated client-side behind the admin passcode
---   (owners only); updating `status`/`location` on an existing person is open to
---   anyone signed into Team Hub, by design — it's meant to work like a physical
---   in/out board.
---
--- team_hub_settings[] :
---   Singleton-style records (always looked up by fixed `id`, never a growing list).
---   Currently holds one record:
---   { id: "video_room", room_name, created_at }
---   room_name is a long, unguessable slug used as the Jitsi Meet room for the
---   "Team Video Room" feature — https://meet.jit.si/<room_name>. It's created
---   automatically the first time anyone clicks "Start / Join Video Meeting" (no
---   setup required), and syncs here so every team member's browser resolves to
---   the same room. Jitsi's free public server has no login and no access control
---   beyond knowing the room name, so treat this value the way you'd treat a
---   shared Zoom link — don't post it somewhere public. Owners can rotate it from
---   Team Hub → Settings → Video Meeting Room if it's ever been over-shared.
+  /* ---- Team Directory ---- */
+  .td-scope{font-family:'Nunito',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;}
+  .td-scope-pad{padding:16px 18px 18px;}
+  .td-legend{display:flex;align-items:center;gap:14px;background:#EAF0F7;border-radius:12px;padding:8px 13px;font-size:11.5px;font-weight:800;color:#5E7186;margin-bottom:14px;flex-wrap:wrap;}
+  .td-legend .dot{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:5px;}
+  .td-card-wrap{position:relative;display:flex;flex-direction:column;gap:10px;}
+  .td-line{position:absolute;top:8px;bottom:8px;left:27px;width:0;border-left:3px dotted #C6D3E2;z-index:0;}
+  .td-card{position:relative;z-index:1;background:#fff;border:1px solid #E3EAF2;border-radius:16px;padding:12px 14px;box-shadow:0 6px 16px rgba(23,57,91,.08);}
+  .td-card.td-group{background:linear-gradient(180deg,#F4F8FC 0%,#EAF0F7 100%);}
+  .td-card-header{display:flex;align-items:center;gap:12px;cursor:pointer;}
+  .td-name-block{flex:1;min-width:0;}
+  .td-avatar{position:relative;width:46px;height:46px;flex:none;border-radius:50%;box-shadow:inset 0 0 0 3px rgba(255,255,255,.75);}
+  .td-avatar .head{position:absolute;top:9px;left:50%;transform:translateX(-50%);width:15px;height:15px;border-radius:50%;background:#2A557F;}
+  .td-avatar .shoulders{position:absolute;bottom:-2px;left:50%;transform:translateX(-50%);width:27px;height:19px;border-radius:14px 14px 0 0;background:#2A557F;overflow:hidden;}
+  .td-status-dot{position:absolute;right:-1px;bottom:-1px;width:13px;height:13px;border-radius:50%;border:2px solid #fff;}
+  .td-name{font-weight:800;font-size:15px;color:#17395B;line-height:1.15;}
+  .td-role{font-size:11.5px;font-weight:700;color:#728196;margin-top:2px;}
+  .td-location-tag{font-size:10.5px;color:#9AA8BB;font-weight:700;margin-top:3px;}
+  .td-status-pill{display:inline-flex;align-items:center;gap:5px;padding:5px 10px;border-radius:999px;font-size:11px;font-weight:800;white-space:nowrap;border:none;cursor:pointer;font-family:inherit;flex:none;}
+  .td-status-pill .dot{width:7px;height:7px;border-radius:50%;}
+  .td-chevron{width:22px;height:22px;border-radius:50%;background:#EAF0F7;color:#5E7186;font-weight:800;font-size:14px;display:flex;align-items:center;justify-content:center;flex:none;line-height:1;}
+  .td-detail{margin-top:10px;padding-top:10px;border-top:1px dashed #E3EAF2;display:flex;flex-direction:column;gap:7px;}
+  .td-detail-row{display:flex;justify-content:space-between;gap:12px;align-items:baseline;}
+  .td-detail-row .k{font-size:10.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:#9AA8BB;flex:none;}
+  .td-detail-row .v{font-size:13.5px;font-weight:700;color:#3A4B5E;text-align:right;flex:1;min-width:0;overflow-wrap:break-word;word-break:break-word;}
+  .td-edit-actions{display:flex;gap:8px;margin-top:10px;}
+  .td-edit-actions button{flex:1;}
+  .td-group-top{display:flex;align-items:center;justify-content:space-between;gap:10px;}
+  .td-group-count{display:flex;flex-direction:column;align-items:flex-end;line-height:1;flex:none;}
+  .td-group-count .n{font-size:24px;font-weight:900;color:#17395B;letter-spacing:-0.02em;}
+  .td-group-count .lbl{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#A2B0C1;margin-top:2px;}
+  .td-stack{display:flex;align-items:center;margin-top:12px;padding-left:4px;}
+  .td-stack .chip{width:34px;height:34px;border-radius:50%;border:2.5px solid #F4F8FC;margin-left:-10px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#17395B;}
+  .td-stack .chip:first-child{margin-left:0;}
+  .td-stack .more{min-width:36px;height:34px;padding:0 8px;border-radius:999px;background:#17395B;color:#fff;font-weight:800;font-size:12px;display:flex;align-items:center;justify-content:center;border:2.5px solid #F4F8FC;margin-left:-10px;}
+  .td-caregiver-list{margin-top:12px;padding-top:12px;border-top:1px dashed #E3EAF2;display:flex;flex-direction:column;gap:10px;}
+
+  /* ---- Video Meeting ---- */
+  .video-card{padding:14px 16px;margin-bottom:14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:linear-gradient(180deg,#0E3860 0%,#0A2C4C 100%);color:#fff;}
+  .video-card .label{font-size:14px;font-weight:700;}
+  .video-card .sub{font-size:12px;color:rgba(255,255,255,.75);margin-top:2px;}
+  .video-card button.primary{background:#fff;color:var(--navy);}
+  .video-card button.primary:hover{background:#EAF0F7;}
+  .video-modal{max-width:820px;padding:16px;}
+  .video-modal h2{margin:0 0 10px;display:flex;align-items:center;justify-content:space-between;gap:10px;}
+  #jitsiContainer{width:100%;height:70vh;min-height:380px;background:#0A2C4C;border-radius:8px;overflow:hidden;}
+  .video-modal-actions{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:14px;flex-wrap:wrap;}
+
+  @media(max-width:720px){
+    main{padding:14px;}
+    .quicklink-grid{grid-template-columns:1fr;}
+    .modal .grid2{grid-template-columns:1fr;}
+    input,select,textarea{font-size:16px;padding:11px 12px;}
+    button.primary,button.secondary{padding:11px 16px;min-height:44px;}
+    .modal{padding:18px;max-width:100%;border-radius:0;min-height:100vh;}
+    .modal.narrow{max-width:100%;}
+    .modal-actions{flex-direction:column-reverse;align-items:stretch;}
+    .modal-actions button{width:100%;}
+    header.topbar{flex-wrap:wrap;gap:8px;padding:10px 14px;}
+    img.logo{height:32px;}
+    .standup-item{flex-direction:column;}
+    .filter-pill{padding:8px 14px;min-height:36px;}
+    button.linklike{padding:8px 10px;min-height:36px;}
+    .td-scope-pad{padding:12px 12px 14px;}
+    .td-card{padding:10px 12px;}
+    .td-card-header{gap:9px;}
+    .td-avatar{width:40px;height:40px;}
+    .td-avatar .head{top:8px;width:13px;height:13px;}
+    .td-avatar .shoulders{width:23px;height:16px;}
+    .td-status-dot{width:12px;height:12px;}
+    .td-status-pill{min-height:36px;padding:5px 9px;font-size:10.5px;}
+    .td-chevron{width:26px;height:26px;}
+    #jitsiContainer{height:calc(100vh - 190px);min-height:300px;}
+    .video-modal{padding:12px;}
+  }
+</style>
+</head>
+<body>
+
+<!-- ============================= SIGN-IN ============================= -->
+<div id="signinScreen">
+  <div class="signin-card">
+    <img class="logo" style="margin:0 auto" src="https://images.leadconnectorhq.com/image/f_webp/q_80/r_1200/u_https://assets.cdn.filesafe.space/Recp0AhyMh8lrtKJ9kaj/media/691b9707bb3d037e0ad689bf.png" alt="Caring Companions">
+    <h1>Team Hub</h1>
+    <p class="sub">Caring Companions · Whole-Office Access</p>
+    <label style="text-align:left">Email</label>
+    <input type="email" id="loginEmail" placeholder="you@mo-care.com">
+    <label style="text-align:left">Password</label>
+    <input type="password" id="loginPassword" placeholder="••••••••">
+    <button class="primary" style="width:100%;margin-top:16px;padding:10px;" onclick="signIn()">Sign In</button>
+    <div id="loginError" style="color:var(--red);font-size:12px;margin-top:10px;display:none;"></div>
+    <a class="forgot" href="#" onclick="alert('Ask your admin to reset your password from Supabase → Authentication → Users.');return false;">Forgot password?</a>
+  </div>
+</div>
+
+<!-- ============================= APP SHELL ============================= -->
+<div id="appScreen">
+  <header class="topbar">
+    <img class="logo" src="https://images.leadconnectorhq.com/image/f_webp/q_80/r_1200/u_https://assets.cdn.filesafe.space/Recp0AhyMh8lrtKJ9kaj/media/691b9707bb3d037e0ad689bf.png" alt="Caring Companions">
+    <h1>Team Hub</h1>
+    <div class="spacer"></div>
+    <span class="pill" id="syncPill">☁ Synced</span>
+    <button class="ghost" onclick="openSettings()">⚙️ Settings</button>
+    <button class="ghost" onclick="signOut()">Sign Out</button>
+  </header>
+
+  <main>
+
+    <!-- ===================== QUICK LINKS ===================== -->
+    <div class="quicklink-grid">
+      <a class="quicklink-card" id="ccHubLink" href="https://cc.mo-care.com" target="_blank" rel="noopener">
+        <div class="emoji">📞</div>
+        <div>
+          <div class="label">Care Coordinator's Hub</div>
+          <div class="sub">Leads, assessments, check-ins, supervisory visits</div>
+        </div>
+        <div class="arrow">↗</div>
+      </a>
+      <a class="quicklink-card" id="staffingHubLink" href="https://sc.mo-care.com" target="_blank" rel="noopener">
+        <div class="emoji">🗓</div>
+        <div>
+          <div class="label">Staffing Hub</div>
+          <div class="sub">Candidates, training, compliance, scheduling</div>
+        </div>
+        <div class="arrow">↗</div>
+      </a>
+    </div>
+
+    <!-- ===================== TEAM DIRECTORY ===================== -->
+    <section class="block" id="directorySection">
+      <div class="section-header">
+        <h2>🗂 Team Directory</h2>
+        <button class="secondary" id="directoryEditBtn" onclick="toggleDirectoryEdit()">✏️ Edit Directory</button>
+      </div>
+      <p style="font-size:12px;color:var(--text-muted);margin:-6px 0 12px;">Who's who, who reports to whom, and who's in today. Anyone can tap a status badge to update it — only owners (with the admin passcode) can add, edit, or remove people.</p>
+      <div class="card td-scope td-scope-pad">
+        <div class="td-legend">
+          <div><span class="dot" style="background:#52A46F;"></span>In</div>
+          <div><span class="dot" style="background:#E2B341;"></span>On-call</div>
+          <div><span class="dot" style="background:#A2B0C1;"></span>Out</div>
+          <div style="margin-left:auto;color:#A2B0C1;">Tap a name for details</div>
+        </div>
+        <div id="directoryListWrap"></div>
+      </div>
+    </section>
+
+    <!-- ===================== STAND-UP BOARD ===================== -->
+    <section class="block" id="standupSection">
+      <div class="section-header">
+        <h2>🚨 Stand-Up Board</h2>
+        <button class="primary" onclick="openStandupModal()">+ Add Item</button>
+      </div>
+      <p style="font-size:12px;color:var(--text-muted);margin:-6px 0 12px;">Anything that happened after hours or over the weekend that the daytime team needs to know — a caregiver call-out, a client concern, a scheduling issue. Care coordinators and staffing coordinators both post and read here.</p>
+      <div class="card" style="padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:200px;">
+          <div style="font-size:13px;font-weight:600;color:var(--navy);">📱 Away from a computer?</div>
+          <div style="font-size:12px;color:var(--text-muted);">Bookmark the no-login quick-add page to your phone — add an item in one tap, no sign-in.</div>
+        </div>
+        <button class="secondary" onclick="copyQuickAddLink()">Copy Quick-Add Link</button>
+      </div>
+      <div class="toolbar" id="standupFilters"></div>
+      <div class="card"><div id="standupListWrap"></div></div>
+    </section>
+
+    <!-- ===================== TEAM MEETINGS ===================== -->
+    <section class="block" id="meetingsSection">
+      <div class="section-header">
+        <h2>📅 Team Meetings</h2>
+        <button class="primary" onclick="openMeetingModal()">+ Log Meeting</button>
+      </div>
+      <p style="font-size:12px;color:var(--text-muted);margin:-6px 0 12px;">Notes, decisions, and action items from team meetings — so anyone who missed one can catch up without chasing someone down.</p>
+      <div class="card video-card">
+        <div style="flex:1;min-width:200px;">
+          <div class="label">🎥 Team Video Room</div>
+          <div class="sub">One click, everyone lands in the same call — remote or in-office.</div>
+        </div>
+        <button class="primary" onclick="startVideoMeeting()">Start / Join Video Meeting</button>
+      </div>
+      <div class="card"><div id="meetingsListWrap"></div></div>
+    </section>
+
+  </main>
+</div>
+
+<!-- ============================= STAND-UP MODAL ============================= -->
+<div class="modal-backdrop" id="standupModalBackdrop">
+  <div class="modal">
+    <h2>Stand-Up Item</h2>
+    <input type="hidden" id="su_id">
+    <label>What happened</label>
+    <textarea id="su_summary" rows="3" placeholder="e.g. Maria called out for tomorrow's 8am shift with Mrs. Thompson — no coverage confirmed yet"></textarea>
+    <div class="grid2">
+      <div>
+        <label>Category</label>
+        <select id="su_category">
+          <option>Caregiver / Scheduling</option>
+          <option>Client</option>
+          <option>Incident</option>
+          <option>General</option>
+        </select>
+      </div>
+      <div><label>Related client/caregiver (optional)</label><input id="su_related_to"></div>
+    </div>
+    <div class="grid2">
+      <div><label>When it happened</label><input type="datetime-local" id="su_occurred_at"></div>
+      <div><label>Reported by</label><input id="su_reported_by"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="secondary" onclick="closeModal('standupModalBackdrop')">Cancel</button>
+      <button class="primary" onclick="saveStandupItem()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================= TEAM VIDEO MEETING MODAL ============================= -->
+<div class="modal-backdrop" id="videoModalBackdrop">
+  <div class="modal video-modal">
+    <h2><span>🎥 Team Video Meeting</span><button class="linklike" onclick="copyVideoRoomLink()">📋 Copy Direct Link</button></h2>
+    <div id="jitsiContainer"></div>
+    <div class="video-modal-actions">
+      <span style="font-size:11px;color:var(--text-muted);">Runs on a free video service — if the embed ever misbehaves, use the direct link above from any device.</span>
+      <button class="secondary" onclick="leaveVideoMeeting()">Leave Meeting</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================= TEAM MEETING MODAL ============================= -->
+<div class="modal-backdrop" id="meetingModalBackdrop">
+  <div class="modal">
+    <h2>Team Meeting</h2>
+    <input type="hidden" id="tm_id">
+    <div class="grid2">
+      <div><label>Meeting Date</label><input type="date" id="tm_date"></div>
+      <div>
+        <label>Meeting</label>
+        <select id="tm_name">
+          <option>Weekly Team Meeting</option>
+          <option>Care Coordination Sync</option>
+          <option>Staffing Sync</option>
+          <option>All-Staff Meeting</option>
+          <option>Other</option>
+        </select>
+      </div>
+    </div>
+    <label>Attendees</label>
+    <input id="tm_attendees" placeholder="e.g. Samantha, Maria, James">
+    <label>Notes / Agenda</label>
+    <textarea id="tm_notes" rows="4"></textarea>
+    <label>Action Items</label>
+    <textarea id="tm_action_items" rows="3" placeholder="One per line"></textarea>
+    <div class="modal-actions">
+      <button class="secondary" onclick="closeModal('meetingModalBackdrop')">Cancel</button>
+      <button class="primary" onclick="saveMeeting()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================= TEAM DIRECTORY: ADD/EDIT PERSON MODAL ============================= -->
+<div class="modal-backdrop" id="directoryModalBackdrop">
+  <div class="modal td-scope">
+    <h2>Team Member</h2>
+    <input type="hidden" id="td_id">
+    <label>Role</label>
+    <select id="td_role_key" onchange="directoryRoleChanged()">
+      <option value="owner">Owner</option>
+      <option value="manager">Care Manager</option>
+      <option value="coordinator">Care Coordinator</option>
+      <option value="staffing">Staffing Coordinator</option>
+      <option value="lead">Lead Caregiver</option>
+      <option value="caregiver" selected>Caregiver</option>
+      <option value="other">Other Team Member</option>
+    </select>
+    <div class="grid2">
+      <div><label>Name</label><input id="td_name" placeholder="Full name"></div>
+      <div><label>Title (shown on card)</label><input id="td_role_title" placeholder="e.g. Care Coordinator"></div>
+    </div>
+    <label>Reports to</label>
+    <input id="td_reports_to" placeholder="e.g. Care Manager">
+    <div class="grid2">
+      <div><label>Phone</label><input id="td_phone" placeholder="(417) 234-8494"></div>
+      <div><label>Email</label><input id="td_email" placeholder="name@mo-care.com"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="secondary" onclick="closeModal('directoryModalBackdrop')">Cancel</button>
+      <button class="primary" onclick="saveDirectoryPerson()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================= TEAM DIRECTORY: QUICK STATUS UPDATE MODAL ============================= -->
+<div class="modal-backdrop" id="statusModalBackdrop">
+  <div class="modal td-scope narrow">
+    <h2 id="statusModalTitle">Update Status</h2>
+    <p class="modal-sub">Anyone on the team can update this — no admin passcode needed.</p>
+    <input type="hidden" id="ts_id">
+    <label>Status</label>
+    <select id="ts_status">
+      <option value="in">🟢 In</option>
+      <option value="on_call">🟡 On-call</option>
+      <option value="out">⚪ Out</option>
+    </select>
+    <label>Working from (optional)</label>
+    <select id="ts_location">
+      <option value="">— Not set —</option>
+      <option value="office">🏢 In Office</option>
+      <option value="remote">🌐 Remote</option>
+      <option value="home">🏠 Work From Home</option>
+    </select>
+    <label>Your name</label>
+    <input id="ts_your_name" placeholder="So the team knows who updated it">
+    <div class="modal-actions">
+      <button class="secondary" onclick="closeModal('statusModalBackdrop')">Cancel</button>
+      <button class="primary" onclick="saveStatusUpdate()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================= TEAM DIRECTORY: EDIT ACCESS (passcode-gated) ============================= -->
+<div class="lock-screen" id="directoryLock">
+  <div class="lock-card">
+    <div style="font-size:28px;">🔒</div>
+    <h2 style="font-size:16px;margin:8px 0 4px;">Owner Access Required</h2>
+    <p style="font-size:12px;color:var(--text-muted);margin:0 0 14px;">Adding, editing, or removing people is restricted to owners.</p>
+    <input type="password" id="directoryPasscodeInput" placeholder="Admin passcode">
+    <div id="directoryLockError" style="color:var(--red);font-size:12px;margin-top:8px;display:none;">Incorrect passcode.</div>
+    <div class="modal-actions" style="justify-content:center;">
+      <button class="secondary" onclick="closeModal('directoryLock')">Cancel</button>
+      <button class="primary" onclick="checkDirectoryPasscode()">Enter</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================= SETTINGS (passcode-gated) ============================= -->
+<div class="lock-screen" id="settingsLock">
+  <div class="lock-card">
+    <div style="font-size:28px;">🔒</div>
+    <h2 style="font-size:16px;margin:8px 0 4px;">Admin Access Required</h2>
+    <p style="font-size:12px;color:var(--text-muted);margin:0 0 14px;">Settings are restricted to admins only.</p>
+    <input type="password" id="settingsPasscodeInput" placeholder="Admin passcode">
+    <div id="settingsLockError" style="color:var(--red);font-size:12px;margin-top:8px;display:none;">Incorrect passcode.</div>
+    <div class="modal-actions" style="justify-content:center;">
+      <button class="secondary" onclick="closeModal('settingsLock')">Cancel</button>
+      <button class="primary" onclick="checkSettingsPasscode()">Enter</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="settingsModalBackdrop">
+  <div class="modal" style="max-width:600px;">
+    <h2>⚙️ Settings</h2>
+
+    <div class="settings-section">
+      <h3>Supabase Connection</h3>
+      <p class="hint">Same project as Care Coordinator's Hub and Staffing Hub — same staff logins, shared <code>app_data</code> table.</p>
+      <label>Project URL</label><input id="set_supabase_url" placeholder="https://abcdefghijkl.supabase.co">
+      <label>Anon / Public Key</label><input id="set_supabase_anon_key" placeholder="eyJ...">
+    </div>
+
+    <div class="settings-section">
+      <h3>Hub Links</h3>
+      <p class="hint">Where the two quick-link buttons point. Update here if either hub's domain ever changes.</p>
+      <label>Care Coordinator's Hub URL</label><input id="set_cc_hub_url" placeholder="https://cc.mo-care.com">
+      <label>Staffing Hub URL</label><input id="set_staffing_hub_url" placeholder="https://sc.mo-care.com">
+    </div>
+
+    <div class="settings-section">
+      <h3>Video Meeting Room</h3>
+      <p class="hint">The team's video room is created automatically the first time anyone clicks "Start / Join Video Meeting" — no setup needed. Only regenerate it if the room link has been shared somewhere it shouldn't have been; anyone with the old link loses access once you do.</p>
+      <button class="secondary" onclick="regenerateVideoRoom()">🔄 Regenerate Video Room</button>
+    </div>
+
+    <div class="settings-section">
+      <h3>Admin Passcode</h3>
+      <p class="hint">Keep this separate from staff login passwords.</p>
+      <label>Current</label><input type="password" id="set_current_passcode">
+      <label>New</label><input type="password" id="set_new_passcode">
+      <label>Confirm</label><input type="password" id="set_confirm_passcode">
+    </div>
+
+    <div class="modal-actions">
+      <button class="secondary" onclick="closeModal('settingsModalBackdrop')">Cancel</button>
+      <button class="primary" onclick="saveSettings()">Save Settings</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let sb = null;
+let CONFIG = JSON.parse(localStorage.getItem('th_config') || '{}');
+CONFIG.admin_passcode = CONFIG.admin_passcode || '';
+CONFIG.cc_hub_url = CONFIG.cc_hub_url || 'https://cc.mo-care.com';
+CONFIG.staffing_hub_url = CONFIG.staffing_hub_url || 'https://sc.mo-care.com';
+// Same Supabase project as Care Coordinator's Hub and Staffing Hub — shared backend, shared staff logins.
+CONFIG.supabase_url = CONFIG.supabase_url || 'https://zngsgedlsxinbygwmxwn.supabase.co';
+CONFIG.supabase_anon_key = CONFIG.supabase_anon_key || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpuZ3NnZWRsc3hpbmJ5Z3dteHduIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1NDIzNDQsImV4cCI6MjA5ODExODM0NH0.L_31_UKdccyRH9n7p1GaBlZTqcJipB008H-GIvxwLxM';
+
+let DATA = { standup_notes: [], team_meetings: [], team_directory: [], team_hub_settings: [] };
+let standupFilter = 'Open';
+
+function uid(){ return 'id_' + Math.random().toString(36).slice(2,10) + Date.now().toString(36); }
+function today(){ return new Date().toISOString().slice(0,10); }
+function nowLocalInput(){
+  const d = new Date();
+  d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+  return d.toISOString().slice(0,16);
+}
+function escapeHtml(s){ return (s||'').toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function initSupabase(){
+  if(!CONFIG.supabase_url || !CONFIG.supabase_anon_key) return;
+  sb = window.supabase.createClient(CONFIG.supabase_url, CONFIG.supabase_anon_key);
+}
+initSupabase();
+
+function applyHubLinks(){
+  document.getElementById('ccHubLink').href = CONFIG.cc_hub_url;
+  document.getElementById('staffingHubLink').href = CONFIG.staffing_hub_url;
+}
+applyHubLinks();
+
+// quick-add.html deploys alongside this file in the same repo, so it's
+// always at the same origin — no separate URL to configure.
+function quickAddUrl(){
+  return window.location.origin + '/quick-add.html';
+}
+async function copyQuickAddLink(){
+  const url = quickAddUrl();
+  try{
+    await navigator.clipboard.writeText(url);
+    alert('Copied! Open it on your phone and add it to your home screen:\n\n' + url);
+  }catch(e){
+    prompt('Copy this link:', url);
+  }
+}
+
+/* ---------------- AUTH ---------------- */
+async function signIn(){
+  const email = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  const errEl = document.getElementById('loginError');
+  errEl.style.display = 'none';
+  if(!sb){ errEl.textContent = 'Connect Supabase in Settings first (ask your admin).'; errEl.style.display='block'; return; }
+  const { data, error } = await sb.auth.signInWithPassword({ email, password });
+  if(error){ errEl.textContent = error.message; errEl.style.display = 'block'; return; }
+  document.getElementById('signinScreen').style.display = 'none';
+  document.getElementById('appScreen').style.display = 'block';
+  await loadAllData();
+  await flushPendingSync();
+  renderAll();
+}
+async function signOut(){
+  if(sb) await sb.auth.signOut();
+  document.getElementById('appScreen').style.display = 'none';
+  document.getElementById('signinScreen').style.display = 'flex';
+}
+
+/* ---------------- DATA LOAD / SAVE (app_data key/JSONB pattern, same atomic RPCs as the other two hubs) ---------------- */
+async function loadAllData(){
+  if(!sb) return;
+  const keys = ['standup_notes','team_meetings','team_directory','team_hub_settings'];
+  for(const key of keys){
+    const { data, error } = await sb.from('app_data').select('data').eq('key', key).single();
+    if(!error && data) DATA[key] = data.data || [];
+  }
+  document.getElementById('syncPill').textContent = '☁ Synced';
+}
+async function persist(key, item){
+  if(!sb){ document.getElementById('syncPill').textContent = '⚠ Not connected'; return; }
+  if(!item){ console.warn('persist() called without an item for key', key, '— nothing sent.'); return; }
+  document.getElementById('syncPill').textContent = '⏳ Saving…';
+  try{
+    const { error } = await sb.rpc('upsert_app_data_item', { target_key: key, item });
+    if(error) throw error;
+    document.getElementById('syncPill').textContent = '☁ Synced';
+    clearPendingSync(key, item.id);
+  }catch(e){
+    queuePendingSync(key, item);
+    document.getElementById('syncPill').textContent = '🕓 Saved on this device — will sync when back online';
+  }
+}
+async function removeItem(key, itemId){
+  if(!sb){ document.getElementById('syncPill').textContent = '⚠ Not connected'; return; }
+  document.getElementById('syncPill').textContent = '⏳ Saving…';
+  try{
+    const { error } = await sb.rpc('delete_app_data_item', { target_key: key, item_id: itemId });
+    if(error) throw error;
+    document.getElementById('syncPill').textContent = '☁ Synced';
+  }catch(e){
+    document.getElementById('syncPill').textContent = '⚠ Delete failed — try again once back online';
+  }
+}
+function queuePendingSync(key, item){
+  const pending = JSON.parse(localStorage.getItem('th_pending_sync') || '{}');
+  pending[key+':'+item.id] = { key, item, ts: new Date().toISOString() };
+  localStorage.setItem('th_pending_sync', JSON.stringify(pending));
+}
+function clearPendingSync(key, itemId){
+  const pending = JSON.parse(localStorage.getItem('th_pending_sync') || '{}');
+  const pk = key+':'+itemId;
+  if(pending[pk]){ delete pending[pk]; localStorage.setItem('th_pending_sync', JSON.stringify(pending)); }
+}
+async function flushPendingSync(){
+  if(!sb) return;
+  const pending = JSON.parse(localStorage.getItem('th_pending_sync') || '{}');
+  const pendingKeys = Object.keys(pending);
+  if(pendingKeys.length===0) return;
+  document.getElementById('syncPill').textContent = '⏳ Syncing offline changes…';
+  for(const pk of pendingKeys){
+    const entry = pending[pk];
+    try{
+      const { error } = await sb.rpc('upsert_app_data_item', { target_key: entry.key, item: entry.item });
+      if(!error){ delete pending[pk]; localStorage.setItem('th_pending_sync', JSON.stringify(pending)); }
+    }catch(e){ /* still offline */ }
+  }
+  const remaining = JSON.parse(localStorage.getItem('th_pending_sync') || '{}');
+  document.getElementById('syncPill').textContent = Object.keys(remaining).length ? '🕓 Saved on this device — will sync when back online' : '☁ Synced';
+}
+window.addEventListener('online', flushPendingSync);
+
+function renderAll(){ renderDirectory(); renderStandup(); renderMeetings(); }
+
+/* ---------------- TEAM DIRECTORY ---------------- */
+const TD_ROLE_META = {
+  owner:       { label:'Owner',               color:'#DEE8F3' },
+  manager:     { label:'Care Manager',         color:'#D6ECE7' },
+  coordinator: { label:'Care Coordinator',     color:'#E6EAF2' },
+  staffing:    { label:'Staffing Coordinator', color:'#F4EAC6' },
+  lead:        { label:'Lead Caregiver',       color:'#DEE8F3' },
+  caregiver:   { label:'Caregiver',            color:'#D6ECE7' },
+  other:       { label:'Team Member',          color:'#E6EAF2' }
+};
+const TD_MAIN_CHAIN = ['owner','manager','coordinator','staffing','lead'];
+const TD_REPORTS_TO_SUGGEST = { owner:'', manager:'Owners', coordinator:'Care Manager', staffing:'Care Coordinator', lead:'Staffing Coordinator', caregiver:'Lead Caregiver', other:'' };
+const TD_STATUS_META = {
+  in:      { dot:'#52A46F', bg:'#E1F0E4', text:'#2E6B44', label:'In' },
+  on_call: { dot:'#E2B341', bg:'#F7EEC9', text:'#876418', label:'On-call' },
+  out:     { dot:'#A2B0C1', bg:'#E9EDF2', text:'#64748A', label:'Out' }
+};
+const TD_LOCATION_LABEL = { office:'🏢 In Office', remote:'🌐 Remote', home:'🏠 WFH' };
+const TD_CHIP_COLORS = ['#DEE8F3','#D6ECE7','#F4EAC6','#E6EAF2'];
+
+let directoryEditMode = false;
+let directoryOpenId = null; // id of the single expanded card ('__caregivers__' for the group)
+
+function tdSortFn(a,b){ return (a.sort_order||0)-(b.sort_order||0) || (a.created_at||'').localeCompare(b.created_at||''); }
+function tdInitials(name){
+  const parts = (name||'').trim().split(/\s+/).filter(Boolean);
+  if(parts.length===0) return '?';
+  return (parts[0][0] + (parts[1] ? parts[1][0] : '')).toUpperCase();
+}
+
+function toggleDirectoryEdit(){
+  if(directoryEditMode){ directoryEditMode = false; renderDirectory(); return; }
+  if(!CONFIG.admin_passcode){ directoryEditMode = true; renderDirectory(); return; }
+  document.getElementById('directoryPasscodeInput').value = '';
+  document.getElementById('directoryLockError').style.display = 'none';
+  document.getElementById('directoryLock').classList.add('open');
+}
+function checkDirectoryPasscode(){
+  const val = document.getElementById('directoryPasscodeInput').value;
+  if(val === CONFIG.admin_passcode){
+    closeModal('directoryLock');
+    directoryEditMode = true;
+    renderDirectory();
+  } else {
+    document.getElementById('directoryLockError').style.display = 'block';
+  }
+}
+
+function toggleDirectoryCard(id){
+  directoryOpenId = (directoryOpenId===id) ? null : id;
+  renderDirectory();
+}
+
+function renderDirectory(){
+  const btn = document.getElementById('directoryEditBtn');
+  if(btn) btn.textContent = directoryEditMode ? '✅ Done Editing' : '✏️ Edit Directory';
+
+  const list = (DATA.team_directory||[]);
+  const wrap = document.getElementById('directoryListWrap');
+
+  if(list.length===0){
+    wrap.innerHTML = `<div class="empty" style="padding:30px 20px;">
+      <div style="font-size:32px;">🗂️</div>
+      <div style="margin-top:8px;font-weight:700;color:var(--navy);">No one added yet</div>
+      <div style="font-size:12px;color:var(--text-muted);margin:6px 0 16px;">Owners can load a starter structure (Owners → Care Manager → Care Coordinator → Staffing Coordinator → Lead Caregiver → Caregivers) and fill in real names, or add people one at a time.</div>
+      ${directoryEditMode
+        ? `<div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;"><button class="primary" onclick="loadDirectoryStarter()">Load Starter Structure</button><button class="secondary" onclick="openDirectoryModal()">+ Add Person</button></div>`
+        : `<button class="secondary" onclick="toggleDirectoryEdit()">✏️ Owners: Set Up Directory</button>`}
+    </div>`;
+    return;
+  }
+
+  let cardsHtml = '';
+  TD_MAIN_CHAIN.forEach(key=>{
+    list.filter(p=>p.role_key===key).sort(tdSortFn).forEach(p=>{ cardsHtml += renderDirectoryCard(p); });
+  });
+  list.filter(p=>p.role_key==='other').sort(tdSortFn).forEach(p=>{ cardsHtml += renderDirectoryCard(p); });
+
+  const caregivers = list.filter(p=>p.role_key==='caregiver').sort(tdSortFn);
+  if(caregivers.length>0 || directoryEditMode){
+    cardsHtml += renderCaregiverGroup(caregivers);
+  }
+
+  wrap.innerHTML = `<div class="td-card-wrap"><div class="td-line"></div>${cardsHtml}</div>`
+    + (directoryEditMode ? `<button class="primary" style="margin-top:14px;width:100%;" onclick="openDirectoryModal()">+ Add Team Member</button>` : '');
+}
+
+function renderDirectoryCard(p){
+  const meta = TD_ROLE_META[p.role_key] || TD_ROLE_META.other;
+  const statusMeta = TD_STATUS_META[p.status] || TD_STATUS_META.in;
+  const isOpen = directoryOpenId === p.id;
+  const locLabel = TD_LOCATION_LABEL[p.location] || '';
+
+  return `<div class="td-card">
+    <div class="td-card-header" onclick="toggleDirectoryCard('${p.id}')">
+      <div class="td-avatar" style="background:${meta.color};">
+        <div class="head"></div><div class="shoulders"></div>
+        <div class="td-status-dot" style="background:${statusMeta.dot};"></div>
+      </div>
+      <div class="td-name-block">
+        <div class="td-name">${escapeHtml(p.name) || '(No name yet)'}</div>
+        <div class="td-role">${escapeHtml(p.role_title) || meta.label}</div>
+        ${locLabel ? `<div class="td-location-tag">${locLabel}</div>` : ''}
+      </div>
+      <button class="td-status-pill" style="background:${statusMeta.bg};color:${statusMeta.text};" onclick="event.stopPropagation();openStatusModal('${p.id}')">
+        <span class="dot" style="background:${statusMeta.dot};"></span>${statusMeta.label}
+      </button>
+      <div class="td-chevron">${isOpen?'–':'+'}</div>
+    </div>
+    ${isOpen ? `<div class="td-detail">
+        ${p.reports_to ? `<div class="td-detail-row"><span class="k">Reports to</span><span class="v">${escapeHtml(p.reports_to)}</span></div>` : ''}
+        ${p.phone ? `<div class="td-detail-row"><span class="k">Phone</span><span class="v">${escapeHtml(p.phone)}</span></div>` : ''}
+        ${p.email ? `<div class="td-detail-row"><span class="k">Email</span><span class="v">${escapeHtml(p.email)}</span></div>` : ''}
+        ${(!p.reports_to && !p.phone && !p.email) ? `<div style="font-size:12px;color:var(--text-muted);">No contact details yet.</div>` : ''}
+        ${p.status_updated_by ? `<div style="font-size:11px;color:var(--text-muted);">Status last updated by ${escapeHtml(p.status_updated_by)}</div>` : ''}
+        ${directoryEditMode ? `<div class="td-edit-actions">
+            <button class="secondary" onclick="event.stopPropagation();openDirectoryModal('${p.id}')">Edit</button>
+            <button class="secondary" onclick="event.stopPropagation();removeDirectoryPerson('${p.id}')">Remove</button>
+          </div>` : ''}
+      </div>` : ''}
+  </div>`;
+}
+
+function renderCaregiverGroup(caregivers){
+  const isOpen = directoryOpenId === '__caregivers__';
+  const count = caregivers.length;
+  const chips = caregivers.slice(0,8).map((c,i)=>
+    `<div class="chip" style="background:${TD_CHIP_COLORS[i%TD_CHIP_COLORS.length]};">${tdInitials(c.name)}</div>`
+  ).join('');
+  const more = count>8 ? `<div class="more">+${count-8}</div>` : '';
+
+  const listHtml = isOpen
+    ? `<div class="td-caregiver-list">
+        ${count===0 ? `<div style="font-size:12px;color:var(--text-muted);">No caregivers added yet.</div>` : caregivers.map(c=>renderDirectoryCard(c)).join('')}
+        ${directoryEditMode ? `<button class="secondary" style="width:100%;" onclick="event.stopPropagation();openDirectoryModal(null,'caregiver')">+ Add Caregiver</button>` : ''}
+      </div>`
+    : '';
+
+  return `<div class="td-card td-group">
+    <div class="td-card-header" onclick="toggleDirectoryCard('__caregivers__')" style="align-items:flex-start;">
+      <div class="td-group-top" style="flex:1;">
+        <div>
+          <div class="td-name">Caregivers</div>
+          <div class="td-role">Our frontline team · report to Lead Caregiver</div>
+        </div>
+        <div class="td-group-count"><span class="n">${count}</span><span class="lbl">Caregivers</span></div>
+      </div>
+      <div class="td-chevron">${isOpen?'–':'+'}</div>
+    </div>
+    ${count>0 && !isOpen ? `<div class="td-stack">${chips}${more}</div>` : ''}
+    ${listHtml}
+  </div>`;
+}
+
+function loadDirectoryStarter(){
+  const roles = ['owner','manager','coordinator','staffing','lead'];
+  let order = 0;
+  roles.forEach(async (key)=>{
+    const meta = TD_ROLE_META[key];
+    const record = {
+      id: uid(),
+      name: '',
+      role_key: key,
+      role_title: meta.label,
+      reports_to: TD_REPORTS_TO_SUGGEST[key] || '',
+      phone: '', email: '',
+      status: 'in', location: '',
+      sort_order: order++,
+      status_updated_by: '', status_updated_at: '',
+      created_at: new Date().toISOString(), updated_at: new Date().toISOString()
+    };
+    DATA.team_directory = DATA.team_directory || [];
+    DATA.team_directory.push(record);
+    await persist('team_directory', record);
+  });
+  renderDirectory();
+}
+
+function directoryRoleChanged(){
+  const key = document.getElementById('td_role_key').value;
+  const titleEl = document.getElementById('td_role_title');
+  const reportsEl = document.getElementById('td_reports_to');
+  if(!titleEl.value.trim()) titleEl.value = TD_ROLE_META[key].label;
+  if(!reportsEl.value.trim()) reportsEl.value = TD_REPORTS_TO_SUGGEST[key] || '';
+}
+
+function openDirectoryModal(id, presetRoleKey){
+  const existing = id ? (DATA.team_directory||[]).find(x=>x.id===id) : null;
+  document.getElementById('td_id').value = existing ? existing.id : '';
+  document.getElementById('td_role_key').value = existing ? existing.role_key : (presetRoleKey || 'caregiver');
+  document.getElementById('td_name').value = existing ? existing.name : '';
+  document.getElementById('td_role_title').value = existing ? existing.role_title : TD_ROLE_META[existing ? existing.role_key : (presetRoleKey || 'caregiver')].label;
+  document.getElementById('td_reports_to').value = existing ? existing.reports_to : (TD_REPORTS_TO_SUGGEST[presetRoleKey || 'caregiver'] || '');
+  document.getElementById('td_phone').value = existing ? existing.phone : '';
+  document.getElementById('td_email').value = existing ? existing.email : '';
+  document.getElementById('directoryModalBackdrop').classList.add('open');
+}
+
+async function saveDirectoryPerson(){
+  const name = document.getElementById('td_name').value.trim();
+  if(!name){ alert('Enter a name first.'); return; }
+  const id = document.getElementById('td_id').value || uid();
+  const roleKey = document.getElementById('td_role_key').value;
+  DATA.team_directory = DATA.team_directory || [];
+  const existing = DATA.team_directory.find(x=>x.id===id) || {};
+  const sameRole = DATA.team_directory.filter(x=>x.role_key===roleKey && x.id!==id);
+  const record = {
+    id, name,
+    role_key: roleKey,
+    role_title: document.getElementById('td_role_title').value.trim() || TD_ROLE_META[roleKey].label,
+    reports_to: document.getElementById('td_reports_to').value.trim(),
+    phone: document.getElementById('td_phone').value.trim(),
+    email: document.getElementById('td_email').value.trim(),
+    status: existing.status || 'in',
+    location: existing.location || '',
+    sort_order: (existing.sort_order!=null) ? existing.sort_order : (sameRole.length ? Math.max(...sameRole.map(x=>x.sort_order||0))+1 : 0),
+    status_updated_by: existing.status_updated_by || '',
+    status_updated_at: existing.status_updated_at || '',
+    created_at: existing.created_at || new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  };
+  const idx = DATA.team_directory.findIndex(x=>x.id===id);
+  if(idx>=0) DATA.team_directory[idx]=record; else DATA.team_directory.push(record);
+  await persist('team_directory', record);
+  closeModal('directoryModalBackdrop');
+  renderDirectory();
+}
+
+async function removeDirectoryPerson(id){
+  if(!confirm('Remove this person from the directory?')) return;
+  DATA.team_directory = (DATA.team_directory||[]).filter(p=>p.id!==id);
+  if(directoryOpenId===id) directoryOpenId = null;
+  await removeItem('team_directory', id);
+  renderDirectory();
+}
+
+function openStatusModal(id){
+  const p = (DATA.team_directory||[]).find(x=>x.id===id);
+  if(!p) return;
+  document.getElementById('statusModalTitle').textContent = 'Update Status — ' + (p.name || 'Team Member');
+  document.getElementById('ts_id').value = id;
+  document.getElementById('ts_status').value = p.status || 'in';
+  document.getElementById('ts_location').value = p.location || '';
+  document.getElementById('ts_your_name').value = localStorage.getItem('td_your_name') || '';
+  document.getElementById('statusModalBackdrop').classList.add('open');
+}
+async function saveStatusUpdate(){
+  const id = document.getElementById('ts_id').value;
+  const p = (DATA.team_directory||[]).find(x=>x.id===id);
+  if(!p) return;
+  const who = document.getElementById('ts_your_name').value.trim();
+  p.status = document.getElementById('ts_status').value;
+  p.location = document.getElementById('ts_location').value;
+  p.status_updated_by = who || p.status_updated_by || '';
+  p.status_updated_at = new Date().toISOString();
+  p.updated_at = new Date().toISOString();
+  if(who) localStorage.setItem('td_your_name', who);
+  await persist('team_directory', p);
+  closeModal('statusModalBackdrop');
+  renderDirectory();
+}
+
+/* ---------------- VIDEO MEETING (embedded, free Jitsi Meet) ---------------- */
+let jitsiApi = null;
+
+function videoRoomRecord(){
+  return (DATA.team_hub_settings||[]).find(x=>x.id==='video_room') || null;
+}
+function makeRoomName(){
+  return 'CaringCompanions-TeamHub-' + Math.random().toString(36).slice(2,10) + Date.now().toString(36);
+}
+async function ensureVideoRoom(){
+  let rec = videoRoomRecord();
+  if(rec && rec.room_name) return rec;
+  rec = { id:'video_room', room_name: makeRoomName(), created_at: new Date().toISOString() };
+  DATA.team_hub_settings = DATA.team_hub_settings || [];
+  const idx = DATA.team_hub_settings.findIndex(x=>x.id==='video_room');
+  if(idx>=0) DATA.team_hub_settings[idx]=rec; else DATA.team_hub_settings.push(rec);
+  await persist('team_hub_settings', rec);
+  return rec;
+}
+function getDisplayName(){
+  let name = localStorage.getItem('th_display_name') || '';
+  if(!name){
+    name = (prompt('Your name (shown to others on the call):','')||'').trim();
+    if(name) localStorage.setItem('th_display_name', name);
+  }
+  return name || 'Team Member';
+}
+async function startVideoMeeting(){
+  if(typeof JitsiMeetExternalAPI === 'undefined'){
+    alert("Couldn't load the video service — check your internet connection and try again.");
+    return;
+  }
+  const room = await ensureVideoRoom();
+  const displayName = getDisplayName();
+  document.getElementById('videoModalBackdrop').classList.add('open');
+  const container = document.getElementById('jitsiContainer');
+  container.innerHTML = '';
+  if(jitsiApi){ try{ jitsiApi.dispose(); }catch(e){} jitsiApi = null; }
+  jitsiApi = new JitsiMeetExternalAPI('meet.jit.si', {
+    roomName: room.room_name,
+    parentNode: container,
+    width: '100%',
+    height: '100%',
+    userInfo: { displayName },
+    configOverwrite: { prejoinPageEnabled: false, disableDeepLinking: true },
+    interfaceConfigOverwrite: { MOBILE_APP_PROMO: false }
+  });
+  jitsiApi.addListener('readyToClose', leaveVideoMeeting);
+}
+function leaveVideoMeeting(){
+  if(jitsiApi){ try{ jitsiApi.dispose(); }catch(e){} jitsiApi = null; }
+  document.getElementById('jitsiContainer').innerHTML = '';
+  closeModal('videoModalBackdrop');
+}
+async function copyVideoRoomLink(){
+  const room = await ensureVideoRoom();
+  const url = 'https://meet.jit.si/' + room.room_name;
+  try{
+    await navigator.clipboard.writeText(url);
+    alert('Copied! Anyone with this link can join the team video room directly:\n\n' + url);
+  }catch(e){
+    prompt('Copy this link:', url);
+  }
+}
+async function regenerateVideoRoom(){
+  if(!confirm('Create a new video room? Anyone with the old link will no longer be able to join.')) return;
+  const rec = { id:'video_room', room_name: makeRoomName(), created_at: new Date().toISOString() };
+  DATA.team_hub_settings = DATA.team_hub_settings || [];
+  const idx = DATA.team_hub_settings.findIndex(x=>x.id==='video_room');
+  if(idx>=0) DATA.team_hub_settings[idx]=rec; else DATA.team_hub_settings.push(rec);
+  await persist('team_hub_settings', rec);
+  alert('New video room created. Old links will no longer work.');
+}
+
+/* ---------------- STAND-UP BOARD ---------------- */
+function renderFilterPills(containerId, options, activeVal, onClick){
+  const el = document.getElementById(containerId);
+  el.innerHTML = options.map(o =>
+    `<button class="filter-pill ${activeVal===o?'active':''}" onclick="${onClick}('${o}')">${o}</button>`
+  ).join('');
+}
+function setStandupFilter(v){ standupFilter = v; renderStandup(); }
+function renderStandup(){
+  renderFilterPills('standupFilters', ['Open','Resolved','All'], standupFilter, 'setStandupFilter');
+  let rows = (DATA.standup_notes||[]).slice();
+  if(standupFilter==='Open') rows = rows.filter(i=>!i.resolved);
+  if(standupFilter==='Resolved') rows = rows.filter(i=>i.resolved);
+  rows.sort((a,b)=>(b.occurred_at||b.created_at||'').localeCompare(a.occurred_at||a.created_at||''));
+
+  const wrap = document.getElementById('standupListWrap');
+  if(rows.length===0){
+    wrap.innerHTML = `<div class="empty">${standupFilter==='Open' ? 'Nothing open right now — board is clear.' : 'No items here yet.'}</div>`;
+    return;
+  }
+  wrap.innerHTML = rows.map(i=>{
+    const when = i.occurred_at ? new Date(i.occurred_at).toLocaleString('en-US',{weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}) : '';
+    return `<div class="standup-item ${i.resolved?'resolved':'open'}">
+      <div class="body">
+        <div class="summary">${(i.summary||'').replace(/</g,'&lt;')}</div>
+        <div class="meta">
+          <span class="badge ${i.resolved?'ok':'warn'}">${i.category||'General'}</span>
+          ${i.related_to ? ' · '+i.related_to : ''}
+          ${when ? ' · '+when : ''}
+          ${i.reported_by ? ' · reported by '+i.reported_by : ''}
+          ${i.resolved ? ' · ✅ resolved by '+(i.resolved_by||'—') : ''}
+        </div>
+      </div>
+      <div class="actions">
+        ${!i.resolved ? `<button class="linklike" onclick="resolveStandupItem('${i.id}')">Mark Resolved</button>` : ''}
+        <button class="linklike" onclick="removeStandupItem('${i.id}')">Remove</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+function openStandupModal(){
+  ['su_id','su_summary','su_related_to'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('su_category').value = 'Caregiver / Scheduling';
+  document.getElementById('su_occurred_at').value = nowLocalInput();
+  document.getElementById('su_reported_by').value = '';
+  document.getElementById('standupModalBackdrop').classList.add('open');
+}
+async function saveStandupItem(){
+  const summary = document.getElementById('su_summary').value.trim();
+  if(!summary){ alert('Describe what happened first.'); return; }
+  const id = document.getElementById('su_id').value || uid();
+  const existing = (DATA.standup_notes||[]).find(x=>x.id===id) || {};
+  const record = {
+    id,
+    summary,
+    category: document.getElementById('su_category').value,
+    related_to: document.getElementById('su_related_to').value.trim(),
+    occurred_at: document.getElementById('su_occurred_at').value ? new Date(document.getElementById('su_occurred_at').value).toISOString() : new Date().toISOString(),
+    reported_by: document.getElementById('su_reported_by').value.trim(),
+    resolved: existing.resolved || false,
+    resolved_by: existing.resolved_by || '',
+    resolved_at: existing.resolved_at || '',
+    created_at: existing.created_at || new Date().toISOString(),
+  };
+  DATA.standup_notes = DATA.standup_notes || [];
+  const idx = DATA.standup_notes.findIndex(x=>x.id===id);
+  if(idx>=0) DATA.standup_notes[idx]=record; else DATA.standup_notes.push(record);
+  await persist('standup_notes', record);
+  closeModal('standupModalBackdrop');
+  renderStandup();
+}
+async function resolveStandupItem(id){
+  const item = (DATA.standup_notes||[]).find(x=>x.id===id);
+  if(!item) return;
+  const who = prompt('Your name (for the record):','');
+  if(who===null) return;
+  item.resolved = true;
+  item.resolved_by = who.trim() || 'Unknown';
+  item.resolved_at = new Date().toISOString();
+  await persist('standup_notes', item);
+  renderStandup();
+}
+async function removeStandupItem(id){
+  if(!confirm('Remove this stand-up item?')) return;
+  DATA.standup_notes = (DATA.standup_notes||[]).filter(i=>i.id!==id);
+  await removeItem('standup_notes', id);
+  renderStandup();
+}
+
+/* ---------------- TEAM MEETINGS ---------------- */
+function renderMeetings(){
+  const rows = (DATA.team_meetings||[]).slice().sort((a,b)=>(b.meeting_date||'').localeCompare(a.meeting_date||''));
+  const wrap = document.getElementById('meetingsListWrap');
+  if(rows.length===0){ wrap.innerHTML = '<div class="empty">No meeting notes logged yet.</div>'; return; }
+  wrap.innerHTML = rows.map(m=>{
+    const actionLines = (m.action_items||'').split('\n').filter(Boolean);
+    return `<div class="meeting-item">
+      <h4>${m.meeting_name||'Meeting'} — ${m.meeting_date||''} <button class="linklike" style="float:right;" onclick="removeMeeting('${m.id}')">Remove</button></h4>
+      <div class="meta">${m.attendees ? 'Attendees: '+m.attendees : 'No attendees logged'}</div>
+      ${m.notes ? `<div class="notes">${m.notes.replace(/</g,'&lt;')}</div>` : ''}
+      ${actionLines.length ? `<div class="action-items"><b>Action items:</b><br>${actionLines.map(l=>'• '+l.replace(/</g,'&lt;')).join('<br>')}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+function openMeetingModal(){
+  ['tm_id','tm_attendees','tm_notes','tm_action_items'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('tm_date').value = today();
+  document.getElementById('tm_name').value = 'Weekly Team Meeting';
+  document.getElementById('meetingModalBackdrop').classList.add('open');
+}
+async function saveMeeting(){
+  const id = document.getElementById('tm_id').value || uid();
+  const existing = (DATA.team_meetings||[]).find(x=>x.id===id) || {};
+  const record = {
+    id,
+    meeting_date: document.getElementById('tm_date').value || today(),
+    meeting_name: document.getElementById('tm_name').value,
+    attendees: document.getElementById('tm_attendees').value.trim(),
+    notes: document.getElementById('tm_notes').value.trim(),
+    action_items: document.getElementById('tm_action_items').value.trim(),
+    created_at: existing.created_at || new Date().toISOString(),
+  };
+  DATA.team_meetings = DATA.team_meetings || [];
+  const idx = DATA.team_meetings.findIndex(x=>x.id===id);
+  if(idx>=0) DATA.team_meetings[idx]=record; else DATA.team_meetings.push(record);
+  await persist('team_meetings', record);
+  closeModal('meetingModalBackdrop');
+  renderMeetings();
+}
+async function removeMeeting(id){
+  if(!confirm('Remove this meeting record?')) return;
+  DATA.team_meetings = (DATA.team_meetings||[]).filter(m=>m.id!==id);
+  await removeItem('team_meetings', id);
+  renderMeetings();
+}
+
+/* ---------------- SETTINGS ---------------- */
+function openSettings(){
+  if(!CONFIG.admin_passcode){ openSettingsModal(); return; }
+  document.getElementById('settingsLock').classList.add('open');
+}
+function checkSettingsPasscode(){
+  const val = document.getElementById('settingsPasscodeInput').value;
+  if(val === CONFIG.admin_passcode){
+    closeModal('settingsLock');
+    openSettingsModal();
+  } else {
+    document.getElementById('settingsLockError').style.display = 'block';
+  }
+}
+function openSettingsModal(){
+  document.getElementById('set_supabase_url').value = CONFIG.supabase_url||'';
+  document.getElementById('set_supabase_anon_key').value = CONFIG.supabase_anon_key||'';
+  document.getElementById('set_cc_hub_url').value = CONFIG.cc_hub_url||'';
+  document.getElementById('set_staffing_hub_url').value = CONFIG.staffing_hub_url||'';
+  document.getElementById('settingsModalBackdrop').classList.add('open');
+}
+function saveSettings(){
+  const newCode = document.getElementById('set_new_passcode').value;
+  const confirmCode = document.getElementById('set_confirm_passcode').value;
+  if(newCode && newCode !== confirmCode){ alert('Passcodes do not match.'); return; }
+  CONFIG.supabase_url = document.getElementById('set_supabase_url').value.trim();
+  CONFIG.supabase_anon_key = document.getElementById('set_supabase_anon_key').value.trim();
+  CONFIG.cc_hub_url = document.getElementById('set_cc_hub_url').value.trim() || 'https://cc.mo-care.com';
+  CONFIG.staffing_hub_url = document.getElementById('set_staffing_hub_url').value.trim() || 'https://sc.mo-care.com';
+  if(newCode) CONFIG.admin_passcode = newCode;
+  localStorage.setItem('th_config', JSON.stringify(CONFIG));
+  initSupabase();
+  applyHubLinks();
+  closeModal('settingsModalBackdrop');
+  alert('Settings saved. Reload the page if you just connected Supabase for the first time.');
+}
+
+/* ---------------- MODAL HELPERS ---------------- */
+function closeModal(id){
+  if(id==='videoModalBackdrop'){ leaveVideoMeeting(); return; }
+  document.getElementById(id).classList.remove('open');
+}
+document.addEventListener('keydown', e=>{
+  if(e.key==='Escape'){
+    if(document.getElementById('videoModalBackdrop').classList.contains('open')){ leaveVideoMeeting(); return; }
+    document.querySelectorAll('.modal-backdrop.open, .lock-screen.open').forEach(m=>m.classList.remove('open'));
+  }
+});
+
+/* ---------------- BOOT ---------------- */
+(async function boot(){
+  if(sb){
+    const { data:{ session } } = await sb.auth.getSession();
+    if(session){
+      document.getElementById('signinScreen').style.display = 'none';
+      document.getElementById('appScreen').style.display = 'block';
+      await loadAllData();
+      await flushPendingSync();
+      renderAll();
+    }
+  }
+})();
+</script>
+</body>
+</html>
