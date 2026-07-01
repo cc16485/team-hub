@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Team Hub — Caring Companions</title>
+<title>Caring Companions Team Hub</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://meet.jit.si/external_api.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -30,6 +30,7 @@
   body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text);}
   a{color:var(--navy);}
   img.logo{height:42px;display:block;}
+  img.topbar-logo{filter:brightness(0) invert(1);}
   button{cursor:pointer;font-family:inherit;}
   input,select,textarea{font-family:inherit;font-size:14px;padding:8px 10px;border:1px solid var(--border);border-radius:6px;width:100%;background:#fff;color:var(--text);}
   label{font-size:12px;font-weight:600;color:var(--text-muted);display:block;margin:10px 0 4px;}
@@ -163,6 +164,20 @@
   .td-stack .more{min-width:36px;height:34px;padding:0 8px;border-radius:999px;background:#17395B;color:#fff;font-weight:800;font-size:12px;display:flex;align-items:center;justify-content:center;border:2.5px solid #F4F8FC;margin-left:-10px;}
   .td-caregiver-list{margin-top:12px;padding-top:12px;border-top:1px dashed #E3EAF2;display:flex;flex-direction:column;gap:10px;}
 
+  /* ---- Team Access ---- */
+  .access-locked{padding:40px 20px;text-align:center;}
+  .portal-chip{display:inline-flex;align-items:center;gap:5px;background:#EAF0F7;color:var(--navy);padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;margin:0 4px 4px 0;}
+  .portal-chip.off{background:#F1F5F9;color:var(--text-muted);}
+  .access-user-row td{vertical-align:middle;}
+  .access-status{font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;text-transform:uppercase;letter-spacing:.03em;}
+  .access-status.invited{background:var(--blue-bg);color:#1D4ED8;}
+  .access-status.active{background:var(--green-bg);color:var(--green);}
+  .access-status.pending_setup{background:var(--amber-bg);color:var(--amber);}
+  .checkbox-row{display:flex;align-items:center;gap:8px;padding:6px 0;font-size:13px;}
+  .checkbox-row input{width:auto;flex:none;}
+  .add-portal-row{display:grid;grid-template-columns:1fr 1fr 1.4fr auto;gap:8px;align-items:end;margin-top:10px;}
+  .add-portal-row label{margin:0 0 4px;}
+
   /* ---- Video Meeting ---- */
   .video-card{padding:14px 16px;margin-bottom:14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:linear-gradient(180deg,#0E3860 0%,#0A2C4C 100%);color:#fff;}
   .video-card .label{font-size:14px;font-weight:700;}
@@ -200,6 +215,8 @@
     .td-chevron{width:26px;height:26px;}
     #jitsiContainer{height:calc(100vh - 190px);min-height:300px;}
     .video-modal{padding:12px;}
+    .add-portal-row{grid-template-columns:1fr;}
+    table{display:block;overflow-x:auto;white-space:nowrap;}
   }
 </style>
 </head>
@@ -209,7 +226,7 @@
 <div id="signinScreen">
   <div class="signin-card">
     <img class="logo" style="margin:0 auto" src="https://images.leadconnectorhq.com/image/f_webp/q_80/r_1200/u_https://assets.cdn.filesafe.space/Recp0AhyMh8lrtKJ9kaj/media/691b9707bb3d037e0ad689bf.png" alt="Caring Companions">
-    <h1>Team Hub</h1>
+    <h1>Caring Companions Team Hub</h1>
     <p class="sub">Caring Companions · Whole-Office Access</p>
     <label style="text-align:left">Email</label>
     <input type="email" id="loginEmail" placeholder="you@mo-care.com">
@@ -224,8 +241,8 @@
 <!-- ============================= APP SHELL ============================= -->
 <div id="appScreen">
   <header class="topbar">
-    <img class="logo" src="https://images.leadconnectorhq.com/image/f_webp/q_80/r_1200/u_https://assets.cdn.filesafe.space/Recp0AhyMh8lrtKJ9kaj/media/691b9707bb3d037e0ad689bf.png" alt="Caring Companions">
-    <h1>Team Hub</h1>
+    <img class="logo topbar-logo" src="https://images.leadconnectorhq.com/image/f_webp/q_80/r_1200/u_https://assets.cdn.filesafe.space/Recp0AhyMh8lrtKJ9kaj/media/691b9707bb3d037e0ad689bf.png" alt="Caring Companions">
+    <h1>Caring Companions Team Hub</h1>
     <div class="spacer"></div>
     <span class="pill" id="syncPill">☁ Synced</span>
     <button class="ghost" onclick="openSettings()">⚙️ Settings</button>
@@ -305,6 +322,15 @@
         </div>
         <div id="directoryListWrap"></div>
       </div>
+    </section>
+
+    <!-- ===================== MANAGE TEAM ACCESS ===================== -->
+    <section class="block" id="accessSection">
+      <div class="section-header">
+        <h2>🔐 Manage Team Access</h2>
+      </div>
+      <p style="font-size:12px;color:var(--text-muted);margin:-6px 0 12px;">Invite people to the hub(s) they need, assign their role and contact info, and see who has access to what. Owners only.</p>
+      <div class="card" style="padding:16px 18px 18px;" id="accessPanelWrap"></div>
     </section>
 
   </main>
@@ -458,6 +484,44 @@
   </div>
 </div>
 
+<!-- ============================= MANAGE TEAM ACCESS (passcode-gated) ============================= -->
+<div class="lock-screen" id="accessLock">
+  <div class="lock-card">
+    <div style="font-size:28px;">🔒</div>
+    <h2 style="font-size:16px;margin:8px 0 4px;">Owner Access Required</h2>
+    <p style="font-size:12px;color:var(--text-muted);margin:0 0 14px;">Inviting people and managing hub access is restricted to owners.</p>
+    <input type="password" id="accessPasscodeInput" placeholder="Admin passcode">
+    <div id="accessLockError" style="color:var(--red);font-size:12px;margin-top:8px;display:none;">Incorrect passcode.</div>
+    <div class="modal-actions" style="justify-content:center;">
+      <button class="secondary" onclick="closeModal('accessLock')">Cancel</button>
+      <button class="primary" onclick="checkAccessPasscode()">Enter</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================= INVITE / EDIT PERSON MODAL ============================= -->
+<div class="modal-backdrop" id="inviteModalBackdrop">
+  <div class="modal">
+    <h2 id="inviteModalTitle">Invite Person</h2>
+    <p class="modal-sub">Sends a real login invite by email once your Zapier automation is connected (Settings → Team Access Automation). Without it, this still tracks who should have access.</p>
+    <input type="hidden" id="iv_id">
+    <div class="grid2">
+      <div><label>Full Name</label><input id="iv_name" placeholder="Full name"></div>
+      <div><label>Role / Title</label><input id="iv_role_title" placeholder="e.g. Staffing Coordinator"></div>
+    </div>
+    <div class="grid2">
+      <div><label>Email</label><input type="email" id="iv_email" placeholder="name@mo-care.com"></div>
+      <div><label>Phone / Extension</label><input id="iv_phone" placeholder="(417) 234-8494 x120"></div>
+    </div>
+    <label>Portal Access</label>
+    <div id="iv_portal_checkboxes"></div>
+    <div class="modal-actions">
+      <button class="secondary" onclick="closeModal('inviteModalBackdrop')">Cancel</button>
+      <button class="primary" onclick="saveAccessUser()">Save & Invite</button>
+    </div>
+  </div>
+</div>
+
 <!-- ============================= SETTINGS (passcode-gated) ============================= -->
 <div class="lock-screen" id="settingsLock">
   <div class="lock-card">
@@ -498,6 +562,12 @@
     </div>
 
     <div class="settings-section">
+      <h3>Team Access Automation</h3>
+      <p class="hint">The Zapier webhook that actually sends invite emails and grants hub access (see Hub_Access_Zapier_Setup_Guide.md). Until this is set, Manage Team Access still tracks who should have access, it just can't send the invite itself.</p>
+      <label>Zapier Webhook URL</label><input id="set_access_webhook_url" placeholder="https://hooks.zapier.com/hooks/catch/...">
+    </div>
+
+    <div class="settings-section">
       <h3>Admin Passcode</h3>
       <p class="hint">Keep this separate from staff login passwords.</p>
       <label>Current</label><input type="password" id="set_current_passcode">
@@ -518,11 +588,15 @@ let CONFIG = JSON.parse(localStorage.getItem('th_config') || '{}');
 CONFIG.admin_passcode = CONFIG.admin_passcode || '';
 CONFIG.cc_hub_url = CONFIG.cc_hub_url || 'https://cc.mo-care.com';
 CONFIG.staffing_hub_url = CONFIG.staffing_hub_url || 'https://sc.mo-care.com';
+CONFIG.access_webhook_url = CONFIG.access_webhook_url || '';
 // Same Supabase project as Care Coordinator's Hub and Staffing Hub — shared backend, shared staff logins.
 CONFIG.supabase_url = CONFIG.supabase_url || 'https://zngsgedlsxinbygwmxwn.supabase.co';
 CONFIG.supabase_anon_key = CONFIG.supabase_anon_key || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpuZ3NnZWRsc3hpbmJ5Z3dteHduIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1NDIzNDQsImV4cCI6MjA5ODExODM0NH0.L_31_UKdccyRH9n7p1GaBlZTqcJipB008H-GIvxwLxM';
+// Fixed slug this hub checks against a signed-in user's app_metadata.hub_access.
+// Must exactly match its row's "slug" in the hub_portals list.
+const HUB_SLUG = 'team_hub';
 
-let DATA = { standup_notes: [], team_meetings: [], team_directory: [], team_hub_settings: [] };
+let DATA = { standup_notes: [], team_meetings: [], team_directory: [], team_hub_settings: [], hub_portals: [], user_hub_access_directory: [] };
 let standupFilter = 'Open';
 
 function uid(){ return 'id_' + Math.random().toString(36).slice(2,10) + Date.now().toString(36); }
@@ -562,6 +636,17 @@ async function copyQuickAddLink(){
 }
 
 /* ---------------- AUTH ---------------- */
+// Real access control lives in Supabase Auth's app_metadata.hub_access, set
+// only via the Team Access invite automation (service_role, never the browser).
+// A missing hub_access array means the account predates this system — treat
+// that as grandfathered in rather than denied, so deploying this never locks
+// out the existing team. Restriction only starts once an owner explicitly
+// sets someone's portal access from Manage Team Access.
+function hasHubAccess(user){
+  const access = user && user.app_metadata && user.app_metadata.hub_access;
+  if(access === undefined || access === null) return true;
+  return Array.isArray(access) && access.includes(HUB_SLUG);
+}
 async function signIn(){
   const email = document.getElementById('loginEmail').value.trim();
   const password = document.getElementById('loginPassword').value;
@@ -570,6 +655,12 @@ async function signIn(){
   if(!sb){ errEl.textContent = 'Connect Supabase in Settings first (ask your admin).'; errEl.style.display='block'; return; }
   const { data, error } = await sb.auth.signInWithPassword({ email, password });
   if(error){ errEl.textContent = error.message; errEl.style.display = 'block'; return; }
+  if(!hasHubAccess(data.user)){
+    await sb.auth.signOut();
+    errEl.textContent = "You don't have access to Team Hub. Contact your owner to be granted access.";
+    errEl.style.display = 'block';
+    return;
+  }
   document.getElementById('signinScreen').style.display = 'none';
   document.getElementById('appScreen').style.display = 'block';
   await loadAllData();
@@ -585,7 +676,7 @@ async function signOut(){
 /* ---------------- DATA LOAD / SAVE (app_data key/JSONB pattern, same atomic RPCs as the other two hubs) ---------------- */
 async function loadAllData(){
   if(!sb) return;
-  const keys = ['standup_notes','team_meetings','team_directory','team_hub_settings'];
+  const keys = ['standup_notes','team_meetings','team_directory','team_hub_settings','hub_portals','user_hub_access_directory'];
   for(const key of keys){
     const { data, error } = await sb.from('app_data').select('data').eq('key', key).single();
     if(!error && data) DATA[key] = data.data || [];
@@ -645,7 +736,7 @@ async function flushPendingSync(){
 }
 window.addEventListener('online', flushPendingSync);
 
-function renderAll(){ renderDirectory(); renderStandup(); renderMeetings(); }
+function renderAll(){ renderDirectory(); renderStandup(); renderMeetings(); renderAccessPanel(); }
 
 /* ---------------- TEAM DIRECTORY ---------------- */
 const TD_ROLE_META = {
@@ -983,6 +1074,177 @@ async function regenerateVideoRoom(){
   alert('New video room created. Old links will no longer work.');
 }
 
+/* ---------------- MANAGE TEAM ACCESS ---------------- */
+let accessUnlocked = false;
+
+function openAccessLock(){
+  if(!CONFIG.admin_passcode){ accessUnlocked = true; renderAccessPanel(); return; }
+  document.getElementById('accessPasscodeInput').value = '';
+  document.getElementById('accessLockError').style.display = 'none';
+  document.getElementById('accessLock').classList.add('open');
+}
+function checkAccessPasscode(){
+  const val = document.getElementById('accessPasscodeInput').value;
+  if(val === CONFIG.admin_passcode){
+    closeModal('accessLock');
+    accessUnlocked = true;
+    renderAccessPanel();
+  } else {
+    document.getElementById('accessLockError').style.display = 'block';
+  }
+}
+
+function renderAccessPanel(){
+  const wrap = document.getElementById('accessPanelWrap');
+  if(!wrap) return;
+  if(!accessUnlocked){
+    wrap.innerHTML = `<div class="access-locked">
+      <div style="font-size:28px;">🔒</div>
+      <div style="font-weight:700;color:var(--navy);margin-top:6px;">Owners only</div>
+      <div style="font-size:12px;color:var(--text-muted);margin:6px 0 14px;">Unlock to invite people and manage who has access to which hub.</div>
+      <button class="secondary" onclick="openAccessLock()">Unlock Manage Team Access</button>
+    </div>`;
+    return;
+  }
+
+  const portals = DATA.hub_portals || [];
+  const users = (DATA.user_hub_access_directory||[]).slice().sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+
+  let html = '<div style="margin-bottom:20px;">';
+  html += '<div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:8px;">Portals</div>';
+  html += portals.length
+    ? `<div>${portals.map(p=>`<span class="portal-chip">${escapeHtml(p.label)}</span>`).join('')}</div>`
+    : `<div style="font-size:12px;color:var(--text-muted);">No portals configured yet.</div>`;
+  html += `<div class="add-portal-row">
+      <div><label>Slug</label><input id="np_slug" placeholder="lead_caregiver"></div>
+      <div><label>Label</label><input id="np_label" placeholder="Lead Caregiver Portal"></div>
+      <div><label>URL</label><input id="np_url" placeholder="https://lead.mo-care.com"></div>
+      <button class="secondary" onclick="addPortal()">+ Add Portal</button>
+    </div>
+  </div>`;
+
+  html += `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
+    <div style="font-size:13px;font-weight:700;color:var(--navy);">Team Members (${users.length})</div>
+    <button class="primary" onclick="openInviteModal()">+ Invite Person</button>
+  </div>`;
+
+  if(users.length===0){
+    html += `<div class="empty">No one invited yet.</div>`;
+  } else {
+    html += `<table><thead><tr><th>Name</th><th>Role</th><th>Email</th><th>Phone</th><th>Portals</th><th>Status</th><th></th></tr></thead><tbody>`;
+    html += users.map(u=>{
+      const slugs = u.hub_slugs||[];
+      const portalBadges = portals.length
+        ? portals.map(p=>`<span class="portal-chip ${slugs.includes(p.slug)?'':'off'}">${escapeHtml(p.label)}</span>`).join('')
+        : '<span style="font-size:11px;color:var(--text-muted);">—</span>';
+      return `<tr class="access-user-row">
+        <td>${escapeHtml(u.name)||'—'}</td>
+        <td>${escapeHtml(u.role_title)||'—'}</td>
+        <td>${escapeHtml(u.email)}</td>
+        <td>${escapeHtml(u.phone)||'—'}</td>
+        <td>${portalBadges}</td>
+        <td><span class="access-status ${u.status||'invited'}">${(u.status||'invited').replace('_',' ')}</span></td>
+        <td style="white-space:nowrap;"><button class="linklike" onclick="openInviteModal('${u.id}')">Edit</button><button class="linklike" onclick="removeAccessUser('${u.id}')">Remove</button></td>
+      </tr>`;
+    }).join('');
+    html += `</tbody></table>`;
+  }
+
+  wrap.innerHTML = html;
+}
+
+async function addPortal(){
+  const slug = document.getElementById('np_slug').value.trim().toLowerCase().replace(/[^a-z0-9_]/g,'_');
+  const label = document.getElementById('np_label').value.trim();
+  const url = document.getElementById('np_url').value.trim();
+  if(!slug || !label || !url){ alert('Fill in slug, label, and URL.'); return; }
+  DATA.hub_portals = DATA.hub_portals || [];
+  if(DATA.hub_portals.find(p=>p.slug===slug)){ alert('A portal with that slug already exists.'); return; }
+  const rec = { id: slug, slug, label, url };
+  DATA.hub_portals.push(rec);
+  await persist('hub_portals', rec);
+  document.getElementById('np_slug').value=''; document.getElementById('np_label').value=''; document.getElementById('np_url').value='';
+  renderAccessPanel();
+}
+
+function openInviteModal(id){
+  const existing = id ? (DATA.user_hub_access_directory||[]).find(x=>x.id===id) : null;
+  document.getElementById('inviteModalTitle').textContent = existing ? 'Edit Access' : 'Invite Person';
+  document.getElementById('iv_id').value = existing ? existing.id : '';
+  document.getElementById('iv_name').value = existing ? existing.name : '';
+  document.getElementById('iv_role_title').value = existing ? existing.role_title : '';
+  document.getElementById('iv_email').value = existing ? existing.email : '';
+  document.getElementById('iv_phone').value = existing ? existing.phone : '';
+  const slugs = existing ? (existing.hub_slugs||[]) : [];
+  const portals = DATA.hub_portals || [];
+  const boxWrap = document.getElementById('iv_portal_checkboxes');
+  boxWrap.innerHTML = portals.length
+    ? portals.map(p=>`<label class="checkbox-row"><input type="checkbox" value="${escapeHtml(p.slug)}" ${slugs.includes(p.slug)?'checked':''}> ${escapeHtml(p.label)}</label>`).join('')
+    : `<div style="font-size:12px;color:var(--text-muted);">Add a portal above first.</div>`;
+  document.getElementById('inviteModalBackdrop').classList.add('open');
+}
+
+async function saveAccessUser(){
+  const name = document.getElementById('iv_name').value.trim();
+  const email = document.getElementById('iv_email').value.trim();
+  if(!name || !email){ alert('Name and email are required.'); return; }
+  const id = document.getElementById('iv_id').value || uid();
+  DATA.user_hub_access_directory = DATA.user_hub_access_directory || [];
+  const existing = DATA.user_hub_access_directory.find(x=>x.id===id) || {};
+  const hub_slugs = Array.from(document.querySelectorAll('#iv_portal_checkboxes input:checked')).map(el=>el.value);
+  const record = {
+    id, name, email,
+    role_title: document.getElementById('iv_role_title').value.trim(),
+    phone: document.getElementById('iv_phone').value.trim(),
+    hub_slugs,
+    status: existing.status || 'pending_setup',
+    auth_user_id: existing.auth_user_id || null,
+    invited_at: existing.invited_at || new Date().toISOString(),
+    invited_by: existing.invited_by || getDisplayName(),
+    updated_at: new Date().toISOString()
+  };
+
+  // auth_user_id (once known) lets the Zap update an existing person's access
+  // directly, with no need to look the user up by email in Supabase.
+  let sent = false;
+  if(CONFIG.access_webhook_url){
+    try{
+      const res = await fetch(CONFIG.access_webhook_url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: record.auth_user_id ? 'update' : 'invite', ...record })
+      });
+      sent = !!res.ok;
+      if(sent){
+        try{
+          const body = await res.json();
+          if(body && body.auth_user_id) record.auth_user_id = body.auth_user_id;
+        }catch(e){ /* Zap may not echo JSON back — fine, not required */ }
+      }
+    }catch(e){ sent = false; }
+  }
+  record.status = sent ? (existing.status==='active' ? 'active' : 'invited') : 'pending_setup';
+
+  const idx = DATA.user_hub_access_directory.findIndex(x=>x.id===id);
+  if(idx>=0) DATA.user_hub_access_directory[idx]=record; else DATA.user_hub_access_directory.push(record);
+  await persist('user_hub_access_directory', record);
+  closeModal('inviteModalBackdrop');
+  renderAccessPanel();
+
+  if(!CONFIG.access_webhook_url){
+    alert("Saved to the roster. No Zapier webhook is configured yet (Settings → Team Access Automation), so no invite email was sent — set that up to actually grant access.");
+  } else if(!sent){
+    alert("Saved to the roster, but the invite automation didn't respond — double check the webhook URL in Settings, then try Edit → Save again.");
+  }
+}
+
+async function removeAccessUser(id){
+  if(!confirm('Remove this person from the access roster? This does not delete their actual login — do that from Supabase if needed.')) return;
+  DATA.user_hub_access_directory = (DATA.user_hub_access_directory||[]).filter(u=>u.id!==id);
+  await removeItem('user_hub_access_directory', id);
+  renderAccessPanel();
+}
+
 /* ---------------- STAND-UP BOARD ---------------- */
 function renderFilterPills(containerId, options, activeVal, onClick){
   const el = document.getElementById(containerId);
@@ -1138,6 +1400,7 @@ function openSettingsModal(){
   document.getElementById('set_supabase_anon_key').value = CONFIG.supabase_anon_key||'';
   document.getElementById('set_cc_hub_url').value = CONFIG.cc_hub_url||'';
   document.getElementById('set_staffing_hub_url').value = CONFIG.staffing_hub_url||'';
+  document.getElementById('set_access_webhook_url').value = CONFIG.access_webhook_url||'';
   document.getElementById('settingsModalBackdrop').classList.add('open');
 }
 function saveSettings(){
@@ -1148,6 +1411,7 @@ function saveSettings(){
   CONFIG.supabase_anon_key = document.getElementById('set_supabase_anon_key').value.trim();
   CONFIG.cc_hub_url = document.getElementById('set_cc_hub_url').value.trim() || 'https://cc.mo-care.com';
   CONFIG.staffing_hub_url = document.getElementById('set_staffing_hub_url').value.trim() || 'https://sc.mo-care.com';
+  CONFIG.access_webhook_url = document.getElementById('set_access_webhook_url').value.trim();
   if(newCode) CONFIG.admin_passcode = newCode;
   localStorage.setItem('th_config', JSON.stringify(CONFIG));
   initSupabase();
@@ -1173,6 +1437,13 @@ document.addEventListener('keydown', e=>{
   if(sb){
     const { data:{ session } } = await sb.auth.getSession();
     if(session){
+      if(!hasHubAccess(session.user)){
+        await sb.auth.signOut();
+        const errEl = document.getElementById('loginError');
+        errEl.textContent = "You don't have access to Team Hub. Contact your owner to be granted access.";
+        errEl.style.display = 'block';
+        return;
+      }
       document.getElementById('signinScreen').style.display = 'none';
       document.getElementById('appScreen').style.display = 'block';
       await loadAllData();
