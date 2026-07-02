@@ -30,7 +30,8 @@
   body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text);}
   a{color:var(--navy);}
   img.logo{height:42px;display:block;}
-  img.topbar-logo{filter:brightness(0) invert(1);}
+  .logo-badge{background:#fff;border-radius:10px;padding:5px 10px;display:inline-flex;align-items:center;line-height:0;box-shadow:0 1px 3px rgba(0,0,0,.15);}
+  img.topbar-logo{height:28px;}
   button{cursor:pointer;font-family:inherit;}
   input,select,textarea{font-family:inherit;font-size:14px;padding:8px 10px;border:1px solid var(--border);border-radius:6px;width:100%;background:#fff;color:var(--text);}
   label{font-size:12px;font-weight:600;color:var(--text-muted);display:block;margin:10px 0 4px;}
@@ -79,6 +80,7 @@
   .filter-pill{background:#fff;border:1px solid var(--border);padding:6px 12px;border-radius:20px;font-size:12px;font-weight:500;color:var(--text-muted);}
   .filter-pill.active{background:var(--navy);border-color:var(--navy);color:#fff;}
   .toolbar .spacer{flex:1;}
+  select.mini-select{width:auto;padding:7px 12px;font-size:12px;border-radius:20px;font-weight:500;}
   button.primary{background:var(--navy);color:#fff;border:none;padding:8px 16px;border-radius:6px;font-size:13px;font-weight:600;}
   button.primary:hover{background:var(--navy-dark);}
   button.secondary{background:#fff;border:1px solid var(--border);padding:8px 14px;border-radius:6px;font-size:13px;font-weight:500;color:var(--text);}
@@ -252,7 +254,7 @@
 <!-- ============================= APP SHELL ============================= -->
 <div id="appScreen">
   <header class="topbar">
-    <img class="logo topbar-logo" src="https://images.leadconnectorhq.com/image/f_webp/q_80/r_1200/u_https://assets.cdn.filesafe.space/Recp0AhyMh8lrtKJ9kaj/media/691b9707bb3d037e0ad689bf.png" alt="Caring Companions">
+    <span class="logo-badge"><img class="logo topbar-logo" src="https://images.leadconnectorhq.com/image/f_webp/q_80/r_1200/u_https://assets.cdn.filesafe.space/Recp0AhyMh8lrtKJ9kaj/media/691b9707bb3d037e0ad689bf.png" alt="Caring Companions"></span>
     <h1>Caring Companions Team Hub</h1>
     <div class="spacer"></div>
     <span class="pill" id="syncPill">☁ Synced</span>
@@ -297,6 +299,9 @@
         <button class="secondary" onclick="copyQuickAddLink()">Copy Quick-Add Link</button>
       </div>
       <div class="toolbar" id="standupFilters"></div>
+      <div class="toolbar" style="margin-top:-8px;">
+        <select class="mini-select" id="standupAssigneeFilter" onchange="setStandupAssigneeFilter(this.value)"></select>
+      </div>
       <div class="card"><div id="standupListWrap"></div></div>
     </section>
 
@@ -365,6 +370,7 @@
         <select id="su_category">
           <option>Caregiver / Scheduling</option>
           <option>Client</option>
+          <option>Lead</option>
           <option>Incident</option>
           <option>General</option>
         </select>
@@ -375,9 +381,24 @@
       <div><label>When it happened</label><input type="datetime-local" id="su_occurred_at"></div>
       <div><label>Reported by</label><input id="su_reported_by"></div>
     </div>
+    <label>🏷️ Assign to (optional)</label>
+    <select id="su_assigned_to"></select>
     <div class="modal-actions">
       <button class="secondary" onclick="closeModal('standupModalBackdrop')">Cancel</button>
       <button class="primary" onclick="saveStandupItem()">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="assignModalBackdrop">
+  <div class="modal narrow">
+    <h2>Assign Item</h2>
+    <input type="hidden" id="as_id">
+    <label>Assign to</label>
+    <select id="as_assigned_to"></select>
+    <div class="modal-actions">
+      <button class="secondary" onclick="closeModal('assignModalBackdrop')">Cancel</button>
+      <button class="primary" onclick="saveAssignment()">Save</button>
     </div>
   </div>
 </div>
@@ -614,6 +635,7 @@ const HUB_SLUG = 'team_hub';
 
 let DATA = { standup_notes: [], team_meetings: [], team_directory: [], team_hub_settings: [], hub_portals: [], user_hub_access_directory: [] };
 let standupFilter = 'Open';
+let standupAssigneeFilter = '';
 
 function uid(){ return 'id_' + Math.random().toString(36).slice(2,10) + Date.now().toString(36); }
 function today(){ return new Date().toISOString().slice(0,10); }
@@ -1269,11 +1291,32 @@ function renderFilterPills(containerId, options, activeVal, onClick){
   ).join('');
 }
 function setStandupFilter(v){ standupFilter = v; renderStandup(); }
+function setStandupAssigneeFilter(v){ standupAssigneeFilter = v; renderStandup(); }
+// Shared by the create-item modal, the dedicated Assign modal, and the
+// toolbar filter — builds <option> tags from the live Team Directory so
+// tagging always reflects who's actually on the team right now.
+function populateAssigneeSelect(el, selectedId){
+  const people = (DATA.team_directory||[]).slice().sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+  el.innerHTML = '<option value="">— Unassigned —</option>' + people.map(p=>{
+    const label = (p.name||'Unnamed').replace(/</g,'&lt;') + (p.role_title ? ' — '+p.role_title.replace(/</g,'&lt;') : '');
+    return `<option value="${p.id}" ${p.id===selectedId?'selected':''}>${label}</option>`;
+  }).join('');
+}
+function populateStandupAssigneeFilter(){
+  const el = document.getElementById('standupAssigneeFilter');
+  const people = (DATA.team_directory||[]).slice().sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+  el.innerHTML = '<option value="">🏷️ All assignees</option><option value="__unassigned__">Unassigned only</option>' +
+    people.map(p=>`<option value="${p.id}">${(p.name||'Unnamed').replace(/</g,'&lt;')}</option>`).join('');
+  el.value = standupAssigneeFilter;
+}
 function renderStandup(){
   renderFilterPills('standupFilters', ['Open','Resolved','All'], standupFilter, 'setStandupFilter');
+  populateStandupAssigneeFilter();
   let rows = (DATA.standup_notes||[]).slice();
   if(standupFilter==='Open') rows = rows.filter(i=>!i.resolved);
   if(standupFilter==='Resolved') rows = rows.filter(i=>i.resolved);
+  if(standupAssigneeFilter==='__unassigned__') rows = rows.filter(i=>!i.assigned_to);
+  else if(standupAssigneeFilter) rows = rows.filter(i=>i.assigned_to_id===standupAssigneeFilter);
   rows.sort((a,b)=>(b.occurred_at||b.created_at||'').localeCompare(a.occurred_at||a.created_at||''));
 
   const wrap = document.getElementById('standupListWrap');
@@ -1288,6 +1331,7 @@ function renderStandup(){
         <div class="summary">${(i.summary||'').replace(/</g,'&lt;')}</div>
         <div class="meta">
           <span class="badge ${i.resolved?'ok':'warn'}">${i.category||'General'}</span>
+          ${i.assigned_to ? ` · <span class="badge new">🏷️ ${i.assigned_to.replace(/</g,'&lt;')}</span>` : ''}
           ${i.related_to ? ' · '+i.related_to : ''}
           ${when ? ' · '+when : ''}
           ${i.reported_by ? ' · reported by '+i.reported_by : ''}
@@ -1296,6 +1340,7 @@ function renderStandup(){
       </div>
       <div class="actions">
         ${!i.resolved ? `<button class="linklike" onclick="resolveStandupItem('${i.id}')">Mark Resolved</button>` : ''}
+        <button class="linklike" onclick="openAssignModal('${i.id}')">${i.assigned_to ? 'Reassign' : '🏷️ Assign'}</button>
         <button class="linklike" onclick="removeStandupItem('${i.id}')">Remove</button>
       </div>
     </div>`;
@@ -1306,6 +1351,7 @@ function openStandupModal(){
   document.getElementById('su_category').value = 'Caregiver / Scheduling';
   document.getElementById('su_occurred_at').value = nowLocalInput();
   document.getElementById('su_reported_by').value = '';
+  populateAssigneeSelect(document.getElementById('su_assigned_to'), '');
   document.getElementById('standupModalBackdrop').classList.add('open');
 }
 async function saveStandupItem(){
@@ -1313,6 +1359,8 @@ async function saveStandupItem(){
   if(!summary){ alert('Describe what happened first.'); return; }
   const id = document.getElementById('su_id').value || uid();
   const existing = (DATA.standup_notes||[]).find(x=>x.id===id) || {};
+  const assignedId = document.getElementById('su_assigned_to').value;
+  const assignedPerson = (DATA.team_directory||[]).find(p=>p.id===assignedId);
   const record = {
     id,
     summary,
@@ -1320,6 +1368,8 @@ async function saveStandupItem(){
     related_to: document.getElementById('su_related_to').value.trim(),
     occurred_at: document.getElementById('su_occurred_at').value ? new Date(document.getElementById('su_occurred_at').value).toISOString() : new Date().toISOString(),
     reported_by: document.getElementById('su_reported_by').value.trim(),
+    assigned_to: assignedPerson ? assignedPerson.name : '',
+    assigned_to_id: assignedId || '',
     resolved: existing.resolved || false,
     resolved_by: existing.resolved_by || '',
     resolved_at: existing.resolved_at || '',
@@ -1330,6 +1380,25 @@ async function saveStandupItem(){
   if(idx>=0) DATA.standup_notes[idx]=record; else DATA.standup_notes.push(record);
   await persist('standup_notes', record);
   closeModal('standupModalBackdrop');
+  renderStandup();
+}
+function openAssignModal(id){
+  const item = (DATA.standup_notes||[]).find(x=>x.id===id);
+  if(!item) return;
+  document.getElementById('as_id').value = id;
+  populateAssigneeSelect(document.getElementById('as_assigned_to'), item.assigned_to_id||'');
+  document.getElementById('assignModalBackdrop').classList.add('open');
+}
+async function saveAssignment(){
+  const id = document.getElementById('as_id').value;
+  const item = (DATA.standup_notes||[]).find(x=>x.id===id);
+  if(!item) return;
+  const assignedId = document.getElementById('as_assigned_to').value;
+  const assignedPerson = (DATA.team_directory||[]).find(p=>p.id===assignedId);
+  item.assigned_to_id = assignedId || '';
+  item.assigned_to = assignedPerson ? assignedPerson.name : '';
+  await persist('standup_notes', item);
+  closeModal('assignModalBackdrop');
   renderStandup();
 }
 async function resolveStandupItem(id){
