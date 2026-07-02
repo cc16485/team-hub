@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Add to Board">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0E3860">
+<link rel="apple-touch-icon" href="https://images.leadconnectorhq.com/image/f_webp/q_80/r_1200/u_https://assets.cdn.filesafe.space/Recp0AhyMh8lrtKJ9kaj/media/691b9707bb3d037e0ad689bf.png">
+<title>Add to Stand-Up Board</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --navy:#0E3860;
+    --navy-dark:#092744;
+    --bg:#F4F6F8;
+    --border:#E2E8F0;
+    --text:#1E293B;
+    --text-muted:#64748B;
+    --green:#15803D;
+    --green-bg:#DCFCE7;
+    --red:#DC2626;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;background:var(--navy);color:var(--text);min-height:100vh;}
+  .wrap{max-width:480px;margin:0 auto;min-height:100vh;background:var(--bg);}
+  header{background:var(--navy);color:#fff;padding:20px 20px 24px;text-align:center;}
+  header img{height:38px;margin-bottom:8px;}
+  header h1{font-size:18px;margin:0;font-weight:700;}
+  header p{font-size:12px;color:rgba(255,255,255,.7);margin:4px 0 0;}
+  main{padding:20px;}
+  label{font-size:13px;font-weight:700;color:var(--text-muted);display:block;margin:16px 0 6px;}
+  label:first-child{margin-top:0;}
+  textarea,input,select{font-family:inherit;font-size:16px;padding:14px;border:1px solid var(--border);border-radius:8px;width:100%;background:#fff;color:var(--text);}
+  textarea{min-height:110px;resize:vertical;}
+  button{cursor:pointer;font-family:inherit;}
+  button.primary{width:100%;background:var(--navy);color:#fff;border:none;padding:16px;border-radius:8px;font-size:16px;font-weight:700;margin-top:22px;min-height:52px;}
+  button.primary:active{background:var(--navy-dark);}
+  button.primary:disabled{opacity:.5;}
+  .hint{font-size:11px;color:var(--text-muted);margin-top:6px;}
+  .success{display:none;text-align:center;padding:40px 20px;}
+  .success .check{font-size:48px;}
+  .success h2{color:var(--green);font-size:18px;margin:10px 0 4px;}
+  .success p{color:var(--text-muted);font-size:13px;margin:0 0 24px;}
+  .error{display:none;background:#FEE2E2;color:var(--red);border-radius:8px;padding:10px 12px;font-size:13px;margin-top:14px;}
+  button.secondary{width:100%;background:#fff;border:1px solid var(--border);padding:14px;border-radius:8px;font-size:14px;font-weight:600;color:var(--text);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <img src="https://images.leadconnectorhq.com/image/f_webp/q_80/r_1200/u_https://assets.cdn.filesafe.space/Recp0AhyMh8lrtKJ9kaj/media/691b9707bb3d037e0ad689bf.png" alt="Caring Companions">
+    <h1>Add to Stand-Up Board</h1>
+    <p>No login needed — this goes straight to the team</p>
+  </header>
+
+  <main>
+    <div id="formView">
+      <label>What happened</label>
+      <textarea id="qa_summary" autofocus placeholder="e.g. A client's family called upset about Saturday's visit running late — nothing urgent, just wanted the team to know before Monday"></textarea>
+
+      <label>Category</label>
+      <select id="qa_category">
+        <option>Caregiver / Scheduling</option>
+        <option>Client</option>
+        <option>Incident</option>
+        <option selected>General</option>
+      </select>
+
+      <label>Related client/caregiver (optional)</label>
+      <input id="qa_related_to" placeholder="Name, if it applies">
+
+      <label>Your name</label>
+      <input id="qa_reported_by" placeholder="So the team knows who to ask">
+
+      <div class="error" id="qa_error"></div>
+      <button class="primary" id="qa_submit" onclick="submitNote()">Add to Board</button>
+      <div class="hint">Tip: add this page to your home screen for one-tap access next time.</div>
+    </div>
+
+    <div class="success" id="successView">
+      <div class="check">✅</div>
+      <h2>Added to the board</h2>
+      <p>The team will see this when they check Team Hub.</p>
+      <button class="secondary" onclick="resetForm()">Add Another</button>
+    </div>
+  </main>
+</div>
+
+<script>
+// Same Supabase project as the other hubs — but this page never signs in.
+// It calls one narrow, insert-only function (submit_standup_note_public)
+// that's granted to the anon role specifically for this purpose. See
+// supabase_schema_team_hub.sql for exactly what that function can and can't do.
+const SUPABASE_URL = 'https://zngsgedlsxinbygwmxwn.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpuZ3NnZWRsc3hpbmJ5Z3dteHduIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1NDIzNDQsImV4cCI6MjA5ODExODM0NH0.L_31_UKdccyRH9n7p1GaBlZTqcJipB008H-GIvxwLxM';
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// Remember the name field on this device so it's a one-tap flow next time.
+window.addEventListener('DOMContentLoaded', () => {
+  const saved = localStorage.getItem('qa_reported_by');
+  if(saved) document.getElementById('qa_reported_by').value = saved;
+});
+
+async function submitNote(){
+  const summary = document.getElementById('qa_summary').value.trim();
+  const errEl = document.getElementById('qa_error');
+  errEl.style.display = 'none';
+  if(!summary){
+    errEl.textContent = 'Type what happened first.';
+    errEl.style.display = 'block';
+    return;
+  }
+  const reportedBy = document.getElementById('qa_reported_by').value.trim();
+  const btn = document.getElementById('qa_submit');
+  btn.disabled = true;
+  btn.textContent = 'Adding…';
+
+  try{
+    const { error } = await sb.rpc('submit_standup_note_public', {
+      p_summary: summary,
+      p_category: document.getElementById('qa_category').value,
+      p_related_to: document.getElementById('qa_related_to').value.trim(),
+      p_reported_by: reportedBy
+    });
+    if(error) throw error;
+
+    if(reportedBy) localStorage.setItem('qa_reported_by', reportedBy);
+    document.getElementById('formView').style.display = 'none';
+    document.getElementById('successView').style.display = 'block';
+  }catch(e){
+    errEl.textContent = "Couldn't save that — check your connection and try again.";
+    errEl.style.display = 'block';
+  }finally{
+    btn.disabled = false;
+    btn.textContent = 'Add to Board';
+  }
+}
+function resetForm(){
+  document.getElementById('qa_summary').value = '';
+  document.getElementById('qa_related_to').value = '';
+  document.getElementById('qa_category').value = 'General';
+  document.getElementById('successView').style.display = 'none';
+  document.getElementById('formView').style.display = 'block';
+  document.getElementById('qa_summary').focus();
+}
+</script>
+</body>
+</html>
