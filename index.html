@@ -319,6 +319,9 @@
       </a>
     </div>
 
+    <!-- Replies waiting on the automation (training) line — filled by loadRepliesWaiting -->
+    <div id="repliesWaiting" style="display:none"></div>
+
     <!-- ===================== STAND-UP BOARD ===================== -->
     <section class="block" id="standupSection">
       <div class="section-header">
@@ -734,6 +737,42 @@ async function loadTrainingPulse(){
 }
 loadTrainingPulse();
 setInterval(loadTrainingPulse, 5*60*1000);
+
+/* ---- Replies waiting on the automation line ----
+   Read-only peek via the training platform's secured ghl-replies function
+   (same read key). GHL stays the inbox — each row links straight into it. */
+const REPLIES_API = 'https://rdqujxiycycwhskyvrwa.supabase.co/functions/v1/ghl-replies';
+async function loadRepliesWaiting(){
+  const box = document.getElementById('repliesWaiting');
+  if(!box || !CONFIG.training_hub_key) return;
+  try{
+    const r = await fetch(REPLIES_API, {
+      method:'POST',
+      headers:{ 'apikey':TRAINING_ANON, 'Authorization':'Bearer '+TRAINING_ANON, 'Content-Type':'application/json' },
+      body: JSON.stringify({ key: CONFIG.training_hub_key })
+    });
+    const data = await r.json();
+    if(!data || !Array.isArray(data.replies)){ box.style.display='none'; return; }
+    if(!data.replies.length){ box.style.display='none'; box.innerHTML=''; return; }
+    const loc = data.location_id || 'Recp0AhyMh8lrtKJ9kaj';
+    const esc = t => String(t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const ago = ms => { if(!ms) return ''; const m=Math.round((Date.now()-ms)/60000); if(m<60) return m+'m ago'; const h=Math.round(m/60); if(h<24) return h+'h ago'; return Math.round(h/24)+'d ago'; };
+    box.innerHTML =
+      '<div style="background:#fff7ed;border:1.5px solid #f59e0b;border-radius:12px;padding:.9rem 1.1rem;margin:0 0 1.1rem">'+
+      '<div style="font-size:.72rem;font-weight:700;color:#92400e;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.55rem">📨 Replies waiting — automation line ('+data.replies.length+')</div>'+
+      data.replies.map(x=>
+        '<div style="display:flex;align-items:center;gap:.6rem;padding:.3rem 0;font-size:.85rem;flex-wrap:wrap">'+
+        '<b style="color:var(--navy)">'+esc(x.name)+'</b>'+
+        '<span style="color:#57606a;flex:1;min-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">“'+esc(x.preview)+'”</span>'+
+        '<span style="color:#94a3b8;font-size:.72rem;white-space:nowrap">'+ago(x.at)+'</span>'+
+        '<a href="https://app.gohighlevel.com/v2/location/'+loc+'/conversations/conversations/'+encodeURIComponent(x.id)+'" target="_blank" rel="noopener" style="font-size:.75rem;font-weight:600;color:#1e40af;white-space:nowrap;text-decoration:none;border:1px solid #93c5fd;border-radius:6px;padding:.15rem .5rem">Open in GHL ↗</a>'+
+        '</div>').join('')+
+      '</div>';
+    box.style.display='block';
+  }catch(e){ box.style.display='none'; }
+}
+loadRepliesWaiting();
+setInterval(loadRepliesWaiting, 5*60*1000);
 
 // quick-add.html deploys alongside this file in the same repo, so it's
 // always at the same origin — no separate URL to configure.
@@ -1667,6 +1706,7 @@ function saveSettings(){
   initSupabase();
   applyHubLinks();
   loadTrainingPulse();
+  loadRepliesWaiting();
   closeModal('settingsModalBackdrop');
   alert('Settings saved. Reload the page if you just connected Supabase for the first time.');
 }
