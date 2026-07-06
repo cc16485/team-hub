@@ -269,7 +269,7 @@
     <h1>Caring Companions Team Hub</h1>
     <div class="spacer"></div>
     <span class="pill" id="syncPill">☁ Synced</span>
-    <button class="ghost" onclick="openSettings()">⚙️ Settings</button>
+    <button class="ghost" id="settingsBtn" onclick="openSettings()">⚙️ Settings</button>
     <button class="ghost" onclick="signOut()">Sign Out</button>
   </header>
 
@@ -1718,7 +1718,22 @@ async function removeMeeting(id){
 }
 
 /* ---------------- SETTINGS ---------------- */
-function openSettings(){
+/* Settings are OWNER-ONLY: gated by the signed-in account's email, not a
+   per-browser passcode — so a fresh browser (e.g. a VA's laptop) can never
+   open them. Protects the hub links and the Training Hub read key. */
+const OWNER_EMAILS = ['samantha@mo-care.com'];
+async function isOwner(){
+  try{
+    if(!sb) return false;
+    const { data:{ session } } = await sb.auth.getSession();
+    return !!session && OWNER_EMAILS.includes(String(session.user.email||'').toLowerCase());
+  }catch(e){ return false; }
+}
+async function openSettings(){
+  if(!(await isOwner())){
+    alert('Settings are owner-only. If a hub link or key needs updating, ask Samantha.');
+    return;
+  }
   if(!CONFIG.admin_passcode){ openSettingsModal(); return; }
   document.getElementById('settingsLock').classList.add('open');
 }
@@ -1792,6 +1807,8 @@ document.addEventListener('keydown', e=>{
       }
       document.getElementById('signinScreen').style.display = 'none';
       document.getElementById('appScreen').style.display = 'block';
+      // Owner-only settings: hide the gear for everyone else.
+      isOwner().then(ok => { const b = document.getElementById('settingsBtn'); if(b && !ok) b.style.display = 'none'; });
       await loadAllData();
       await flushPendingSync();
       renderAll();
