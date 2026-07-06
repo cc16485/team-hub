@@ -627,6 +627,8 @@
       <label>Staffing Coordinator's Hub URL</label><input id="set_staffing_hub_url" placeholder="https://sc.mo-care.com">
       <label>Lead Caregiver's Hub URL</label><input id="set_lead_caregiver_hub_url" placeholder="https://lead.mo-care.com">
       <label>Nurse's Hub URL</label><input id="set_nurse_hub_url" placeholder="https://nurse.mo-care.com">
+      <label>Training Hub URL</label><input id="set_training_hub_url" placeholder="https://training.mo-care.com">
+      <label>Training Hub read key (for the live counts on the Training card — ask Claude/Samantha)</label><input id="set_training_hub_key" placeholder="cchub_...">
     </div>
 
     <div class="settings-section">
@@ -664,6 +666,8 @@ CONFIG.cc_hub_url = CONFIG.cc_hub_url || 'https://cc.mo-care.com';
 CONFIG.staffing_hub_url = CONFIG.staffing_hub_url || 'https://sc.mo-care.com';
 CONFIG.lead_caregiver_hub_url = CONFIG.lead_caregiver_hub_url || 'https://lead.mo-care.com';
 CONFIG.nurse_hub_url = CONFIG.nurse_hub_url || 'https://nurse.mo-care.com';
+CONFIG.training_hub_url = CONFIG.training_hub_url || 'https://training.mo-care.com';
+CONFIG.training_hub_key = CONFIG.training_hub_key || '';
 CONFIG.access_webhook_url = CONFIG.access_webhook_url || '';
 // Same Supabase project as Care Coordinator's Hub and Staffing Hub — shared backend, shared staff logins.
 CONFIG.supabase_url = CONFIG.supabase_url || 'https://zngsgedlsxinbygwmxwn.supabase.co';
@@ -696,8 +700,40 @@ function applyHubLinks(){
   document.getElementById('staffingHubLink').href = CONFIG.staffing_hub_url;
   document.getElementById('leadCaregiverHubLink').href = CONFIG.lead_caregiver_hub_url;
   document.getElementById('nurseHubLink').href = CONFIG.nurse_hub_url;
+  document.getElementById('trainingHubLink').href = CONFIG.training_hub_url;
 }
 applyHubLinks();
+
+/* ---- Live Training pulse on the Training Hub card ----
+   Reads the training platform's secure hub endpoint (key pasted once in
+   Settings — never committed to this public repo) and shows live counts. */
+const TRAINING_API = 'https://rdqujxiycycwhskyvrwa.supabase.co/rest/v1/rpc/hub_training_status';
+const TRAINING_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkcXVqeGl5Y3ljd2hza3l2cndhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMyMTg1NDgsImV4cCI6MjA5ODc5NDU0OH0.SFjAfj--b-tWrk8bMVLeM-tGwD8VBaPsEBtUAp5tPew';
+async function loadTrainingPulse(){
+  const card = document.getElementById('trainingHubLink');
+  if(!card) return;
+  const sub = card.querySelector('.sub');
+  if(!CONFIG.training_hub_key){ return; } // no key yet — keep the static caption
+  try{
+    const r = await fetch(TRAINING_API, {
+      method:'POST',
+      headers:{ 'apikey':TRAINING_ANON, 'Authorization':'Bearer '+TRAINING_ANON, 'Content-Type':'application/json' },
+      body: JSON.stringify({ p_key: CONFIG.training_hub_key })
+    });
+    const data = await r.json();
+    if(!Array.isArray(data)) return;
+    let compliant=0, inprog=0, notstarted=0;
+    for(const cg of data){
+      const ts = cg.trainings||[];
+      if(ts.length && ts.every(t=>t.status==='complete'||t.status==='waived')) compliant++;
+      else if(ts.some(t=>t.status==='in_progress'||t.status==='complete')) inprog++;
+      else notstarted++;
+    }
+    sub.textContent = `${data.length} caregivers · ${compliant} compliant · ${inprog} in progress · ${notstarted} not started`;
+  }catch(e){ /* leave static caption on any failure */ }
+}
+loadTrainingPulse();
+setInterval(loadTrainingPulse, 5*60*1000);
 
 // quick-add.html deploys alongside this file in the same repo, so it's
 // always at the same origin — no separate URL to configure.
@@ -1608,6 +1644,8 @@ function openSettingsModal(){
   document.getElementById('set_staffing_hub_url').value = CONFIG.staffing_hub_url||'';
   document.getElementById('set_lead_caregiver_hub_url').value = CONFIG.lead_caregiver_hub_url||'';
   document.getElementById('set_nurse_hub_url').value = CONFIG.nurse_hub_url||'';
+  document.getElementById('set_training_hub_url').value = CONFIG.training_hub_url||'';
+  document.getElementById('set_training_hub_key').value = CONFIG.training_hub_key||'';
   document.getElementById('set_access_webhook_url').value = CONFIG.access_webhook_url||'';
   document.getElementById('settingsModalBackdrop').classList.add('open');
 }
@@ -1621,11 +1659,14 @@ function saveSettings(){
   CONFIG.staffing_hub_url = document.getElementById('set_staffing_hub_url').value.trim() || 'https://sc.mo-care.com';
   CONFIG.lead_caregiver_hub_url = document.getElementById('set_lead_caregiver_hub_url').value.trim() || 'https://lead.mo-care.com';
   CONFIG.nurse_hub_url = document.getElementById('set_nurse_hub_url').value.trim() || 'https://nurse.mo-care.com';
+  CONFIG.training_hub_url = document.getElementById('set_training_hub_url').value.trim() || 'https://training.mo-care.com';
+  CONFIG.training_hub_key = document.getElementById('set_training_hub_key').value.trim();
   CONFIG.access_webhook_url = document.getElementById('set_access_webhook_url').value.trim();
   if(newCode) CONFIG.admin_passcode = newCode;
   localStorage.setItem('th_config', JSON.stringify(CONFIG));
   initSupabase();
   applyHubLinks();
+  loadTrainingPulse();
   closeModal('settingsModalBackdrop');
   alert('Settings saved. Reload the page if you just connected Supabase for the first time.');
 }
