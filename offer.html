@@ -120,6 +120,7 @@
     <div id="attrList"></div>
   </div>
 
+  <div class="notice" style="display:block">⚠️ <b>Don't forget Viventium!</b> This form does NOT create the official job offer — the applicant only receives their offer and onboarding paperwork after you <b>also add them to Viventium</b> (you'll get a copy-paste block on the next screen). The welcome text tells them Viventium is coming, so skipping that step leaves them waiting on a message that never arrives.</div>
   <div class="error" id="errBox"></div>
   <button class="primary" id="sendBtn" onclick="submitOffer()">Send offer — welcome text goes out now</button>
   <div style="font-size:12px;color:var(--muted);text-align:center;margin-top:10px">The applicant instantly gets a text + email explaining who will contact them next (Viventium → training texts → office number).</div>
@@ -133,8 +134,8 @@
     <div class="steps" id="stepList"></div>
   </div>
   <div class="card">
-    <h2>Now enter them in Viventium</h2>
-    <p class="sub">Copy this block — it's everything Viventium asks for at the offer step.</p>
+    <h2>⚠️ Required next step: enter them in Viventium</h2>
+    <p class="sub"><b>They will NOT receive their official job offer or onboarding paperwork until you do this.</b> Copy the block below — it's everything Viventium asks for at the offer step. Then click the green button to confirm.</p>
     <pre id="vivBlock"></pre>
     <div style="text-align:center"><button class="copybtn" onclick="copyViv()">📋 Copy for Viventium</button> <span id="copied" style="color:var(--green);font-size:13px;font-weight:700;display:none">Copied!</span></div>
     <div style="text-align:center;margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
