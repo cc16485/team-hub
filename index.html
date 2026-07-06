@@ -873,6 +873,7 @@ async function signIn(){
   document.getElementById('signinScreen').style.display = 'none';
   document.getElementById('appScreen').style.display = 'block';
   await loadAllData();
+  applyCloudConfig();
   await flushPendingSync();
   renderAll();
 }
@@ -880,6 +881,32 @@ async function signOut(){
   if(sb) await sb.auth.signOut();
   document.getElementById('appScreen').style.display = 'none';
   document.getElementById('signinScreen').style.display = 'flex';
+}
+
+/* Cloud-synced hub config: the shareable settings (hub links + Training Hub
+   read key) live in app_data alongside the rest of the team data, so they
+   follow every signed-in device — no more per-browser re-pasting. The owner
+   edits them (Settings is owner-gated); everyone else just receives them. */
+const CLOUD_CFG_FIELDS = ['cc_hub_url','staffing_hub_url','lead_caregiver_hub_url','nurse_hub_url','training_hub_url','training_hub_key','access_webhook_url'];
+function applyCloudConfig(){
+  const cloud = (DATA.team_hub_settings||[]).find(x => x.id === 'hub_config');
+  if(!cloud) return;
+  let changed = false;
+  CLOUD_CFG_FIELDS.forEach(f => { if(cloud[f] && CONFIG[f] !== cloud[f]){ CONFIG[f] = cloud[f]; changed = true; } });
+  if(changed){
+    localStorage.setItem('th_config', JSON.stringify(CONFIG));
+    applyHubLinks();
+    loadTrainingPulse();
+    loadRepliesWaiting();
+  }
+}
+function pushCloudConfig(){
+  const item = { id: 'hub_config' };
+  CLOUD_CFG_FIELDS.forEach(f => { item[f] = CONFIG[f] || ''; });
+  DATA.team_hub_settings = DATA.team_hub_settings || [];
+  const idx = DATA.team_hub_settings.findIndex(x => x.id === 'hub_config');
+  if(idx >= 0) DATA.team_hub_settings[idx] = item; else DATA.team_hub_settings.push(item);
+  persist('team_hub_settings', item);
 }
 
 /* ---------------- DATA LOAD / SAVE (app_data key/JSONB pattern, same atomic RPCs as the other two hubs) ---------------- */
@@ -1777,6 +1804,7 @@ function saveSettings(){
   applyHubLinks();
   loadTrainingPulse();
   loadRepliesWaiting();
+  pushCloudConfig();
   closeModal('settingsModalBackdrop');
   alert('Settings saved. Reload the page if you just connected Supabase for the first time.');
 }
@@ -1810,6 +1838,7 @@ document.addEventListener('keydown', e=>{
       // Owner-only settings: hide the gear for everyone else.
       isOwner().then(ok => { const b = document.getElementById('settingsBtn'); if(b && !ok) b.style.display = 'none'; });
       await loadAllData();
+      applyCloudConfig();
       await flushPendingSync();
       renderAll();
     }
