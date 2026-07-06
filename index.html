@@ -63,13 +63,21 @@
   main{padding:20px;max-width:1100px;margin:0 auto;}
 
   /* ---- Quick links ---- */
-  .quicklink-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:28px;}
-  .quicklink-card{display:flex;align-items:center;gap:14px;background:#fff;color:var(--navy);border:1px solid var(--border);border-left:5px solid var(--navy);border-radius:12px;padding:18px 20px;text-decoration:none;box-shadow:0 2px 8px rgba(14,56,96,.06);transition:transform .12s ease,box-shadow .12s ease;}
+  .quicklink-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:18px;}
+  @media(max-width:860px){.quicklink-grid{grid-template-columns:repeat(auto-fit,minmax(150px,1fr));}}
+  .quicklink-card{display:flex;align-items:center;gap:10px;background:#fff;color:var(--navy);border:1px solid var(--border);border-left:4px solid var(--navy);border-radius:11px;padding:10px 12px;text-decoration:none;box-shadow:0 2px 8px rgba(14,56,96,.06);transition:transform .12s ease,box-shadow .12s ease;min-width:0;}
   .quicklink-card:hover{transform:translateY(-2px);box-shadow:0 8px 18px rgba(14,56,96,.12);}
-  .quicklink-card .icon-badge{flex:0 0 auto;width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:23px;background:#F4F8FC;}
-  .quicklink-card .label{font-size:16px;font-weight:700;}
-  .quicklink-card .sub{font-size:12px;color:var(--text-muted);font-weight:400;margin-top:2px;}
-  .quicklink-card .arrow{margin-left:auto;font-size:20px;opacity:.5;color:var(--navy);}
+  .quicklink-card .icon-badge{flex:0 0 auto;width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:17px;background:#F4F8FC;}
+  .quicklink-card > div:nth-child(2){min-width:0;}
+  .quicklink-card .label{font-size:12.5px;font-weight:700;line-height:1.15;}
+  .quicklink-card .sub{font-size:10px;color:var(--text-muted);font-weight:400;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .quicklink-card .arrow{display:none;}
+  .quicklink-card.soon{opacity:.5;pointer-events:none;filter:grayscale(.5);}
+  .daily-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start;}
+  @media(max-width:980px){.daily-grid{grid-template-columns:1fr;}}
+  .block.collapsed > *:not(.section-header){display:none;}
+  .chev{display:inline-block;transition:transform .15s ease;font-size:13px;opacity:.6;margin-left:4px;}
+  .block:not(.collapsed) .chev{transform:rotate(90deg);}
   .quicklink-card.accent-blue{border-left-color:var(--blue);}
   .quicklink-card.accent-blue .icon-badge{background:var(--blue-bg);}
   .quicklink-card.accent-amber{border-left-color:var(--amber);}
@@ -275,13 +283,16 @@
 
   <main>
 
+    <!-- Replies waiting on the automation (training) line — filled by loadRepliesWaiting -->
+    <div id="repliesWaiting" style="display:none"></div>
+
     <!-- ===================== QUICK LINKS ===================== -->
     <div class="quicklink-grid">
       <a class="quicklink-card accent-blue" id="ccHubLink" href="https://cc.mo-care.com" target="_blank" rel="noopener">
         <div class="icon-badge">📞</div>
         <div>
           <div class="label">Care Coordinator's Hub</div>
-          <div class="sub">Leads, assessments, check-ins, supervisory visits</div>
+          <div class="sub">Leads &amp; clients</div>
         </div>
         <div class="arrow">↗</div>
       </a>
@@ -289,23 +300,23 @@
         <div class="icon-badge">🗓</div>
         <div>
           <div class="label">Staffing Coordinator's Hub</div>
-          <div class="sub">Candidates, training, compliance, scheduling</div>
+          <div class="sub">Candidates &amp; compliance</div>
         </div>
         <div class="arrow">↗</div>
       </a>
-      <a class="quicklink-card accent-green" id="leadCaregiverHubLink" href="https://lead.mo-care.com" target="_blank" rel="noopener">
+      <a class="quicklink-card accent-green soon" id="leadCaregiverHubLink" href="https://lead.mo-care.com" target="_blank" rel="noopener" title="Not built yet">
         <div class="icon-badge">🦺</div>
         <div>
           <div class="label">Lead Caregiver's Hub</div>
-          <div class="sub">Field oversight, mentorship, training</div>
+          <div class="sub">Coming soon</div>
         </div>
         <div class="arrow">↗</div>
       </a>
-      <a class="quicklink-card accent-purple" id="nurseHubLink" href="https://nurse.mo-care.com" target="_blank" rel="noopener">
+      <a class="quicklink-card accent-purple soon" id="nurseHubLink" href="https://nurse.mo-care.com" target="_blank" rel="noopener" title="Not built yet">
         <div class="icon-badge">🩺</div>
         <div>
           <div class="label">Nurse's Hub</div>
-          <div class="sub">Care plans, clinical oversight, RN/LPN visits</div>
+          <div class="sub">Coming soon</div>
         </div>
         <div class="arrow">↗</div>
       </a>
@@ -313,15 +324,13 @@
         <div class="icon-badge">🎓</div>
         <div>
           <div class="label">Training Hub</div>
-          <div class="sub">Caregiver training, completions, audit records, certificates</div>
+          <div class="sub">Training &amp; audit records</div>
         </div>
         <div class="arrow">↗</div>
       </a>
     </div>
 
-    <!-- Replies waiting on the automation (training) line — filled by loadRepliesWaiting -->
-    <div id="repliesWaiting" style="display:none"></div>
-
+    <div class="daily-grid">
     <!-- ===================== STAND-UP BOARD ===================== -->
     <section class="block" id="standupSection">
       <div class="section-header">
@@ -364,11 +373,12 @@
       </div>
       <div class="card"><div id="meetingsListWrap"></div></div>
     </section>
+    </div><!-- /daily-grid -->
 
     <!-- ===================== TEAM DIRECTORY ===================== -->
-    <section class="block" id="directorySection">
+    <section class="block collapsed" id="directorySection">
       <div class="section-header">
-        <h2>🗂 Team Directory</h2>
+        <h2 style="cursor:pointer" onclick="toggleBlock('directorySection')">🗂 Team Directory <span class="chev">▸</span></h2>
         <button class="secondary" id="directoryEditBtn" onclick="toggleDirectoryEdit()">✏️ Edit Directory</button>
       </div>
       <p style="font-size:12px;color:var(--text-muted);margin:-6px 0 12px;">Who's who, who reports to whom, and who's in today. Anyone can tap a status badge to update it — only owners (with the admin passcode) can add, edit, or remove people.</p>
@@ -384,9 +394,9 @@
     </section>
 
     <!-- ===================== MANAGE TEAM ACCESS ===================== -->
-    <section class="block" id="accessSection">
+    <section class="block collapsed" id="accessSection">
       <div class="section-header">
-        <h2>🔐 Manage Team Access</h2>
+        <h2 style="cursor:pointer" onclick="toggleBlock('accessSection')">🔐 Manage Team Access <span class="chev">▸</span></h2>
       </div>
       <p style="font-size:12px;color:var(--text-muted);margin:-6px 0 12px;">Invite people to the hub(s) they need, assign their role and contact info, and see who has access to what. Owners only.</p>
       <div class="card" style="padding:16px 18px 18px;" id="accessPanelWrap"></div>
@@ -698,6 +708,10 @@ function initSupabase(){
 }
 initSupabase();
 
+function toggleBlock(id){
+  const el = document.getElementById(id);
+  if(el) el.classList.toggle('collapsed');
+}
 function applyHubLinks(){
   document.getElementById('ccHubLink').href = CONFIG.cc_hub_url;
   document.getElementById('staffingHubLink').href = CONFIG.staffing_hub_url;
@@ -732,7 +746,8 @@ async function loadTrainingPulse(){
       else if(ts.some(t=>t.status==='in_progress'||t.status==='complete')) inprog++;
       else notstarted++;
     }
-    sub.textContent = `${data.length} caregivers · ${compliant} compliant · ${inprog} in progress · ${notstarted} not started`;
+    sub.textContent = `${data.length} caregivers · ${compliant} ✓ · ${inprog + notstarted} pending`;
+    card.title = `${data.length} caregivers · ${compliant} compliant · ${inprog} in progress · ${notstarted} not started`;
   }catch(e){ /* leave static caption on any failure */ }
 }
 loadTrainingPulse();
