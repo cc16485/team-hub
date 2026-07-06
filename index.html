@@ -63,7 +63,7 @@
   main{padding:20px;max-width:1100px;margin:0 auto;}
 
   /* ---- Quick links ---- */
-  .quicklink-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:18px;}
+  .quicklink-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:18px;}
   @media(max-width:860px){.quicklink-grid{grid-template-columns:repeat(auto-fit,minmax(150px,1fr));}}
   .quicklink-card{display:flex;align-items:center;gap:10px;background:#fff;color:var(--navy);border:1px solid var(--border);border-left:4px solid var(--navy);border-radius:11px;padding:10px 12px;text-decoration:none;box-shadow:0 2px 8px rgba(14,56,96,.06);transition:transform .12s ease,box-shadow .12s ease;min-width:0;}
   .quicklink-card:hover{transform:translateY(-2px);box-shadow:0 8px 18px rgba(14,56,96,.12);}
@@ -289,6 +289,14 @@
 
     <!-- ===================== QUICK LINKS ===================== -->
     <div class="quicklink-grid">
+      <a class="quicklink-card accent-green" href="offer.html">
+        <div class="icon-badge">📋</div>
+        <div>
+          <div class="label">Offer a Job</div>
+          <div class="sub">After an in-person interview</div>
+        </div>
+        <div class="arrow">↗</div>
+      </a>
       <a class="quicklink-card accent-blue" id="ccHubLink" href="https://cc.mo-care.com" target="_blank" rel="noopener">
         <div class="icon-badge">📞</div>
         <div>

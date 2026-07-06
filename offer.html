@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0E3860">
+<title>Offer a Job — Caring Companions</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{--navy:#0E3860;--navy-dark:#092744;--bg:#F4F6F8;--border:#E2E8F0;--text:#1E293B;--muted:#64748B;--green:#15803D;--green-bg:#DCFCE7;--red:#DC2626;--accent:#0D9488;--accent-bg:#CCFBF1;--amber:#B45309;--amber-bg:#FEF3C7;}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text)}
+  header{background:linear-gradient(180deg,var(--navy) 0%,var(--navy-dark) 100%);color:#fff;padding:22px 20px 26px;text-align:center}
+  .logo-badge{display:inline-flex;background:#fff;border-radius:12px;padding:6px 14px;margin-bottom:8px}
+  header img{height:32px;display:block}
+  header h1{font-size:19px;margin:0;font-weight:800}
+  header p{font-size:12.5px;color:rgba(255,255,255,.75);margin:5px 0 0}
+  .accent-strip{height:5px;background:linear-gradient(90deg,var(--accent),#5EEAD4,var(--navy))}
+  main{max-width:640px;margin:0 auto;padding:22px 16px 60px}
+  .card{background:#fff;border:1px solid var(--border);border-radius:16px;padding:20px;margin-bottom:16px;box-shadow:0 1px 3px rgba(15,23,42,.05)}
+  .card h2{font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--navy);margin:0 0 4px}
+  .card .sub{font-size:12.5px;color:var(--muted);margin:0 0 14px}
+  label{font-size:12.5px;font-weight:700;color:var(--muted);display:block;margin:14px 0 5px}
+  input,select,textarea{font-family:inherit;font-size:15px;padding:11px 12px;border:1.5px solid var(--border);border-radius:10px;width:100%;background:#fff;color:var(--text)}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-bg)}
+  textarea{min-height:76px;resize:vertical}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media(max-width:480px){.row2{grid-template-columns:1fr}}
+  .lvl{display:flex;gap:8px}
+  .lvl button{flex:1;padding:11px 0;border:1.5px solid var(--border);border-radius:10px;background:#fff;font-family:inherit;font-size:14px;font-weight:700;color:var(--muted);cursor:pointer}
+  .lvl button.on{background:var(--navy);border-color:var(--navy);color:#fff}
+  .attr{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #F1F5F9}
+  .attr:last-child{border-bottom:none}
+  .attr .info{flex:1;min-width:0}
+  .attr .info b{font-size:14px;display:block}
+  .attr .info span{font-size:11.5px;color:var(--muted);display:block;margin-top:1px}
+  .yn{display:flex;border:1.5px solid var(--border);border-radius:999px;overflow:hidden;flex-shrink:0}
+  .yn button{border:none;background:#fff;font-family:inherit;font-size:12.5px;font-weight:700;padding:7px 14px;cursor:pointer;color:var(--muted)}
+  .yn button.yes.on{background:var(--green-bg);color:var(--green)}
+  .yn button.no.on{background:#FEE2E2;color:var(--red)}
+  button.primary{width:100%;background:linear-gradient(135deg,var(--navy) 0%,var(--navy-dark) 100%);color:#fff;border:none;padding:16px;border-radius:999px;font-size:16px;font-weight:800;margin-top:6px;min-height:54px;cursor:pointer;box-shadow:0 8px 20px rgba(14,56,96,.28)}
+  button.primary:disabled{opacity:.5;box-shadow:none}
+  .error{display:none;background:#FEE2E2;color:var(--red);border-radius:10px;padding:10px 12px;font-size:13px;margin:14px 0}
+  .notice{background:var(--amber-bg);color:var(--amber);border-radius:10px;padding:10px 12px;font-size:13px;margin-bottom:16px}
+  .gate{max-width:460px;margin:60px auto;text-align:center;background:#fff;border:1px solid var(--border);border-radius:16px;padding:34px 24px}
+  .gate a{color:var(--navy);font-weight:700}
+  .done{display:none}
+  .done .big{width:88px;height:88px;border-radius:50%;background:var(--green-bg);display:flex;align-items:center;justify-content:center;margin:10px auto 14px;font-size:44px}
+  .done h2{text-align:center;color:var(--green);margin:0 0 4px;font-size:20px}
+  .done p.center{text-align:center;color:var(--muted);font-size:13px;margin:0 0 18px}
+  .steps div{display:flex;gap:10px;align-items:flex-start;font-size:14px;padding:7px 0}
+  .steps .ok{color:var(--green);font-weight:800}
+  .steps .warn{color:var(--amber);font-weight:800}
+  pre{background:#F8FAFC;border:1px solid var(--border);border-radius:10px;padding:14px;font-size:13px;white-space:pre-wrap;word-break:break-word;font-family:ui-monospace,Menlo,monospace}
+  .copybtn{background:#fff;border:1.5px solid var(--navy);color:var(--navy);border-radius:999px;padding:9px 18px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer}
+  a.back{display:inline-block;margin-top:14px;color:var(--navy);font-weight:700;font-size:14px}
+</style>
+</head>
+<body>
+<header>
+  <span class="logo-badge"><img src="https://images.leadconnectorhq.com/image/f_webp/q_80/r_1200/u_https://assets.cdn.filesafe.space/Recp0AhyMh8lrtKJ9kaj/media/691b9707bb3d037e0ad689bf.png" alt="Caring Companions"></span>
+  <h1>📋 Offer a Job</h1>
+  <p>Fill this out right after the in-person interview — while it's fresh</p>
+</header>
+<div class="accent-strip"></div>
+
+<main id="gateView" style="display:none">
+  <div class="gate">
+    <h2 style="margin:0 0 8px;color:var(--navy)">Sign in first</h2>
+    <p style="color:var(--muted);font-size:14px">This form sends the applicant their welcome text, so it needs your Team Hub login.</p>
+    <a href="./">Go to the Team Hub to sign in →</a>
+  </div>
+</main>
+
+<main id="formView" style="display:none">
+  <div id="keyNotice" class="notice" style="display:none">⚠️ This device is missing the training key, so the form can't send yet. Open the Team Hub once on this device (Samantha's Settings sync it automatically), then come back.</div>
+
+  <div class="card">
+    <h2>Applicant</h2>
+    <p class="sub">Same info you'll enter in Viventium — you'll get a copy-paste block at the end.</p>
+    <div class="row2">
+      <div><label>First name *</label><input id="f_first" autocomplete="off"></div>
+      <div><label>Last name *</label><input id="f_last" autocomplete="off"></div>
+    </div>
+    <div class="row2">
+      <div><label>Mobile phone</label><input id="f_phone" inputmode="tel" placeholder="(417) 555-0123"></div>
+      <div><label>Email</label><input id="f_email" inputmode="email" placeholder="name@email.com"></div>
+    </div>
+    <div class="row2">
+      <div><label>Position</label><select id="f_position"><option>Caregiver</option><option>CNA</option><option>Nurse (LPN/RN)</option><option>Office</option></select></div>
+      <div><label>Interview date</label><input id="f_date" type="date"></div>
+    </div>
+    <label>Interviewed / offered by</label><input id="f_by" placeholder="Your name">
+  </div>
+
+  <div class="card">
+    <h2>From the interview</h2>
+    <p class="sub">This becomes the interview note on their AxisCare profile.</p>
+    <div class="row2">
+      <div><label>Hourly rate discussed ($)</label><input id="f_rate" inputmode="decimal" placeholder="e.g. 15.50"></div>
+      <div>
+        <label>Suggested level of care</label>
+        <div class="lvl" id="lvlBtns">
+          <button type="button" data-l="1">Level 1</button>
+          <button type="button" data-l="2">Level 2</button>
+          <button type="button" data-l="3">Level 3</button>
+        </div>
+        <div style="font-size:11.5px;color:var(--muted);margin-top:5px">Suggested only — confirmed later from verified experience &amp; references</div>
+      </div>
+    </div>
+    <label>Availability</label><input id="f_avail" placeholder="e.g. Mon–Fri days, every other weekend, up to 30 hrs">
+    <label>Experience</label><textarea id="f_exp" placeholder="Past caregiving/CNA work, facilities, years, special skills…"></textarea>
+    <label>Personality / fit</label><textarea id="f_pers" placeholder="How they came across, client types they'd suit…"></textarea>
+    <label>Anything else</label><textarea id="f_notes" placeholder="Start-date hopes, references given, questions they asked…"></textarea>
+  </div>
+
+  <div class="card">
+    <h2>AxisCare matching attributes</h2>
+    <p class="sub">These match caregivers to shifts. Everything starts as <b>Yes</b> (AxisCare assumes Yes when unset) — just flip the No's. The staffing coordinator enters these into AxisCare from the Staffing Hub checklist.</p>
+    <div id="attrList"></div>
+  </div>
+
+  <div class="error" id="errBox"></div>
+  <button class="primary" id="sendBtn" onclick="submitOffer()">Send offer — welcome text goes out now</button>
+  <div style="font-size:12px;color:var(--muted);text-align:center;margin-top:10px">The applicant instantly gets a text + email explaining who will contact them next (Viventium → training texts → office number).</div>
+</main>
+
+<main id="doneView" class="done">
+  <div class="card">
+    <div class="big">🎉</div>
+    <h2>Offer sent!</h2>
+    <p class="center" id="doneName"></p>
+    <div class="steps" id="stepList"></div>
+  </div>
+  <div class="card">
+    <h2>Now enter them in Viventium</h2>
+    <p class="sub">Copy this block — it's everything Viventium asks for at the offer step.</p>
+    <pre id="vivBlock"></pre>
+    <div style="text-align:center"><button class="copybtn" onclick="copyViv()">📋 Copy for Viventium</button> <span id="copied" style="color:var(--green);font-size:13px;font-weight:700;display:none">Copied!</span></div>
+  </div>
+  <div style="text-align:center">
+    <button class="copybtn" onclick="location.reload()">＋ Offer another</button>
+    <br><a class="back" href="./">← Back to the Team Hub</a>
+  </div>
+</main>
+
+<script>
+const SHARED_URL='https://zngsgedlsxinbygwmxwn.supabase.co';
+const SHARED_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpuZ3NnZWRsc3hpbmJ5Z3dteHduIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1NDIzNDQsImV4cCI6MjA5ODExODM0NH0.L_31_UKdccyRH9n7p1GaBlZTqcJipB008H-GIvxwLxM';
+const TRAINING_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkcXVqeGl5Y3ljd2hza3l2cndhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMyMTg1NDgsImV4cCI6MjA5ODc5NDU0OH0.SFjAfj--b-tWrk8bMVLeM-tGwD8VBaPsEBtUAp5tPew';
+const OFFER_API='https://rdqujxiycycwhskyvrwa.supabase.co/functions/v1/job-offer';
+
+const ATTRS=[
+  ['alzheimers',"Alzheimer's Disease","Has experience assisting with Alzheimer's"],
+  ['bed_bound','Bed Bound','Has experience assisting bed bound clients'],
+  ['cats','Cats','Okay working with cats'],
+  ['dementia','Dementia','Has experience assisting with Dementia'],
+  ['dogs','Dogs','Okay working with dogs'],
+  ['female_caregiver','Female Caregiver','Caregiver is a female'],
+  ['gait_belt','Gait Belt','Has gait belt experience'],
+  ['hospice','Hospice','Has experience assisting hospice clients'],
+  ['hoyer_lift','Hoyer Lift','Has Hoyer lift experience'],
+  ['live_in','Live-In','Available for live-in assignments'],
+  ['male_caregiver','Male Caregiver','Caregiver is a male'],
+  ['parkinsons',"Parkinson's Disease Experience","Has experience with Parkinson's clients"],
+  ['payor_medicaid','Payor - Medicaid','May be assigned to Medicaid IHS clients'],
+  ['payor_private_pay','Payor - Private Pay','May be assigned to private pay clients'],
+  ['personal_care','Personal Care','Comfortable with hands-on bathing, dressing, grooming, toileting, hygiene'],
+  ['smoking','Smoking','Okay with a client who smokes in the home'],
+  ['spanish_speaking','Spanish Speaking','Caregiver speaks Spanish'],
+  ['transportation','Transportation','Can transport the client in personal vehicle'],
+];
+const attrState={}; ATTRS.forEach(a=>attrState[a[0]]=true);
+let levelSel=null;
+
+function buildAttrs(){
+  document.getElementById('attrList').innerHTML=ATTRS.map(a=>
+    '<div class="attr"><div class="info"><b>'+a[1]+'</b><span>'+a[2]+'</span></div>'+
+    '<div class="yn" data-k="'+a[0]+'">'+
+    '<button type="button" class="yes on" onclick="setAttr(\''+a[0]+'\',true,this)">Yes</button>'+
+    '<button type="button" class="no" onclick="setAttr(\''+a[0]+'\',false,this)">No</button>'+
+    '</div></div>').join('');
+}
+function setAttr(k,v,btn){
+  attrState[k]=v;
+  const wrap=btn.parentElement;
+  wrap.querySelector('.yes').classList.toggle('on',v);
+  wrap.querySelector('.no').classList.toggle('on',!v);
+}
+document.addEventListener('click',e=>{
+  const b=e.target.closest('#lvlBtns button'); if(!b) return;
+  levelSel = (levelSel===Number(b.dataset.l)) ? null : Number(b.dataset.l);
+  document.querySelectorAll('#lvlBtns button').forEach(x=>x.classList.toggle('on',Number(x.dataset.l)===levelSel));
+});
+
+function cfg(){ try{return JSON.parse(localStorage.getItem('th_config')||'{}')}catch(e){return {}} }
+function normPhone(p){ const d=String(p||'').replace(/\D/g,''); if(d.length===10) return '+1'+d; if(d.length===11&&d[0]==='1') return '+'+d; return p?String(p).trim():''; }
+
+const sb=window.supabase.createClient(SHARED_URL,SHARED_ANON);
+let sessionEmail='';
+(async function init(){
+  buildAttrs();
+  document.getElementById('f_date').value=new Date().toISOString().slice(0,10);
+  const {data}=await sb.auth.getSession();
+  if(!data||!data.session){ document.getElementById('gateView').style.display='block'; return; }
+  sessionEmail=(data.session.user&&data.session.user.email)||'';
+  const guess={'samantha@mo-care.com':'Samantha','krystal@mo-care.com':'Krystal'}[sessionEmail.toLowerCase()];
+  if(guess) document.getElementById('f_by').value=guess;
+  let key=cfg().training_hub_key||'';
+  if(!key){
+    try{
+      const {data:row}=await sb.from('app_data').select('data').eq('key','team_hub_settings').single();
+      const items=(row&&row.data)||[];
+      const hc=items.find(x=>x.id==='hub_config');
+      if(hc&&hc.training_hub_key) key=hc.training_hub_key;
+    }catch(e){}
+  }
+  window._hubKey=key;
+  if(!key) document.getElementById('keyNotice').style.display='block';
+  document.getElementById('formView').style.display='block';
+})();
+
+async function submitOffer(){
+  const err=document.getElementById('errBox'); err.style.display='none';
+  const g=id=>document.getElementById(id).value.trim();
+  const first=g('f_first'), last=g('f_last');
+  if(!first||!last){ err.textContent='First and last name are required.'; err.style.display='block'; return; }
+  const phone=normPhone(g('f_phone')), email=g('f_email');
+  if(!phone&&!email){ err.textContent='Add a mobile phone or an email so the welcome message can reach them.'; err.style.display='block'; return; }
+  if(!window._hubKey){ err.textContent='This device is missing the training key — open the Team Hub once on this device first.'; err.style.display='block'; return; }
+  const rate=parseFloat(g('f_rate').replace(/[^0-9.]/g,''));
+  const offer={
+    first_name:first,last_name:last,phone:phone||null,email:email||null,
+    position:g('f_position'),interview_date:g('f_date')||null,
+    offered_by:g('f_by')||null,
+    pay_rate:isFinite(rate)&&rate>0?rate:null,
+    level_suggested:levelSel,
+    availability:g('f_avail')||null,experience:g('f_exp')||null,
+    personality:g('f_pers')||null,notes:g('f_notes')||null,
+    attributes:attrState,
+  };
+  const btn=document.getElementById('sendBtn');
+  btn.disabled=true; btn.textContent='Sending…';
+  try{
+    const r=await fetch(OFFER_API,{method:'POST',
+      headers:{'apikey':TRAINING_ANON,'Authorization':'Bearer '+TRAINING_ANON,'Content-Type':'application/json'},
+      body:JSON.stringify({key:window._hubKey,offer})});
+    const res=await r.json();
+    if(!r.ok||res.error) throw new Error(res.error||('save failed ('+r.status+')'));
+    showDone(offer,res);
+  }catch(e){
+    err.textContent='Could not send: '+(e&&e.message?e.message:'error');
+    err.style.display='block';
+    btn.disabled=false; btn.textContent='Send offer — welcome text goes out now';
+  }
+}
+
+function showDone(offer,res){
+  document.getElementById('formView').style.display='none';
+  const dv=document.getElementById('doneView'); dv.style.display='block';
+  document.getElementById('doneName').textContent=offer.first_name+' '+offer.last_name+' — '+offer.position+(offer.pay_rate?(' at $'+offer.pay_rate.toFixed(2)+'/hr'):'');
+  const steps=[];
+  steps.push(res.sms?['ok','Welcome roadmap TEXT sent — they know Viventium is coming next']:(offer.phone?['warn','Text did not send — mention the roadmap to them directly']:['warn','No phone given — no text sent']));
+  steps.push(res.email?['ok','Welcome roadmap EMAIL sent']:(offer.email?['warn','Email did not send']:['warn','No email given — no email sent']));
+  steps.push(res.axiscare?['ok','Created in AxisCare as an Applicant with the interview note attached']:['warn','AxisCare: '+(res.axiscare_error||'not pushed')+' — the record is saved here either way']);
+  steps.push(['ok','Interview record saved — the Staffing Hub shows the attribute checklist to enter in AxisCare']);
+  document.getElementById('stepList').innerHTML=steps.map(s=>'<div><span class="'+s[0]+'">'+(s[0]==='ok'?'✓':'!')+'</span><span>'+s[1]+'</span></div>').join('');
+  const viv=[
+    'First name: '+offer.first_name,
+    'Last name: '+offer.last_name,
+    'Mobile: '+(offer.phone||'—'),
+    'Email: '+(offer.email||'—'),
+    'Position: '+offer.position,
+    'Pay rate: '+(offer.pay_rate?('$'+offer.pay_rate.toFixed(2)+'/hr'):'—'),
+    'Offer date: '+(offer.interview_date||new Date().toISOString().slice(0,10)),
+    'Offered by: '+(offer.offered_by||'—'),
+  ].join('\n');
+  document.getElementById('vivBlock').textContent=viv;
+  window._viv=viv;
+}
+function copyViv(){
+  navigator.clipboard.writeText(window._viv||'').then(()=>{
+    const c=document.getElementById('copied'); c.style.display='inline';
+    setTimeout(()=>c.style.display='none',1800);
+  });
+}
+</script>
+</body>
+</html>
