@@ -776,27 +776,46 @@ async function loadRepliesWaiting(){
     const data = await r.json();
     if(!data || !Array.isArray(data.replies)){ box.style.display='none'; return; }
     if(!data.replies.length){ box.style.display='none'; box.innerHTML=''; return; }
-    const loc = data.location_id || 'Recp0AhyMh8lrtKJ9kaj';
-    const esc = t => String(t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
-    const ago = ms => { if(!ms) return ''; const m=Math.round((Date.now()-ms)/60000); if(m<60) return m+'m ago'; const h=Math.round(m/60); if(h<24) return h+'h ago'; return Math.round(h/24)+'d ago'; };
-    box.innerHTML =
-      '<div style="background:#fff7ed;border:1.5px solid #f59e0b;border-radius:12px;padding:.9rem 1.1rem;margin:0 0 1.1rem">'+
-      '<div style="font-size:.72rem;font-weight:700;color:#92400e;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.55rem">📨 GHL replies waiting ('+data.replies.length+(data.replies.length>=10?'+':'')+')</div>'+
-      data.replies.map((x,i)=>
-        '<div style="padding:.3rem 0">'+
-        '<div style="display:flex;align-items:center;gap:.6rem;font-size:.85rem;flex-wrap:wrap">'+
-        '<b style="color:var(--navy)">'+esc(x.name)+'</b>'+
-        '<span style="color:#57606a;flex:1;min-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">“'+esc(x.preview)+'”</span>'+
-        '<span style="color:#94a3b8;font-size:.72rem;white-space:nowrap">'+ago(x.at)+'</span>'+
-        '<button onclick="toggleThread('+i+')" style="font-size:.75rem;font-weight:600;color:#92400e;background:#fde68a;border:none;border-radius:6px;padding:.2rem .55rem;cursor:pointer;font-family:inherit">💬 View & reply</button>'+
-        '<button onclick="dismissReply('+i+')" id="done-'+i+'" title="No reply needed — mark it read in GHL and clear it from this list" style="font-size:.75rem;font-weight:600;color:#166534;background:#dcfce7;border:none;border-radius:6px;padding:.2rem .55rem;cursor:pointer;font-family:inherit">✓ Done</button>'+
-        '<a href="https://app.gohighlevel.com/v2/location/'+loc+'/conversations/conversations/'+encodeURIComponent(x.id)+'" target="_blank" rel="noopener" style="font-size:.75rem;font-weight:600;color:#1e40af;white-space:nowrap;text-decoration:none;border:1px solid #93c5fd;border-radius:6px;padding:.15rem .5rem">GHL ↗</a>'+
-        '</div>'+
-        '<div id="thread-'+i+'" data-conv="'+esc(x.id)+'" data-contact="'+esc(x.contact_id||'')+'" data-name="'+esc(x.name)+'" style="display:none;margin:.5rem 0 .3rem 1rem"></div>'+
-        '</div>').join('')+
-      '</div>';
+    window._repliesData = data;
+    renderReplies();
     box.style.display='block';
   }catch(e){ box.style.display='none'; }
+}
+
+/* The banner shows the 3 newest; "Show more" expands the rest so a busy
+   day doesn't push the whole dashboard down the page. */
+let repliesExpanded = false;
+function expandReplies(open){ repliesExpanded = open; renderReplies(); }
+function renderReplies(){
+  const box = document.getElementById('repliesWaiting');
+  const data = window._repliesData;
+  if(!box || !data || !Array.isArray(data.replies)) return;
+  const loc = data.location_id || 'Recp0AhyMh8lrtKJ9kaj';
+  const esc = t => String(t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  const ago = ms => { if(!ms) return ''; const m=Math.round((Date.now()-ms)/60000); if(m<60) return m+'m ago'; const h=Math.round(m/60); if(h<24) return h+'h ago'; return Math.round(h/24)+'d ago'; };
+  const SHOW = 3;
+  const hidden = Math.max(0, data.replies.length - SHOW);
+  const rows = (repliesExpanded || !hidden) ? data.replies : data.replies.slice(0, SHOW);
+  box.innerHTML =
+    '<div style="background:#fff7ed;border:1.5px solid #f59e0b;border-radius:12px;padding:.9rem 1.1rem;margin:0 0 1.1rem">'+
+    '<div style="font-size:.72rem;font-weight:700;color:#92400e;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.55rem">📨 Automation replies waiting ('+data.replies.length+(data.replies.length>=10?'+':'')+')</div>'+
+    rows.map((x,i)=>
+      '<div style="padding:.3rem 0">'+
+      '<div style="display:flex;align-items:center;gap:.6rem;font-size:.85rem;flex-wrap:wrap">'+
+      '<b style="color:var(--navy)">'+esc(x.name)+'</b>'+
+      '<span style="color:#57606a;flex:1;min-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">“'+esc(x.preview)+'”</span>'+
+      '<span style="color:#94a3b8;font-size:.72rem;white-space:nowrap">'+ago(x.at)+'</span>'+
+      '<button onclick="toggleThread('+i+')" style="font-size:.75rem;font-weight:600;color:#92400e;background:#fde68a;border:none;border-radius:6px;padding:.2rem .55rem;cursor:pointer;font-family:inherit">💬 View & reply</button>'+
+      '<button onclick="dismissReply('+i+')" id="done-'+i+'" title="No reply needed — mark it read in GHL and clear it from this list" style="font-size:.75rem;font-weight:600;color:#166534;background:#dcfce7;border:none;border-radius:6px;padding:.2rem .55rem;cursor:pointer;font-family:inherit">✓ Done</button>'+
+      '<a href="https://app.gohighlevel.com/v2/location/'+loc+'/conversations/conversations/'+encodeURIComponent(x.id)+'" target="_blank" rel="noopener" style="font-size:.75rem;font-weight:600;color:#1e40af;white-space:nowrap;text-decoration:none;border:1px solid #93c5fd;border-radius:6px;padding:.15rem .5rem">GHL ↗</a>'+
+      '</div>'+
+      '<div id="thread-'+i+'" data-conv="'+esc(x.id)+'" data-contact="'+esc(x.contact_id||'')+'" data-name="'+esc(x.name)+'" style="display:none;margin:.5rem 0 .3rem 1rem"></div>'+
+      '</div>').join('')+
+    (hidden
+      ? '<button onclick="expandReplies('+(repliesExpanded?'false':'true')+')" style="margin-top:.45rem;font-size:.75rem;font-weight:600;color:#92400e;background:none;border:1px solid #f59e0b;border-radius:6px;padding:.25rem .7rem;cursor:pointer;font-family:inherit">'+
+        (repliesExpanded ? '▴ Show fewer' : '▾ Show '+hidden+' more'+(data.replies.length>=10?'+':''))+'</button>'
+      : '')+
+    '</div>';
 }
 
 /* Thread viewer + reply box (VA-friendly: no GHL seat needed) */
