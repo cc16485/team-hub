@@ -76,6 +76,7 @@
   .daily-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start;}
   @media(max-width:980px){.daily-grid{grid-template-columns:1fr;}}
   .block.collapsed > *:not(.section-header){display:none;}
+  .block.collapsed .section-header button{display:none;}
   .chev{display:inline-block;transition:transform .15s ease;font-size:13px;opacity:.6;margin-left:4px;}
   .block:not(.collapsed) .chev{transform:rotate(90deg);}
   .quicklink-card.accent-blue{border-left-color:var(--blue);}
@@ -304,7 +305,7 @@
         </div>
         <div class="arrow">↗</div>
       </a>
-      <a class="quicklink-card accent-green soon" id="leadCaregiverHubLink" href="https://lead.mo-care.com" target="_blank" rel="noopener" title="Not built yet">
+      <a class="quicklink-card accent-green soon" id="leadCaregiverHubLink" href="https://lead.mo-care.com" target="_blank" rel="noopener" title="Not built yet" tabindex="-1" aria-disabled="true">
         <div class="icon-badge">🦺</div>
         <div>
           <div class="label">Lead Caregiver's Hub</div>
@@ -312,7 +313,7 @@
         </div>
         <div class="arrow">↗</div>
       </a>
-      <a class="quicklink-card accent-purple soon" id="nurseHubLink" href="https://nurse.mo-care.com" target="_blank" rel="noopener" title="Not built yet">
+      <a class="quicklink-card accent-purple soon" id="nurseHubLink" href="https://nurse.mo-care.com" target="_blank" rel="noopener" title="Not built yet" tabindex="-1" aria-disabled="true">
         <div class="icon-badge">🩺</div>
         <div>
           <div class="label">Nurse's Hub</div>
@@ -726,7 +727,12 @@ applyHubLinks();
    Settings — never committed to this public repo) and shows live counts. */
 const TRAINING_API = 'https://rdqujxiycycwhskyvrwa.supabase.co/rest/v1/rpc/hub_training_status';
 const TRAINING_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkcXVqeGl5Y3ljd2hza3l2cndhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMyMTg1NDgsImV4cCI6MjA5ODc5NDU0OH0.SFjAfj--b-tWrk8bMVLeM-tGwD8VBaPsEBtUAp5tPew';
+function appVisible(){
+  const a = document.getElementById('appScreen');
+  return !!a && a.style.display === 'block';
+}
 async function loadTrainingPulse(){
+  if(!appVisible()) return;
   const card = document.getElementById('trainingHubLink');
   if(!card) return;
   const sub = card.querySelector('.sub');
@@ -758,6 +764,7 @@ setInterval(loadTrainingPulse, 5*60*1000);
    (same read key). GHL stays the inbox — each row links straight into it. */
 const REPLIES_API = 'https://rdqujxiycycwhskyvrwa.supabase.co/functions/v1/ghl-replies';
 async function loadRepliesWaiting(){
+  if(!appVisible()) return;
   const box = document.getElementById('repliesWaiting');
   if(!box || !CONFIG.training_hub_key) return;
   try{
@@ -770,11 +777,11 @@ async function loadRepliesWaiting(){
     if(!data || !Array.isArray(data.replies)){ box.style.display='none'; return; }
     if(!data.replies.length){ box.style.display='none'; box.innerHTML=''; return; }
     const loc = data.location_id || 'Recp0AhyMh8lrtKJ9kaj';
-    const esc = t => String(t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const esc = t => String(t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
     const ago = ms => { if(!ms) return ''; const m=Math.round((Date.now()-ms)/60000); if(m<60) return m+'m ago'; const h=Math.round(m/60); if(h<24) return h+'h ago'; return Math.round(h/24)+'d ago'; };
     box.innerHTML =
       '<div style="background:#fff7ed;border:1.5px solid #f59e0b;border-radius:12px;padding:.9rem 1.1rem;margin:0 0 1.1rem">'+
-      '<div style="font-size:.72rem;font-weight:700;color:#92400e;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.55rem">📨 Replies waiting — automation line ('+data.replies.length+')</div>'+
+      '<div style="font-size:.72rem;font-weight:700;color:#92400e;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.55rem">📨 GHL replies waiting ('+data.replies.length+(data.replies.length>=10?'+':'')+')</div>'+
       data.replies.map((x,i)=>
         '<div style="padding:.3rem 0">'+
         '<div style="display:flex;align-items:center;gap:.6rem;font-size:.85rem;flex-wrap:wrap">'+
@@ -806,10 +813,11 @@ async function toggleThread(i){
     });
     const data=await r.json();
     if(!data||!Array.isArray(data.thread)) throw new Error(data&&data.error?data.error:'no thread');
-    const esc=t=>String(t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const esc=t=>String(t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
     const fmt=iso=>{try{return new Date(iso).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}catch(e){return ''}};
     el.innerHTML=
       '<div style="max-height:260px;overflow-y:auto;display:flex;flex-direction:column;gap:.35rem;padding:.5rem;background:#fff;border:1px solid #fcd34d;border-radius:8px">'+
+      (data.thread.length>=25?'<div style="align-self:center;font-size:.68rem;color:#94a3b8">Showing the last 25 messages — open GHL for the full history</div>':'')+
       data.thread.map(m=>
         '<div style="align-self:'+(m.direction==='inbound'?'flex-start':'flex-end')+';max-width:85%;background:'+(m.direction==='inbound'?'#f1f5f9':'#0E3860')+';color:'+(m.direction==='inbound'?'#1f2a36':'#fff')+';border-radius:10px;padding:.4rem .65rem;font-size:.8rem;white-space:pre-wrap">'+esc(m.body)+
         '<div style="font-size:.62rem;opacity:.65;margin-top:.15rem">'+fmt(m.at)+'</div></div>').join('')+
@@ -889,6 +897,8 @@ async function signIn(){
   document.getElementById('appScreen').style.display = 'block';
   await loadAllData();
   applyCloudConfig();
+  loadTrainingPulse();
+  loadRepliesWaiting();
   await flushPendingSync();
   renderAll();
 }
@@ -907,7 +917,7 @@ function applyCloudConfig(){
   const cloud = (DATA.team_hub_settings||[]).find(x => x.id === 'hub_config');
   if(!cloud) return;
   let changed = false;
-  CLOUD_CFG_FIELDS.forEach(f => { if(cloud[f] && CONFIG[f] !== cloud[f]){ CONFIG[f] = cloud[f]; changed = true; } });
+  CLOUD_CFG_FIELDS.forEach(f => { if(Object.prototype.hasOwnProperty.call(cloud, f) && CONFIG[f] !== cloud[f]){ CONFIG[f] = cloud[f]; changed = true; } });
   if(changed){
     localStorage.setItem('th_config', JSON.stringify(CONFIG));
     applyHubLinks();
@@ -1854,6 +1864,8 @@ document.addEventListener('keydown', e=>{
       isOwner().then(ok => { const b = document.getElementById('settingsBtn'); if(b && !ok) b.style.display = 'none'; });
       await loadAllData();
       applyCloudConfig();
+      loadTrainingPulse();
+      loadRepliesWaiting();
       await flushPendingSync();
       renderAll();
     }
