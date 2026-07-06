@@ -760,16 +760,71 @@ async function loadRepliesWaiting(){
     box.innerHTML =
       '<div style="background:#fff7ed;border:1.5px solid #f59e0b;border-radius:12px;padding:.9rem 1.1rem;margin:0 0 1.1rem">'+
       '<div style="font-size:.72rem;font-weight:700;color:#92400e;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.55rem">📨 Replies waiting — automation line ('+data.replies.length+')</div>'+
-      data.replies.map(x=>
-        '<div style="display:flex;align-items:center;gap:.6rem;padding:.3rem 0;font-size:.85rem;flex-wrap:wrap">'+
+      data.replies.map((x,i)=>
+        '<div style="padding:.3rem 0">'+
+        '<div style="display:flex;align-items:center;gap:.6rem;font-size:.85rem;flex-wrap:wrap">'+
         '<b style="color:var(--navy)">'+esc(x.name)+'</b>'+
         '<span style="color:#57606a;flex:1;min-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">“'+esc(x.preview)+'”</span>'+
         '<span style="color:#94a3b8;font-size:.72rem;white-space:nowrap">'+ago(x.at)+'</span>'+
-        '<a href="https://app.gohighlevel.com/v2/location/'+loc+'/conversations/conversations/'+encodeURIComponent(x.id)+'" target="_blank" rel="noopener" style="font-size:.75rem;font-weight:600;color:#1e40af;white-space:nowrap;text-decoration:none;border:1px solid #93c5fd;border-radius:6px;padding:.15rem .5rem">Open in GHL ↗</a>'+
+        '<button onclick="toggleThread('+i+')" style="font-size:.75rem;font-weight:600;color:#92400e;background:#fde68a;border:none;border-radius:6px;padding:.2rem .55rem;cursor:pointer;font-family:inherit">💬 View & reply</button>'+
+        '<a href="https://app.gohighlevel.com/v2/location/'+loc+'/conversations/conversations/'+encodeURIComponent(x.id)+'" target="_blank" rel="noopener" style="font-size:.75rem;font-weight:600;color:#1e40af;white-space:nowrap;text-decoration:none;border:1px solid #93c5fd;border-radius:6px;padding:.15rem .5rem">GHL ↗</a>'+
+        '</div>'+
+        '<div id="thread-'+i+'" data-conv="'+esc(x.id)+'" data-contact="'+esc(x.contact_id||'')+'" data-name="'+esc(x.name)+'" style="display:none;margin:.5rem 0 .3rem 1rem"></div>'+
         '</div>').join('')+
       '</div>';
     box.style.display='block';
   }catch(e){ box.style.display='none'; }
+}
+
+/* Thread viewer + reply box (VA-friendly: no GHL seat needed) */
+async function toggleThread(i){
+  const el=document.getElementById('thread-'+i);
+  if(!el) return;
+  if(el.style.display!=='none'){ el.style.display='none'; return; }
+  el.style.display='block';
+  el.innerHTML='<div style="font-size:.8rem;color:#94a3b8">Loading conversation…</div>';
+  try{
+    const r=await fetch('https://rdqujxiycycwhskyvrwa.supabase.co/functions/v1/ghl-thread',{
+      method:'POST',
+      headers:{'apikey':TRAINING_ANON,'Authorization':'Bearer '+TRAINING_ANON,'Content-Type':'application/json'},
+      body:JSON.stringify({key:CONFIG.training_hub_key,conversation_id:el.dataset.conv})
+    });
+    const data=await r.json();
+    if(!data||!Array.isArray(data.thread)) throw new Error(data&&data.error?data.error:'no thread');
+    const esc=t=>String(t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const fmt=iso=>{try{return new Date(iso).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}catch(e){return ''}};
+    el.innerHTML=
+      '<div style="max-height:260px;overflow-y:auto;display:flex;flex-direction:column;gap:.35rem;padding:.5rem;background:#fff;border:1px solid #fcd34d;border-radius:8px">'+
+      data.thread.map(m=>
+        '<div style="align-self:'+(m.direction==='inbound'?'flex-start':'flex-end')+';max-width:85%;background:'+(m.direction==='inbound'?'#f1f5f9':'#0E3860')+';color:'+(m.direction==='inbound'?'#1f2a36':'#fff')+';border-radius:10px;padding:.4rem .65rem;font-size:.8rem;white-space:pre-wrap">'+esc(m.body)+
+        '<div style="font-size:.62rem;opacity:.65;margin-top:.15rem">'+fmt(m.at)+'</div></div>').join('')+
+      '</div>'+
+      '<div style="display:flex;gap:.4rem;margin-top:.45rem">'+
+      '<input id="reply-'+i+'" type="text" placeholder="Type a reply to '+esc(el.dataset.name)+'…" style="flex:1;padding:.45rem .65rem;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:.82rem" onkeydown="if(event.key===\'Enter\')sendReply('+i+')">'+
+      '<button onclick="sendReply('+i+')" style="background:var(--navy);color:#fff;border:none;border-radius:8px;padding:.45rem .9rem;font-family:inherit;font-size:.8rem;font-weight:600;cursor:pointer">Send</button>'+
+      '</div>';
+  }catch(e){ el.innerHTML='<div style="font-size:.8rem;color:#b91c1c">Could not load the conversation: '+(e&&e.message?e.message:'error')+'</div>'; }
+}
+async function sendReply(i){
+  const el=document.getElementById('thread-'+i);
+  const input=document.getElementById('reply-'+i);
+  if(!el||!input||!input.value.trim()) return;
+  const btn=el.querySelector('button');
+  const msg=input.value.trim();
+  if(btn){btn.textContent='Sending…';btn.disabled=true;}
+  try{
+    const r=await fetch('https://rdqujxiycycwhskyvrwa.supabase.co/functions/v1/ghl-reply',{
+      method:'POST',
+      headers:{'apikey':TRAINING_ANON,'Authorization':'Bearer '+TRAINING_ANON,'Content-Type':'application/json'},
+      body:JSON.stringify({key:CONFIG.training_hub_key,contact_id:el.dataset.contact,message:msg})
+    });
+    const data=await r.json();
+    if(!data||data.error) throw new Error(data&&data.error?data.error:'send failed');
+    input.value='';
+    await toggleThread(i); await toggleThread(i); // reload the thread
+    setTimeout(loadRepliesWaiting, 1200); // replied → drops off the waiting list
+  }catch(e){ alert('Could not send: '+(e&&e.message?e.message:'error')); }
+  finally{ if(btn){btn.textContent='Send';btn.disabled=false;} }
 }
 loadRepliesWaiting();
 setInterval(loadRepliesWaiting, 5*60*1000);
