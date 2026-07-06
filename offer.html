@@ -137,6 +137,10 @@
     <p class="sub">Copy this block — it's everything Viventium asks for at the offer step.</p>
     <pre id="vivBlock"></pre>
     <div style="text-align:center"><button class="copybtn" onclick="copyViv()">📋 Copy for Viventium</button> <span id="copied" style="color:var(--green);font-size:13px;font-weight:700;display:none">Copied!</span></div>
+    <div style="text-align:center;margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
+      <button class="copybtn" id="vivDoneBtn" onclick="markViventium()" style="border-color:var(--green);color:var(--green)">☑ I've entered them in Viventium</button>
+      <div style="font-size:11.5px;color:var(--muted);margin-top:7px">This starts the watch: if they don't finish their Step 1 paperwork, they get an automatic reminder every 3 days (up to 3), then Samantha gets an email.</div>
+    </div>
   </div>
   <div style="text-align:center">
     <button class="copybtn" onclick="location.reload()">＋ Offer another</button>
@@ -256,6 +260,7 @@ async function submitOffer(){
 }
 
 function showDone(offer,res){
+  window._offerId=res.id||null;
   document.getElementById('formView').style.display='none';
   const dv=document.getElementById('doneView'); dv.style.display='block';
   document.getElementById('doneName').textContent=offer.first_name+' '+offer.last_name+' — '+offer.position+(offer.pay_rate?(' at $'+offer.pay_rate.toFixed(2)+'/hr'):'');
@@ -283,6 +288,24 @@ function copyViv(){
     const c=document.getElementById('copied'); c.style.display='inline';
     setTimeout(()=>c.style.display='none',1800);
   });
+}
+async function markViventium(){
+  const btn=document.getElementById('vivDoneBtn');
+  if(!window._offerId||!window._hubKey) return;
+  btn.disabled=true; btn.textContent='Saving…';
+  try{
+    const r=await fetch('https://rdqujxiycycwhskyvrwa.supabase.co/rest/v1/rpc/hub_offer_update',{
+      method:'POST',headers:{'apikey':TRAINING_ANON,'Authorization':'Bearer '+TRAINING_ANON,'Content-Type':'application/json'},
+      body:JSON.stringify({p_key:window._hubKey,p_id:window._offerId,p_viventium:true,
+        p_who:document.getElementById('f_by').value.trim()||sessionEmail||'staff'})});
+    const data=await r.json();
+    if(!data||data.error||data.ok===false) throw new Error((data&&data.error)||'save failed');
+    btn.textContent='✓ Viventium entry recorded — reminder watch is on';
+    btn.style.background='var(--green-bg)';
+  }catch(e){
+    btn.disabled=false; btn.textContent='☑ I\'ve entered them in Viventium';
+    alert('Could not save: '+(e&&e.message?e.message:'error'));
+  }
 }
 </script>
 </body>
