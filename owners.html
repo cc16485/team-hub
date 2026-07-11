@@ -85,7 +85,6 @@
 <section class="panel active" id="panel-growth">
   <h2>Growth &amp; Value</h2>
   <div class="muted" style="margin-bottom:1rem">The operating pulse, straight from AxisCare and the lead pipeline — the numbers a buyer will ask about first.</div>
-  <div id="growth-goal"></div>
   <div class="card noprint" id="growth-key-card" style="display:none">
     <b style="font-size:.9rem;color:var(--navy)">One-time setup</b>
     <div class="muted" style="margin:.25rem 0 .5rem">Paste the Training Hub read key (ask Samantha / it's in the other hubs' Settings) — stored only on this device.</div>
@@ -373,9 +372,7 @@ function renderMoney(){
           +'<div style="font-size:.82rem">'+pct+'% of the way. To sell for '+fmt$(goal)+' you need adjusted EBITDA of about <b>'+fmt$(needMonthly)+'/month</b>.</div>':'')
       :'<div class="muted" style="margin-top:.5rem">Enter your first month below and the valuation math starts.</div>')
     +'</div>';
-  // The goal fronts BOTH tabs — it's the number the whole hub points at.
   document.getElementById('money-goal').innerHTML=goalHtml;
-  const gg=document.getElementById('growth-goal'); if(gg) gg.innerHTML=goalHtml;
   document.getElementById('money-table').innerHTML = sorted.length ? '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:.82rem">'
     +'<tr style="text-align:left;color:var(--muted)"><th style="padding:.3rem .5rem">Month</th><th>Revenue</th><th>Caregiver pay</th><th>Gross margin</th><th>EBITDA</th><th>Adjusted</th></tr>'
     +sorted.map(s=>{ const c=snapCalc(s);
