@@ -74,7 +74,7 @@
 </header>
 <nav class="tabs">
   <button data-t="growth" class="active" onclick="go('growth',this)">📈 Growth &amp; Value</button>
-  <button data-t="money" onclick="go('money',this)">💰 Financials &amp; Sale Goal</button>
+  <button data-t="money" onclick="go('money',this)">💰 Financials</button>
   <button data-t="discipline" onclick="go('discipline',this)">📝 Discipline <span class="badge" id="b-disc" style="display:none"></span></button>
   <button data-t="offboarding" onclick="go('offboarding',this)">👋 Offboarding <span class="badge" id="b-off" style="display:none"></span></button>
   <button data-t="audits" onclick="go('audits',this)">🔍 Monthly Audits <span class="badge" id="b-aud" style="display:none"></span></button>
@@ -85,6 +85,7 @@
 <section class="panel active" id="panel-growth">
   <h2>Growth &amp; Value</h2>
   <div class="muted" style="margin-bottom:1rem">The operating pulse, straight from AxisCare and the lead pipeline — the numbers a buyer will ask about first.</div>
+  <div id="growth-goal"></div>
   <div class="card noprint" id="growth-key-card" style="display:none">
     <b style="font-size:.9rem;color:var(--navy)">One-time setup</b>
     <div class="muted" style="margin:.25rem 0 .5rem">Paste the Training Hub read key (ask Samantha / it's in the other hubs' Settings) — stored only on this device.</div>
@@ -359,7 +360,7 @@ function renderMoney(){
   const goal=OSET.goal_price||0;
   const pct=goal?Math.min(100,Math.max(0,Math.round(mid/goal*100))):0;
   const needMonthly=goal?goal/(((OSET.mult_low+OSET.mult_high)/2)*12):0;
-  document.getElementById('money-goal').innerHTML=
+  const goalHtml=
     '<div class="card" style="border-color:#D9A63C;background:#FFFDF5">'
     +'<div style="display:flex;align-items:center;gap:.7rem;flex-wrap:wrap">'
     +'<b style="font-size:1rem;color:var(--navy)">🎯 Sale goal: '+(goal?fmt$(goal):'not set yet')+'</b>'
@@ -372,6 +373,9 @@ function renderMoney(){
           +'<div style="font-size:.82rem">'+pct+'% of the way. To sell for '+fmt$(goal)+' you need adjusted EBITDA of about <b>'+fmt$(needMonthly)+'/month</b>.</div>':'')
       :'<div class="muted" style="margin-top:.5rem">Enter your first month below and the valuation math starts.</div>')
     +'</div>';
+  // The goal fronts BOTH tabs — it's the number the whole hub points at.
+  document.getElementById('money-goal').innerHTML=goalHtml;
+  const gg=document.getElementById('growth-goal'); if(gg) gg.innerHTML=goalHtml;
   document.getElementById('money-table').innerHTML = sorted.length ? '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:.82rem">'
     +'<tr style="text-align:left;color:var(--muted)"><th style="padding:.3rem .5rem">Month</th><th>Revenue</th><th>Caregiver pay</th><th>Gross margin</th><th>EBITDA</th><th>Adjusted</th></tr>'
     +sorted.map(s=>{ const c=snapCalc(s);
