@@ -114,6 +114,22 @@
       <button class="btn" onclick="saveSnapshot()">Save month</button>
     </div>
   </div>
+  <div class="card">
+    <div style="display:flex;align-items:center;gap:.7rem;flex-wrap:wrap">
+      <b style="font-size:.95rem;color:var(--navy)">📊 Budget — major expenses</b>
+      <span class="muted">what things should cost vs what they did</span>
+      <span style="flex:1"></span>
+      <label class="muted">actuals for <input type="month" id="bud-month" onchange="renderBudget()" style="font-size:.78rem"></label>
+    </div>
+    <div class="noprint" style="display:flex;gap:.6rem;flex-wrap:wrap;align-items:center;margin:.6rem 0;padding:.6rem;background:var(--bg);border-radius:10px">
+      <input id="bud-name" placeholder="Expense (e.g. Office rent, AxisCare, Workers comp)" style="flex:1;min-width:200px">
+      <select id="bud-cat"><option>Payroll & taxes</option><option>Insurance</option><option>Software & phones</option><option>Office & rent</option><option>Marketing</option><option>Vehicle & mileage</option><option>Other</option></select>
+      <label style="font-size:.78rem;font-weight:600">Budget $/mo <input type="number" id="bud-amt" style="width:100px"></label>
+      <button class="btn" onclick="addBudgetLine()">Add</button>
+    </div>
+    <div id="budget-table"><div class="muted">No budget lines yet — add your major expenses above.</div></div>
+  </div>
+
   <div class="card"><b style="font-size:.95rem;color:var(--navy)">Month by month</b><div id="money-table" style="margin-top:.5rem"></div></div>
   <div class="card">
     <div style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap">
@@ -191,7 +207,7 @@ const SUPA_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsIn
 const sb=window.supabase.createClient(SUPA_URL,SUPA_ANON);
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let ME={email:'',name:''};
-let ATT_EVENTS=[], DISC_ACTIONS=[], OFFBOARDINGS=[], AUDITS=[], STAFF_SETTINGS={}, LEADS=[], SNAPS=[], OSET={id:'main',mult_low:3,mult_high:5,goal_price:0,ready:{}};
+let ATT_EVENTS=[], DISC_ACTIONS=[], OFFBOARDINGS=[], AUDITS=[], STAFF_SETTINGS={}, LEADS=[], SNAPS=[], BUDGET=[], BUD_ACT=[], OSET={id:'main',mult_low:3,mult_high:5,goal_price:0,ready:{}};
 
 async function signIn(){
   const { error } = await sb.auth.signInWithPassword({ email:document.getElementById('si-email').value.trim(), password:document.getElementById('si-pass').value });
@@ -207,7 +223,7 @@ async function resetPw(){
 async function signOut(){ await sb.auth.signOut(); location.reload(); }
 
 async function loadAll(){
-  const { data } = await sb.from('app_data').select('key,data').in('key',['attendance_events','discipline_actions','offboardings','file_audits','settings','leads','finance_snapshots','owner_settings']);
+  const { data } = await sb.from('app_data').select('key,data').in('key',['attendance_events','discipline_actions','offboardings','file_audits','settings','leads','finance_snapshots','owner_settings','budget_lines','budget_actuals']);
   (data||[]).forEach(r=>{
     if(r.key==='attendance_events')  ATT_EVENTS=r.data||[];
     if(r.key==='discipline_actions') DISC_ACTIONS=r.data||[];
@@ -216,6 +232,8 @@ async function loadAll(){
     if(r.key==='settings')           STAFF_SETTINGS=r.data||{};
     if(r.key==='leads')              LEADS=r.data||[];
     if(r.key==='finance_snapshots')  SNAPS=r.data||[];
+    if(r.key==='budget_lines')       BUDGET=r.data||[];
+    if(r.key==='budget_actuals')     BUD_ACT=r.data||[];
     if(r.key==='owner_settings')     OSET=Object.assign(OSET,(r.data||[]).find(x=>x.id==='main')||{});
   });
 }
@@ -366,6 +384,75 @@ function renderMoney(){
     '<div class="checkrow"><input type="checkbox" '+(done[k]?'checked':'')+' onchange="toggleReady(\''+k+'\',this.checked)">'
     +'<div style="'+(done[k]?'color:var(--muted)':'')+'">'+label+'</div></div>').join('')
     +'<div class="muted" style="margin-top:.4rem">'+Object.values(done).filter(Boolean).length+'/'+READY_ITEMS.length+' — each one of these moves the multiple a buyer will pay.</div>';
+}
+
+/* ---------------- Budget (major expenses, budget vs actual) ---------------- */
+async function del(key,itemId){
+  const { error } = await sb.rpc('delete_app_data_item',{ target_key:key, item_id:itemId });
+  if(error){ alert('Could not delete — try again.'); throw error; }
+}
+async function addBudgetLine(){
+  const name=document.getElementById('bud-name').value.trim();
+  const amt=+document.getElementById('bud-amt').value||0;
+  if(!name||!amt){ alert('Name the expense and give it a monthly budget amount.'); return; }
+  const l={ id:'bl'+Date.now(), name, category:document.getElementById('bud-cat').value, monthly:amt, created_by:ME.name||ME.email };
+  BUDGET.push(l);
+  await save('budget_lines',l);
+  document.getElementById('bud-name').value=''; document.getElementById('bud-amt').value='';
+  renderBudget();
+}
+async function delBudgetLine(id){
+  const l=BUDGET.find(x=>x.id===id); if(!l) return;
+  if(!confirm('Remove "'+l.name+'" from the budget? (Past actuals stay saved.)')) return;
+  BUDGET=BUDGET.filter(x=>x.id!==id);
+  await del('budget_lines',id);
+  renderBudget();
+}
+async function setBudActual(lineId,val){
+  const month=document.getElementById('bud-month').value;
+  const id=month+'_'+lineId;
+  const amt=+val;
+  let a=BUD_ACT.find(x=>x.id===id);
+  if(!a){ a={id,month,line_id:lineId,amount:0}; BUD_ACT.push(a); }
+  a.amount=isNaN(amt)?0:amt; a.entered_by=ME.name||ME.email;
+  await save('budget_actuals',a);
+  renderBudget(true);
+}
+function renderBudget(keepFocus){
+  const mEl=document.getElementById('bud-month'); if(!mEl) return;
+  if(!mEl.value) mEl.value=new Date().toISOString().slice(0,7);
+  const month=mEl.value;
+  const wrap=document.getElementById('budget-table');
+  if(!BUDGET.length){ wrap.innerHTML='<div class="muted">No budget lines yet — add your major expenses above (rent, insurance, software, workers comp…).</div>'; return; }
+  const act=l=>{ const a=BUD_ACT.find(x=>x.id===month+'_'+l.id); return a?a.amount:null; };
+  const byCat={};
+  BUDGET.forEach(l=>{ (byCat[l.category]=byCat[l.category]||[]).push(l); });
+  let totB=0, totA=0, anyA=false;
+  const rows=Object.keys(byCat).sort().map(cat=>
+    '<tr style="background:var(--bg)"><td colspan="5" style="padding:.3rem .5rem;font-size:.7rem;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">'+esc(cat)+'</td></tr>'
+    +byCat[cat].map(l=>{
+      const a=act(l); totB+=l.monthly; if(a!=null){ totA+=a; anyA=true; }
+      const varc=a==null?'':(a-l.monthly);
+      const chip=a==null?'<span class="muted">—</span>'
+        :varc>0?'<span class="chip" style="background:var(--red-bg);color:var(--red)">'+fmt$(varc)+' over</span>'
+        :varc<0?'<span class="chip" style="background:var(--green-bg);color:var(--green)">'+fmt$(-varc)+' under</span>'
+        :'<span class="chip" style="background:var(--green-bg);color:var(--green)">on budget</span>';
+      return '<tr style="border-top:1px solid var(--border)">'
+        +'<td style="padding:.35rem .5rem">'+esc(l.name)+'</td>'
+        +'<td style="text-align:right">'+fmt$(l.monthly)+'</td>'
+        +'<td style="text-align:right"><input type="number" value="'+(a==null?'':a)+'" placeholder="actual" style="width:95px;text-align:right;font-size:.78rem;padding:.25rem .4rem" onchange="setBudActual(\''+l.id+'\',this.value)"></td>'
+        +'<td style="text-align:right">'+chip+'</td>'
+        +'<td class="noprint" style="text-align:right"><button class="linklike" style="color:var(--muted)" onclick="delBudgetLine(\''+l.id+'\')">✕</button></td></tr>';
+    }).join('')).join('');
+  const totVar=totA-totB;
+  wrap.innerHTML='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:.84rem">'
+    +'<tr style="text-align:left;color:var(--muted);font-size:.72rem"><th style="padding:.3rem .5rem">Expense</th><th style="text-align:right">Budget /mo</th><th style="text-align:right">Actual ('+esc(month)+')</th><th style="text-align:right">Variance</th><th class="noprint"></th></tr>'
+    +rows
+    +'<tr style="border-top:2px solid var(--navy);font-weight:800"><td style="padding:.4rem .5rem">Total</td><td style="text-align:right">'+fmt$(totB)+'</td>'
+    +'<td style="text-align:right">'+(anyA?fmt$(totA):'—')+'</td>'
+    +'<td style="text-align:right">'+(anyA?(totVar>0?'<span style="color:var(--red)">'+fmt$(totVar)+' over</span>':'<span style="color:var(--green)">'+fmt$(-totVar)+' under</span>'):'—')+'</td><td class="noprint"></td></tr>'
+    +'</table></div>'
+    +'<div class="muted" style="margin-top:.4rem">Fill actuals from QuickBooks as you do the monthly snapshot — the two should tell the same story. Caregiver payroll isn\'t budgeted here; it grows with revenue and lives in the snapshot above.</div>';
 }
 
 /* ---------------- Discipline Center ---------------- */
@@ -614,7 +701,7 @@ async function boot(){
   document.getElementById('app').style.display='block';
   await loadAll();
   renderDiscipline(); renderOffboarding(); renderAudits();
-  renderMoney(); renderFunnel(); loadGrowthPulse();
+  renderMoney(); renderBudget(); renderFunnel(); loadGrowthPulse();
 }
 boot();
 </script>
