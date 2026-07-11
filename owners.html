@@ -127,7 +127,7 @@
 <!-- ============ DISCIPLINE CENTER ============ -->
 <section class="panel" id="panel-discipline">
   <h2>Discipline Center</h2>
-  <div class="muted" style="margin-bottom:1rem">Write-ups are drafted in the Staffing Hub from logged events. Approve them here (or the care coordinators approve in their hub — same queue). Termination reviews wait for Samantha, always.</div>
+  <div class="muted" style="margin-bottom:1rem">Write-ups are drafted in the Staffing Hub from logged events. <b>Only Samantha or Zach can approve discipline</b> — warnings and terminations alike — here or on the CC Hub overview.</div>
   <div id="disc-pending"></div>
   <div class="card">
     <b style="font-size:.95rem;color:var(--navy)">Ladder board — where every caregiver stands</b>
@@ -386,12 +386,12 @@ function renderDiscipline(){
     ? '<div class="card" style="border-color:#E8B4B4;background:#FFFBFA">'
       +'<b style="font-size:.95rem;color:var(--red)">Awaiting approval ('+pend.length+')</b>'
       +pend.map(a=>{
-        const termHeld=a.level==='Termination Review'&&ME.email!=='samantha@mo-care.com';
+        const held=!DISC_APPROVERS.includes(ME.email);
         return '<div style="padding:.7rem 0;border-bottom:1px solid var(--border)">'
         +'<div style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;font-size:.88rem">'
         +'<b>'+esc(a.caregiver)+'</b><span class="chip" style="background:var(--red-bg);color:var(--red)">'+esc(a.level)+'</span>'
         +'<span class="muted" style="flex:1;min-width:150px">'+esc(a.reason||'')+'</span>'
-        +(termHeld?'<span class="muted" style="color:var(--amber)">🔒 waiting for Samantha — termination decisions are hers</span>'
+        +(held?'<span class="muted" style="color:var(--amber)">🔒 only Samantha or Zach can approve</span>'
           :'<button class="btn green" style="padding:.35rem .8rem;font-size:.75rem" onclick="approveWU(\''+a.id+'\')">✓ Approve</button>'
           +'<button class="btn ghost" style="padding:.35rem .8rem;font-size:.75rem" onclick="rejectWU(\''+a.id+'\')">↩ Send back</button>')
         +'</div>'
@@ -419,15 +419,17 @@ function renderDiscipline(){
   const b=document.getElementById('b-disc');
   b.style.display=pend.length?'inline':'none'; b.textContent=pend.length;
 }
+const DISC_APPROVERS=['samantha@mo-care.com','zach@mo-care.com'];
 async function approveWU(id){
   const a=DISC_ACTIONS.find(x=>x.id===id); if(!a) return;
-  if(a.level==='Termination Review'&&ME.email!=='samantha@mo-care.com'){ alert('Termination reviews wait for Samantha.'); return; }
+  if(!DISC_APPROVERS.includes(ME.email)){ alert('Only Samantha or Zach can approve discipline.'); return; }
   if(!confirm('Approve this '+a.level+' for '+a.caregiver+'? Your name goes on the approval.')) return;
   a.status='approved'; a.approved_by=ME.name||ME.email; a.approved_at=new Date().toISOString();
   await save('discipline_actions',a); renderDiscipline();
 }
 async function rejectWU(id){
   const a=DISC_ACTIONS.find(x=>x.id===id); if(!a) return;
+  if(!DISC_APPROVERS.includes(ME.email)){ alert('Only Samantha or Zach can act on discipline.'); return; }
   const why=prompt('Tell staffing what to change:',''); if(why===null) return;
   a.status='draft'; a.reject_note=why.trim()||'needs changes';
   await save('discipline_actions',a); renderDiscipline();
