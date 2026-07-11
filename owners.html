@@ -85,6 +85,7 @@
 <section class="panel active" id="panel-growth">
   <h2>Growth &amp; Value</h2>
   <div class="muted" style="margin-bottom:1rem">The operating pulse, straight from AxisCare and the lead pipeline — the numbers a buyer will ask about first.</div>
+  <div id="owner-inbox"></div>
   <div class="card noprint" id="growth-key-card" style="display:none">
     <b style="font-size:.9rem;color:var(--navy)">One-time setup</b>
     <div class="muted" style="margin:.25rem 0 .5rem">Paste the Training Hub read key (ask Samantha / it's in the other hubs' Settings) — stored only on this device.</div>
@@ -207,7 +208,7 @@ const SUPA_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsIn
 const sb=window.supabase.createClient(SUPA_URL,SUPA_ANON);
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let ME={email:'',name:''};
-let ATT_EVENTS=[], DISC_ACTIONS=[], OFFBOARDINGS=[], AUDITS=[], STAFF_SETTINGS={}, LEADS=[], SNAPS=[], BUDGET=[], BUD_ACT=[], OSET={id:'main',mult_low:3,mult_high:5,goal_price:0,ready:{}};
+let ATT_EVENTS=[], DISC_ACTIONS=[], OFFBOARDINGS=[], AUDITS=[], STAFF_SETTINGS={}, LEADS=[], SNAPS=[], BUDGET=[], BUD_ACT=[], OTASKS=[], OSET={id:'main',mult_low:3,mult_high:5,goal_price:0,ready:{}};
 
 async function signIn(){
   const { error } = await sb.auth.signInWithPassword({ email:document.getElementById('si-email').value.trim(), password:document.getElementById('si-pass').value });
@@ -223,7 +224,7 @@ async function resetPw(){
 async function signOut(){ await sb.auth.signOut(); location.reload(); }
 
 async function loadAll(){
-  const { data } = await sb.from('app_data').select('key,data').in('key',['attendance_events','discipline_actions','offboardings','file_audits','settings','leads','finance_snapshots','owner_settings','budget_lines','budget_actuals']);
+  const { data } = await sb.from('app_data').select('key,data').in('key',['attendance_events','discipline_actions','offboardings','file_audits','settings','leads','finance_snapshots','owner_settings','budget_lines','budget_actuals','staffing_tasks']);
   (data||[]).forEach(r=>{
     if(r.key==='attendance_events')  ATT_EVENTS=r.data||[];
     if(r.key==='discipline_actions') DISC_ACTIONS=r.data||[];
@@ -233,6 +234,7 @@ async function loadAll(){
     if(r.key==='leads')              LEADS=r.data||[];
     if(r.key==='finance_snapshots')  SNAPS=r.data||[];
     if(r.key==='budget_lines')       BUDGET=r.data||[];
+    if(r.key==='staffing_tasks')     OTASKS=r.data||[];
     if(r.key==='budget_actuals')     BUD_ACT=r.data||[];
     if(r.key==='owner_settings')     OSET=Object.assign(OSET,(r.data||[]).find(x=>x.id==='main')||{});
   });
@@ -385,6 +387,28 @@ function renderMoney(){
     '<div class="checkrow"><input type="checkbox" '+(done[k]?'checked':'')+' onchange="toggleReady(\''+k+'\',this.checked)">'
     +'<div style="'+(done[k]?'color:var(--muted)':'')+'">'+label+'</div></div>').join('')
     +'<div class="muted" style="margin-top:.4rem">'+Object.values(done).filter(Boolean).length+'/'+READY_ITEMS.length+' — each one of these moves the multiple a buyer will pay.</div>';
+}
+
+/* ---------------- Owner inbox — messages sent 'to the Owners' ------------- */
+function renderOwnerInbox(){
+  const box=document.getElementById('owner-inbox'); if(!box) return;
+  const open=OTASKS.filter(t=>t.direction==='to_owners'&&t.status==='open');
+  if(!open.length){ box.innerHTML=''; return; }
+  box.innerHTML='<div class="card" style="border-color:#E8B4B4;background:#FFFBFA">'
+    +'<b style="font-size:.95rem;color:var(--red)">📥 Sent to the Owners ('+open.length+')</b>'
+    +open.map(t=>'<div style="display:flex;align-items:flex-start;gap:.6rem;padding:.55rem 0;border-bottom:1px solid var(--border);font-size:.85rem;flex-wrap:wrap">'
+      +'<span>'+(t.kind==='update'?'ℹ️':'☑️')+'</span>'
+      +'<div style="flex:1;min-width:200px">'+(t.about?'<b>'+esc(t.about)+'</b> — ':'')+esc(t.message||'')
+      +'<div class="muted">'+esc(t.from_name||'')+' · '+esc(t.urgency||'')+' · '+new Date(t.created_at).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})+'</div></div>'
+      +'<button class="btn green" style="font-size:.75rem;padding:.3rem .8rem" onclick="ownerTaskDone(\''+t.id+'\')">Done ✓</button>'
+      +'</div>').join('')
+    +'</div>';
+}
+async function ownerTaskDone(id){
+  const t=OTASKS.find(x=>x.id===id); if(!t) return;
+  t.status='done'; t.done_at=new Date().toISOString(); t.done_by=ME.name||ME.email;
+  await save('staffing_tasks',t);
+  renderOwnerInbox();
 }
 
 /* ---------------- Budget (major expenses, budget vs actual) ---------------- */
@@ -702,7 +726,7 @@ async function boot(){
   document.getElementById('app').style.display='block';
   await loadAll();
   renderDiscipline(); renderOffboarding(); renderAudits();
-  renderMoney(); renderBudget(); renderFunnel(); loadGrowthPulse();
+  renderMoney(); renderBudget(); renderFunnel(); renderOwnerInbox(); loadGrowthPulse();
 }
 boot();
 </script>
