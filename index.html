@@ -285,7 +285,8 @@
   <main>
 
     <!-- Replies waiting on the automation (training) line — filled by loadRepliesWaiting -->
-    <div id="repliesWaiting" style="display:none"></div>
+    <!-- Automation replies moved to the Staffing Hub's 💬 Communication tab
+         (sc.mo-care.com) — that's the desk that answers them. -->
 
     <!-- ===================== QUICK LINKS ===================== -->
     <div class="quicklink-grid">
@@ -808,140 +809,9 @@ async function loadTrainingPulse(){
 loadTrainingPulse();
 setInterval(loadTrainingPulse, 5*60*1000);
 
-/* ---- Replies waiting on the automation line ----
-   Read-only peek via the training platform's secured ghl-replies function
-   (same read key). GHL stays the inbox — each row links straight into it. */
-const REPLIES_API = 'https://rdqujxiycycwhskyvrwa.supabase.co/functions/v1/ghl-replies';
-async function loadRepliesWaiting(){
-  if(!appVisible()) return;
-  const box = document.getElementById('repliesWaiting');
-  if(!box || !CONFIG.training_hub_key) return;
-  try{
-    const r = await fetch(REPLIES_API, {
-      method:'POST',
-      headers:{ 'apikey':TRAINING_ANON, 'Authorization':'Bearer '+TRAINING_ANON, 'Content-Type':'application/json' },
-      body: JSON.stringify({ key: CONFIG.training_hub_key })
-    });
-    const data = await r.json();
-    if(!data || !Array.isArray(data.replies)){ box.style.display='none'; return; }
-    if(!data.replies.length){ box.style.display='none'; box.innerHTML=''; return; }
-    window._repliesData = data;
-    renderReplies();
-    box.style.display='block';
-  }catch(e){ box.style.display='none'; }
-}
-
-/* The banner shows the 3 newest; "Show more" expands the rest so a busy
-   day doesn't push the whole dashboard down the page. */
-let repliesExpanded = false;
-function expandReplies(open){ repliesExpanded = open; renderReplies(); }
-function renderReplies(){
-  const box = document.getElementById('repliesWaiting');
-  const data = window._repliesData;
-  if(!box || !data || !Array.isArray(data.replies)) return;
-  const loc = data.location_id || 'Recp0AhyMh8lrtKJ9kaj';
-  const esc = t => String(t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
-  const ago = ms => { if(!ms) return ''; const m=Math.round((Date.now()-ms)/60000); if(m<60) return m+'m ago'; const h=Math.round(m/60); if(h<24) return h+'h ago'; return Math.round(h/24)+'d ago'; };
-  const SHOW = 3;
-  const hidden = Math.max(0, data.replies.length - SHOW);
-  const rows = (repliesExpanded || !hidden) ? data.replies : data.replies.slice(0, SHOW);
-  box.innerHTML =
-    '<div style="background:#fff7ed;border:1.5px solid #f59e0b;border-radius:12px;padding:.9rem 1.1rem;margin:0 0 1.1rem">'+
-    '<div style="font-size:.72rem;font-weight:700;color:#92400e;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.55rem">📨 Automation replies waiting ('+data.replies.length+(data.replies.length>=10?'+':'')+')</div>'+
-    rows.map((x,i)=>
-      '<div style="padding:.3rem 0">'+
-      '<div style="display:flex;align-items:center;gap:.6rem;font-size:.85rem;flex-wrap:wrap">'+
-      '<b style="color:var(--navy)">'+esc(x.name)+'</b>'+
-      '<span style="color:#57606a;flex:1;min-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">“'+esc(x.preview)+'”</span>'+
-      '<span style="color:#94a3b8;font-size:.72rem;white-space:nowrap">'+ago(x.at)+'</span>'+
-      '<button onclick="toggleThread('+i+')" style="font-size:.75rem;font-weight:600;color:#92400e;background:#fde68a;border:none;border-radius:6px;padding:.2rem .55rem;cursor:pointer;font-family:inherit">💬 View & reply</button>'+
-      '<button onclick="dismissReply('+i+')" id="done-'+i+'" title="No reply needed — mark it read in GHL and clear it from this list" style="font-size:.75rem;font-weight:600;color:#166534;background:#dcfce7;border:none;border-radius:6px;padding:.2rem .55rem;cursor:pointer;font-family:inherit">✓ Done</button>'+
-      '<a href="https://app.gohighlevel.com/v2/location/'+loc+'/conversations/conversations/'+encodeURIComponent(x.id)+'" target="_blank" rel="noopener" style="font-size:.75rem;font-weight:600;color:#1e40af;white-space:nowrap;text-decoration:none;border:1px solid #93c5fd;border-radius:6px;padding:.15rem .5rem">GHL ↗</a>'+
-      '</div>'+
-      '<div id="thread-'+i+'" data-conv="'+esc(x.id)+'" data-contact="'+esc(x.contact_id||'')+'" data-name="'+esc(x.name)+'" style="display:none;margin:.5rem 0 .3rem 1rem"></div>'+
-      '</div>').join('')+
-    (hidden
-      ? '<button onclick="expandReplies('+(repliesExpanded?'false':'true')+')" style="margin-top:.45rem;font-size:.75rem;font-weight:600;color:#92400e;background:none;border:1px solid #f59e0b;border-radius:6px;padding:.25rem .7rem;cursor:pointer;font-family:inherit">'+
-        (repliesExpanded ? '▴ Show fewer' : '▾ Show '+hidden+' more'+(data.replies.length>=10?'+':''))+'</button>'
-      : '')+
-    '</div>';
-}
-
-/* Thread viewer + reply box (VA-friendly: no GHL seat needed) */
-async function toggleThread(i){
-  const el=document.getElementById('thread-'+i);
-  if(!el) return;
-  if(el.style.display!=='none'){ el.style.display='none'; return; }
-  el.style.display='block';
-  el.innerHTML='<div style="font-size:.8rem;color:#94a3b8">Loading conversation…</div>';
-  try{
-    const r=await fetch('https://rdqujxiycycwhskyvrwa.supabase.co/functions/v1/ghl-thread',{
-      method:'POST',
-      headers:{'apikey':TRAINING_ANON,'Authorization':'Bearer '+TRAINING_ANON,'Content-Type':'application/json'},
-      body:JSON.stringify({key:CONFIG.training_hub_key,conversation_id:el.dataset.conv})
-    });
-    const data=await r.json();
-    if(!data||!Array.isArray(data.thread)) throw new Error(data&&data.error?data.error:'no thread');
-    const esc=t=>String(t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
-    const fmt=iso=>{try{return new Date(iso).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}catch(e){return ''}};
-    el.innerHTML=
-      '<div style="max-height:260px;overflow-y:auto;display:flex;flex-direction:column;gap:.35rem;padding:.5rem;background:#fff;border:1px solid #fcd34d;border-radius:8px">'+
-      (data.thread.length>=25?'<div style="align-self:center;font-size:.68rem;color:#94a3b8">Showing the last 25 messages — open GHL for the full history</div>':'')+
-      data.thread.map(m=>
-        '<div style="align-self:'+(m.direction==='inbound'?'flex-start':'flex-end')+';max-width:85%;background:'+(m.direction==='inbound'?'#f1f5f9':'#0E3860')+';color:'+(m.direction==='inbound'?'#1f2a36':'#fff')+';border-radius:10px;padding:.4rem .65rem;font-size:.8rem;white-space:pre-wrap">'+esc(m.body)+
-        '<div style="font-size:.62rem;opacity:.65;margin-top:.15rem">'+fmt(m.at)+'</div></div>').join('')+
-      '</div>'+
-      '<div style="display:flex;gap:.4rem;margin-top:.45rem">'+
-      '<input id="reply-'+i+'" type="text" placeholder="Type a reply to '+esc(el.dataset.name)+'…" style="flex:1;padding:.45rem .65rem;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:.82rem" onkeydown="if(event.key===\'Enter\')sendReply('+i+')">'+
-      '<button onclick="sendReply('+i+')" style="background:var(--navy);color:#fff;border:none;border-radius:8px;padding:.45rem .9rem;font-family:inherit;font-size:.8rem;font-weight:600;cursor:pointer">Send</button>'+
-      '</div>';
-  }catch(e){ el.innerHTML='<div style="font-size:.8rem;color:#b91c1c">Could not load the conversation: '+(e&&e.message?e.message:'error')+'</div>'; }
-}
-async function sendReply(i){
-  const el=document.getElementById('thread-'+i);
-  const input=document.getElementById('reply-'+i);
-  if(!el||!input||!input.value.trim()) return;
-  const btn=el.querySelector('button');
-  const msg=input.value.trim();
-  if(btn){btn.textContent='Sending…';btn.disabled=true;}
-  try{
-    const r=await fetch('https://rdqujxiycycwhskyvrwa.supabase.co/functions/v1/ghl-reply',{
-      method:'POST',
-      headers:{'apikey':TRAINING_ANON,'Authorization':'Bearer '+TRAINING_ANON,'Content-Type':'application/json'},
-      body:JSON.stringify({key:CONFIG.training_hub_key,contact_id:el.dataset.contact,message:msg})
-    });
-    const data=await r.json();
-    if(!data||data.error) throw new Error(data&&data.error?data.error:'send failed');
-    input.value='';
-    await toggleThread(i); await toggleThread(i); // reload the thread
-    setTimeout(loadRepliesWaiting, 1200); // replied → drops off the waiting list
-  }catch(e){ alert('Could not send: '+(e&&e.message?e.message:'error')); }
-  finally{ if(btn){btn.textContent='Send';btn.disabled=false;} }
-}
-/* "✓ Done" — no reply needed: mark the conversation read in GHL so it
-   drops off this list (and off the unread badge in GHL itself). */
-async function dismissReply(i){
-  const el=document.getElementById('thread-'+i);
-  const btn=document.getElementById('done-'+i);
-  if(!el) return;
-  if(!confirm('Clear "'+(el.dataset.name||'this message')+'" without replying? It will be marked read in GHL.')) return;
-  if(btn){btn.textContent='Clearing…';btn.disabled=true;}
-  try{
-    const r=await fetch('https://rdqujxiycycwhskyvrwa.supabase.co/functions/v1/ghl-reply',{
-      method:'POST',
-      headers:{'apikey':TRAINING_ANON,'Authorization':'Bearer '+TRAINING_ANON,'Content-Type':'application/json'},
-      body:JSON.stringify({key:CONFIG.training_hub_key,action:'dismiss',conversation_id:el.dataset.conv})
-    });
-    const data=await r.json();
-    if(!data||data.error) throw new Error(data&&data.error?data.error:'could not clear');
-    await loadRepliesWaiting(); // rebuilds the list without this one
-  }catch(e){
-    alert('Could not clear it: '+(e&&e.message?e.message:'error'));
-    if(btn){btn.textContent='✓ Done';btn.disabled=false;}
-  }
-}
-loadRepliesWaiting();
-setInterval(loadRepliesWaiting, 5*60*1000);
+/* Automation replies UI moved to the Staffing Hub (sc.mo-care.com),
+   Communication tab — the Staffing Coordinator answers that line. */
+function loadRepliesWaiting(){}
 
 // quick-add.html deploys alongside this file in the same repo, so it's
 // always at the same origin — no separate URL to configure.
