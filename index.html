@@ -11,13 +11,13 @@
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
 <style>
   :root{
-    --navy:#0E3860;
-    --navy-dark:#092744;
-    --bg:#F4F6F8;
+    --navy:#0D365F;
+    --navy-dark:#092647;
+    --bg:#faf9f6;
     --card:#FFFFFF;
-    --border:#E2E8F0;
-    --text:#1E293B;
-    --text-muted:#64748B;
+    --border:#e4e1d8;
+    --text:#16283a;
+    --text-muted:#55677a;
     --green:#15803D;
     --green-bg:#DCFCE7;
     --amber:#B45309;
@@ -211,7 +211,7 @@
   .add-portal-row label{margin:0 0 4px;}
 
   /* ---- Video Meeting ---- */
-  .video-card{padding:14px 16px;margin-bottom:14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:linear-gradient(180deg,#0E3860 0%,#0A2C4C 100%);color:#fff;}
+  .video-card{padding:14px 16px;margin-bottom:14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:linear-gradient(180deg,#0D365F 0%,#0A2C4C 100%);color:#fff;}
   .video-card .label{font-size:14px;font-weight:700;}
   .video-card .sub{font-size:12px;color:rgba(255,255,255,.75);margin-top:2px;}
   .video-card button.primary{background:#fff;color:var(--navy);}
@@ -736,12 +736,12 @@ function showSetNewPassword(){
   d.id='pwResetOverlay';
   d.style.cssText='position:fixed;inset:0;background:rgba(15,23,42,.78);display:flex;align-items:center;justify-content:center;z-index:9999;padding:16px';
   d.innerHTML='<div style="background:#fff;border-radius:14px;padding:26px;width:100%;max-width:360px;font-family:inherit">'
-    +'<h2 style="margin:0 0 6px;color:#0E3860;font-size:18px">Set a new password</h2>'
-    +'<p style="margin:0 0 14px;font-size:13px;color:#64748B">Your email link signed you in — now choose a new password.</p>'
-    +'<input id="pwNew1" type="password" placeholder="New password (8+ characters)" style="width:100%;box-sizing:border-box;padding:11px;border:1.5px solid #E2E8F0;border-radius:8px;font-size:16px;margin-bottom:8px;font-family:inherit">'
-    +'<input id="pwNew2" type="password" placeholder="Type it again" style="width:100%;box-sizing:border-box;padding:11px;border:1.5px solid #E2E8F0;border-radius:8px;font-size:16px;margin-bottom:10px;font-family:inherit">'
+    +'<h2 style="margin:0 0 6px;color:#0D365F;font-size:18px">Set a new password</h2>'
+    +'<p style="margin:0 0 14px;font-size:13px;color:#55677a">Your email link signed you in — now choose a new password.</p>'
+    +'<input id="pwNew1" type="password" placeholder="New password (8+ characters)" style="width:100%;box-sizing:border-box;padding:11px;border:1.5px solid #e4e1d8;border-radius:8px;font-size:16px;margin-bottom:8px;font-family:inherit">'
+    +'<input id="pwNew2" type="password" placeholder="Type it again" style="width:100%;box-sizing:border-box;padding:11px;border:1.5px solid #e4e1d8;border-radius:8px;font-size:16px;margin-bottom:10px;font-family:inherit">'
     +'<div id="pwErr" style="display:none;color:#DC2626;font-size:12.5px;margin-bottom:10px"></div>'
-    +'<button id="pwSaveBtn" style="width:100%;background:#0E3860;color:#fff;border:none;padding:12px;border-radius:999px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit">Save new password</button>'
+    +'<button id="pwSaveBtn" style="width:100%;background:#0D365F;color:#fff;border:none;padding:12px;border-radius:999px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit">Save new password</button>'
     +'</div>';
   document.body.appendChild(d);
   document.getElementById('pwSaveBtn').onclick=async function(){
