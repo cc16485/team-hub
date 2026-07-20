@@ -78,6 +78,7 @@
   <button data-t="discipline" onclick="go('discipline',this)">📝 Discipline <span class="badge" id="b-disc" style="display:none"></span></button>
   <button data-t="offboarding" onclick="go('offboarding',this)">👋 Offboarding <span class="badge" id="b-off" style="display:none"></span></button>
   <button data-t="audits" onclick="go('audits',this)">🔍 Monthly Audits <span class="badge" id="b-aud" style="display:none"></span></button>
+  <button data-t="feedback" onclick="go('feedback',this)">⭐ Feedback <span class="badge" id="b-fb" style="display:none"></span></button>
 </nav>
 <main>
 
@@ -193,6 +194,14 @@
   </div>
 </section>
 
+<!-- ============ FEEDBACK ============ -->
+<section class="panel" id="panel-feedback">
+  <h2>⭐ Feedback</h2>
+  <div class="muted" style="margin-bottom:1rem">Star check-ins from clients, families and caregivers, plus Caregiver of the Year nominations. Same live list as the Care Coordinator Hub, every entry also hit your email when it arrived.</div>
+  <div class="card noprint" style="margin-bottom:.75rem"><button class="btn" onclick="fbSeenAll()">Mark all as seen</button></div>
+  <div id="fb-list"><div class="muted">Loading…</div></div>
+</section>
+
 </main>
 </div>
 
@@ -213,7 +222,36 @@ let ATT_EVENTS=[], DISC_ACTIONS=[], OFFBOARDINGS=[], AUDITS=[], STAFF_SETTINGS={
 async function signIn(){
   const { error } = await sb.auth.signInWithPassword({ email:document.getElementById('si-email').value.trim(), password:document.getElementById('si-pass').value });
   if(error){ document.getElementById('si-err').textContent=error.message; return; }
-  boot();
+  function escFb(t){ return (t==null?'':String(t)).replace(/&/g,'&amp;').replace(/</g,'&lt;'); }
+function renderOwnersFeedback(){
+  const el=document.getElementById('fb-list'); if(!el) return;
+  const rows=(FEEDBACK||[]).slice().sort((a,b)=>(b.at||'').localeCompare(a.at||''));
+  const unseen=rows.filter(f=>!f.seen).length;
+  const badge=document.getElementById('b-fb');
+  if(badge){ badge.textContent=unseen; badge.style.display=unseen?'':'none'; }
+  if(!rows.length){ el.innerHTML='<div class="muted">Nothing yet. When someone taps a star in a check-in email or sends a nomination, it shows up here.</div>'; return; }
+  el.innerHTML=rows.map(f=>{
+    const low=f.kind==='rating'&&(f.rating||0)<=3;
+    const stars=f.kind==='nomination'?'🏆':'<span style="color:#F0A63A;letter-spacing:2px;">'+'★★★★★'.slice(0,f.rating||0)+'</span><span style="color:#d7dde4;letter-spacing:2px;">'+'★★★★★'.slice(0,5-(f.rating||0))+'</span>';
+    const when=f.at?new Date(f.at).toLocaleDateString('en-US',{month:'short',day:'numeric'}):'';
+    return '<div class="card" style="'+(f.seen?'':'border-left:4px solid #F0A63A;')+'margin-bottom:.6rem">'
+      +'<div style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap">'
+      +'<span style="font-size:1.05rem">'+stars+'</span>'
+      +'<b style="color:var(--navy)">'+escFb(f.kind==='nomination'?('Nomination: '+(f.caregiver||'(unnamed)')):(f.name||'No name given'))+'</b>'
+      +(low?'<span class="badge" style="background:#FDE8E8;color:#B23B2E">needs a call</span>':'<span class="muted" style="font-size:.8rem">'+escFb(f.who||'')+'</span>')
+      +(f.partial?'<span class="muted" style="font-size:.8rem">star tap only</span>':'')
+      +'<span class="muted" style="margin-left:auto;font-size:.8rem">'+when+'</span></div>'
+      +(f.message?'<div style="margin-top:.4rem;white-space:pre-wrap;font-size:.9rem">'+escFb(f.message)+'</div>':'')
+      +(f.contact?'<div class="muted" style="margin-top:.35rem;font-size:.85rem">Contact: '+escFb(f.contact)+'</div>':'')
+      +'<div class="noprint" style="margin-top:.5rem;display:flex;gap:.5rem">'
+      +(f.seen?'':'<button class="btn" onclick="fbSeen(\''+f.id+'\')">Mark seen</button>')
+      +'<button class="btn" style="background:#fff;color:var(--navy);border:1px solid #d7dde4" onclick="fbDel(\''+f.id+'\')">Delete</button></div></div>';
+  }).join('');
+}
+async function fbSeen(id){ const f=(FEEDBACK||[]).find(x=>x.id===id); if(!f) return; f.seen=true; await save('feedback',f); renderOwnersFeedback(); }
+async function fbSeenAll(){ for(const f of (FEEDBACK||[])){ if(!f.seen){ f.seen=true; await save('feedback',f); } } renderOwnersFeedback(); }
+async function fbDel(id){ if(!confirm('Delete this feedback entry? It disappears from both hubs.')) return; const { error } = await sb.rpc('delete_app_data_item',{ target_key:'feedback', item_id:id }); if(error){ alert('Could not delete.'); return; } FEEDBACK=(FEEDBACK||[]).filter(x=>x.id!==id); renderOwnersFeedback(); }
+boot();
 }
 async function resetPw(){
   const email=document.getElementById('si-email').value.trim();
@@ -224,7 +262,7 @@ async function resetPw(){
 async function signOut(){ await sb.auth.signOut(); location.reload(); }
 
 async function loadAll(){
-  const { data } = await sb.from('app_data').select('key,data').in('key',['attendance_events','discipline_actions','offboardings','file_audits','settings','leads','finance_snapshots','owner_settings','budget_lines','budget_actuals','staffing_tasks']);
+  const { data } = await sb.from('app_data').select('key,data').in('key',['attendance_events','discipline_actions','offboardings','file_audits','settings','leads','finance_snapshots','owner_settings','budget_lines','budget_actuals','staffing_tasks','feedback']);
   (data||[]).forEach(r=>{
     if(r.key==='attendance_events')  ATT_EVENTS=r.data||[];
     if(r.key==='discipline_actions') DISC_ACTIONS=r.data||[];
@@ -236,6 +274,7 @@ async function loadAll(){
     if(r.key==='budget_lines')       BUDGET=r.data||[];
     if(r.key==='staffing_tasks')     OTASKS=r.data||[];
     if(r.key==='budget_actuals')     BUD_ACT=r.data||[];
+    if(r.key==='feedback')           FEEDBACK=r.data||[];
     if(r.key==='owner_settings')     OSET=Object.assign(OSET,(r.data||[]).find(x=>x.id==='main')||{});
   });
 }
@@ -250,6 +289,7 @@ function go(t,btn){
 }
 
 /* ---------------- Growth & Value ---------------- */
+let FEEDBACK=[];
 const HUB_FN='https://rdqujxiycycwhskyvrwa.supabase.co/functions/v1/axiscare-open-shifts';
 const HUB_FN_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkcXVqeGl5Y3ljd2hza3l2cndhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMyMTg1NDgsImV4cCI6MjA5ODc5NDU0OH0.SFjAfj--b-tWrk8bMVLeM-tGwD8VBaPsEBtUAp5tPew';
 const fmt$=n=>'$'+Math.round(n||0).toLocaleString('en-US');
@@ -725,7 +765,7 @@ async function boot(){
   document.getElementById('signin').style.display='none';
   document.getElementById('app').style.display='block';
   await loadAll();
-  renderDiscipline(); renderOffboarding(); renderAudits();
+  renderDiscipline(); renderOffboarding(); renderAudits(); renderOwnersFeedback();
   renderMoney(); renderBudget(); renderFunnel(); renderOwnerInbox(); loadGrowthPulse();
 }
 boot();
