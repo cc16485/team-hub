@@ -73,12 +73,12 @@
   <button class="ghost btn" style="padding:.35rem .8rem" onclick="signOut()">Sign Out</button>
 </header>
 <nav class="tabs">
-  <button data-t="growth" class="active" onclick="go('growth',this)">📈 Growth &amp; Value</button>
-  <button data-t="money" onclick="go('money',this)">💰 Financials</button>
-  <button data-t="discipline" onclick="go('discipline',this)">📝 Discipline <span class="badge" id="b-disc" style="display:none"></span></button>
-  <button data-t="offboarding" onclick="go('offboarding',this)">👋 Offboarding <span class="badge" id="b-off" style="display:none"></span></button>
-  <button data-t="audits" onclick="go('audits',this)">🔍 Monthly Audits <span class="badge" id="b-aud" style="display:none"></span></button>
-  <button data-t="feedback" onclick="go('feedback',this)">⭐ Feedback <span class="badge" id="b-fb" style="display:none"></span></button>
+  <button data-t="growth" class="active" onclick="go('growth',this)"><svg aria-hidden="true" style="width:1.05em;height:1.05em;vertical-align:-0.16em;display:inline-block;"><use href="icons.svg#i-chart"/></svg> Growth &amp; Value</button>
+  <button data-t="money" onclick="go('money',this)"><svg aria-hidden="true" style="width:1.05em;height:1.05em;vertical-align:-0.16em;display:inline-block;"><use href="icons.svg#i-money"/></svg> Financials</button>
+  <button data-t="discipline" onclick="go('discipline',this)"><svg aria-hidden="true" style="width:1.05em;height:1.05em;vertical-align:-0.16em;display:inline-block;"><use href="icons.svg#i-doc"/></svg> Discipline <span class="badge" id="b-disc" style="display:none"></span></button>
+  <button data-t="offboarding" onclick="go('offboarding',this)"><svg aria-hidden="true" style="width:1.05em;height:1.05em;vertical-align:-0.16em;display:inline-block;"><use href="icons.svg#i-wave"/></svg> Offboarding <span class="badge" id="b-off" style="display:none"></span></button>
+  <button data-t="audits" onclick="go('audits',this)"><svg aria-hidden="true" style="width:1.05em;height:1.05em;vertical-align:-0.16em;display:inline-block;"><use href="icons.svg#i-search"/></svg> Monthly Audits <span class="badge" id="b-aud" style="display:none"></span></button>
+  <button data-t="feedback" onclick="go('feedback',this)"><svg aria-hidden="true" style="width:1.05em;height:1.05em;vertical-align:-0.16em;display:inline-block;"><use href="icons.svg#i-star"/></svg> Feedback <span class="badge" id="b-fb" style="display:none"></span></button>
 </nav>
 <main>
 
@@ -196,7 +196,7 @@
 
 <!-- ============ FEEDBACK ============ -->
 <section class="panel" id="panel-feedback">
-  <h2>⭐ Feedback</h2>
+  <h2><svg aria-hidden="true" style="width:1.05em;height:1.05em;vertical-align:-0.16em;display:inline-block;"><use href="icons.svg#i-star"/></svg> Feedback</h2>
   <div class="muted" style="margin-bottom:1rem">Star check-ins from clients, families and caregivers, plus Caregiver of the Year nominations. Same live list as the Care Coordinator Hub, every entry also hit your email when it arrived.</div>
   <div class="card noprint" style="margin-bottom:.75rem"><button class="btn" onclick="fbSeenAll()">Mark all as seen</button></div>
   <div id="fb-list"><div class="muted">Loading…</div></div>
