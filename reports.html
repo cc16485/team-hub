@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<title>Reports — Caring Companions & HomeTogether</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+:root{ --navy:#143A5E; --teal:#1E7A8C; --honey:#C9821C; --cream:#faf9f6; --border:#e3e0d8;
+  --ink:#1d2b38; --muted:#6b7a88; --card:#ffffff; }
+*{ box-sizing:border-box; }
+body{ margin:0; background:var(--cream); color:var(--ink);
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; }
+h1,h2{ font-family:Georgia,'Times New Roman',serif; color:var(--navy); }
+.topbar{ display:flex; align-items:center; gap:12px; padding:10px 20px; background:#fff;
+  border-bottom:1px solid var(--border); position:sticky; top:0; z-index:5; }
+.topbar h1{ font-size:1.05rem; margin:0; }
+.pill{ font-size:.72rem; color:var(--muted); border:1px solid var(--border); border-radius:999px; padding:2px 10px; }
+.spacer{ flex:1; }
+.btn{ border:1px solid var(--border); background:#fff; color:var(--navy); border-radius:8px;
+  padding:6px 14px; font-size:.82rem; cursor:pointer; }
+.btn.primary{ background:var(--teal); border-color:var(--teal); color:#fff; }
+main{ max-width:1080px; margin:0 auto; padding:18px 20px 60px; }
+section{ margin-top:26px; }
+section > h2{ font-size:1.15rem; margin:0 0 4px; }
+.sub{ color:var(--muted); font-size:.82rem; margin:0 0 12px; }
+.tiles{ display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:10px; }
+.tile{ background:var(--card); border:1px solid var(--border); border-radius:12px; padding:12px 14px; }
+.tile .n{ font-size:1.55rem; font-weight:700; color:var(--navy); line-height:1.1; }
+.tile .l{ font-size:.75rem; color:var(--muted); margin-top:3px; }
+.tile.accent{ border-left:4px solid var(--honey); }
+.tile.warn .n{ color:#B23B2E; }
+.chartcard{ background:var(--card); border:1px solid var(--border); border-radius:12px;
+  padding:14px 16px 8px; margin-top:12px; }
+.chartcard h3{ margin:0 0 2px; font-size:.9rem; color:var(--navy); font-family:inherit; }
+.chartcard .cnote{ font-size:.72rem; color:var(--muted); margin-bottom:6px; }
+.chartwrap{ position:relative; }
+svg text{ font-family:inherit; }
+details.tbl{ margin:4px 0 6px; font-size:.78rem; }
+details.tbl summary{ color:var(--muted); cursor:pointer; }
+details.tbl table{ border-collapse:collapse; margin-top:6px; }
+details.tbl td,details.tbl th{ border:1px solid var(--border); padding:3px 10px; font-size:.75rem; }
+#tooltip{ position:fixed; display:none; background:var(--navy); color:#fff; font-size:.75rem;
+  padding:4px 9px; border-radius:6px; pointer-events:none; z-index:20; white-space:nowrap; }
+/* sign-in */
+#gate{ min-height:100vh; display:flex; align-items:center; justify-content:center; }
+#gate .card{ background:#fff; border:1px solid var(--border); border-radius:14px; padding:28px;
+  width:min(360px,92vw); }
+#gate h1{ font-size:1.2rem; margin:0 0 2px; }
+#gate .muted{ color:var(--muted); font-size:.82rem; margin-bottom:14px; }
+#gate label{ font-size:.78rem; color:var(--muted); display:block; margin-top:10px; }
+#gate input{ width:100%; padding:9px 10px; border:1px solid var(--border); border-radius:8px;
+  font-size:.9rem; margin-top:3px; }
+#gate .err{ color:#B23B2E; font-size:.8rem; margin-top:8px; min-height:1em; }
+#app{ display:none; }
+@media print{ .noprint{ display:none; } body{ background:#fff; } }
+/* GHL embed: sidebar carries the brand */
+html.embedded .topbar .brandword{ display:none; }
+</style>
+</head>
+<body>
+
+<div id="gate">
+  <div class="card">
+    <h1>Business Reports</h1>
+    <div class="muted">Owners only · same login as your hubs</div>
+    <label>Email</label><input id="si-email" type="email" autocomplete="username">
+    <label>Password</label><input id="si-pass" type="password" autocomplete="current-password">
+    <button class="btn primary" style="width:100%;margin-top:16px;padding:10px;" onclick="signIn()">Sign In</button>
+    <div class="err" id="si-err"></div>
+  </div>
+</div>
+
+<div id="app">
+  <header class="topbar">
+    <span class="brandword" style="font-family:Georgia,serif;font-weight:700;color:var(--navy);">Caring Companions</span>
+    <h1>Business Reports</h1>
+    <span class="pill" id="stamp">…</span>
+    <div class="spacer"></div>
+    <button class="btn noprint" onclick="window.print()">Print</button>
+    <button class="btn noprint" onclick="loadReports()">Refresh</button>
+    <button class="btn noprint" onclick="signOut()">Sign Out</button>
+  </header>
+  <main id="content"><p class="sub" style="margin-top:24px">Loading your numbers…</p></main>
+</div>
+<div id="tooltip"></div>
+
+<script>
+const SUPA_URL='https://zngsgedlsxinbygwmxwn.supabase.co';
+const SUPA_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpuZ3NnZWRsc3hpbmJ5Z3dteHduIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1NDIzNDQsImV4cCI6MjA5ODExODM0NH0.L_31_UKdccyRH9n7p1GaBlZTqcJipB008H-GIvxwLxM';
+const sb=window.supabase.createClient(SUPA_URL,SUPA_ANON);
+
+(function(){ var emb=false; try{ emb=(window.self!==window.top); }catch(e){ emb=true; }
+  if(emb||/[?&]embed=1/.test(location.search)) document.documentElement.classList.add('embedded'); })();
+
+async function signIn(){
+  const { error } = await sb.auth.signInWithPassword({
+    email:document.getElementById('si-email').value.trim(),
+    password:document.getElementById('si-pass').value });
+  if(error){ document.getElementById('si-err').textContent=error.message; return; }
+  boot();
+}
+async function signOut(){ await sb.auth.signOut(); location.reload(); }
+
+async function boot(){
+  const { data:{ session } } = await sb.auth.getSession();
+  if(!session) return;
+  document.getElementById('gate').style.display='none';
+  document.getElementById('app').style.display='block';
+  loadReports();
+}
+
+async function loadReports(){
+  const { data:{ session } } = await sb.auth.getSession();
+  if(!session) return;
+  const el=document.getElementById('content');
+  try{
+    const r=await fetch(SUPA_URL+'/functions/v1/reports-rollup',{
+      method:'POST',
+      headers:{ 'Authorization':'Bearer '+session.access_token, 'Content-Type':'application/json', 'apikey':SUPA_ANON },
+      body:'{}' });
+    const d=await r.json();
+    if(!r.ok){ el.innerHTML='<p class="sub" style="margin-top:24px">'+(d.error||'Could not load reports.')+'</p>'; return; }
+    render(d);
+  }catch(e){ el.innerHTML='<p class="sub" style="margin-top:24px">Could not reach the reports service.</p>'; }
+}
+
+function tile(n,l,cls){ return '<div class="tile '+(cls||'')+'"><div class="n">'+n+'</div><div class="l">'+l+'</div></div>'; }
+
+/* Single-series weekly bar chart: thin teal bars, 4px rounded data-end, 2px gaps,
+   per-bar hover tooltip (hit target = full column), max bar direct-labeled. */
+function barChart(id,vals){
+  const W=560,H=120,P=18,n=vals.length,max=Math.max(1,...vals);
+  const bw=Math.min(34,(W-P*2)/n-8);
+  const step=(W-P*2)/n;
+  let bars='',hits='';
+  const labels=['7w ago','6w','5w','4w','3w','2w','last wk','this wk'];
+  for(let i=0;i<n;i++){
+    const h=Math.round((H-P*2)*vals[i]/max);
+    const x=P+i*step+(step-bw)/2, y=H-P-h;
+    bars+='<rect x="'+x+'" y="'+y+'" width="'+bw+'" height="'+Math.max(h,2)+'" rx="4" fill="#1E7A8C" opacity="'+(vals[i]?1:.18)+'"/>';
+    if(vals[i]===max&&max>0) bars+='<text x="'+(x+bw/2)+'" y="'+(y-5)+'" text-anchor="middle" font-size="11" fill="#1d2b38" font-weight="600">'+vals[i]+'</text>';
+    hits+='<rect class="hit" data-w="'+labels[i]+'" data-v="'+vals[i]+'" x="'+(P+i*step)+'" y="0" width="'+step+'" height="'+H+'" fill="transparent"/>';
+    bars+='<text x="'+(x+bw/2)+'" y="'+(H-4)+'" text-anchor="middle" font-size="9" fill="#6b7a88">'+labels[i]+'</text>';
+  }
+  return '<div class="chartwrap"><svg id="'+id+'" viewBox="0 0 '+W+' '+H+'" style="width:100%;max-width:'+W+'px;display:block">'
+    +'<line x1="'+P+'" y1="'+(H-P)+'" x2="'+(W-P)+'" y2="'+(H-P)+'" stroke="#e3e0d8"/>'
+    +bars+hits+'</svg></div>';
+}
+function dataTable(vals){
+  const labels=['7 wks ago','6 wks ago','5 wks ago','4 wks ago','3 wks ago','2 wks ago','Last week','This week'];
+  return '<details class="tbl"><summary>Show data</summary><table><tr>'+labels.map(l=>'<th>'+l+'</th>').join('')
+    +'</tr><tr>'+vals.map(v=>'<td>'+v+'</td>').join('')+'</tr></table></details>';
+}
+function chartCard(title,note,id,vals){
+  return '<div class="chartcard"><h3>'+title+'</h3><div class="cnote">'+note+'</div>'
+    +barChart(id,vals)+dataTable(vals)+'</div>';
+}
+
+function render(d){
+  const stamp=new Date(d.generated_at).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
+  document.getElementById('stamp').textContent='as of '+stamp;
+  const a=d.agency,t=d.tv,h=d.hire,tr=d.training,w=d.trends;
+  document.getElementById('content').innerHTML=
+   '<section><h2>Caring Companions — Agency</h2><p class="sub">Missouri home care operations</p><div class="tiles">'
+    +tile(a.leads_30d,'new leads · 30 days','accent')
+    +tile(a.leads_total,'leads all-time')
+    +tile(a.consults_30d,'consults booked · 30 days')
+    +tile(a.caregivers_total,'caregivers on roster')
+    +tile(a.referrers_total,'referral organizations')
+    +tile(a.checkins_30d,'client check-ins · 30 days')
+    +tile(a.supervisory_30d,'supervisory visits · 30 days')
+    +tile(a.discipline_open,'open corrective items',a.discipline_open?'warn':'')
+    +tile(a.feedback_30d,'feedback & stars · 30 days')
+   +'</div>'+chartCard('New agency leads by week','Weekly counts, last 8 weeks','c-leads',w.leads)+'</section>'
+
+   +'<section><h2>HomeTogether TV</h2><p class="sub">Nationwide device + virtual visits</p><div class="tiles">'
+    +tile(t.orders_30d,'orders · 30 days','accent')
+    +tile(t.orders_total,'orders all-time')
+    +tile(t.orders_new,'orders awaiting setup')
+    +tile(t.tickets_open,'support tickets open',t.tickets_open?'warn':'')
+    +tile(t.tickets_total,'tickets all-time')
+   +'</div>'+chartCard('TV orders by week','Weekly counts, last 8 weeks','c-tv',w.tv_orders)+'</section>'
+
+   +'<section><h2>HomeTogether Hire</h2><p class="sub">Direct-hire marketplace</p><div class="tiles">'
+    +tile(h.families_30d,'new families · 30 days','accent')
+    +tile(h.families_total,'families all-time')
+    +tile(h.founding_claimed,'founding spots claimed')
+    +tile(h.founding_left,'founding spots left')
+    +tile(h.members_active,'paying members')
+    +tile(h.caregivers_published,'caregivers live in directory')
+    +tile(h.caregivers_total,'caregiver signups')
+    +tile(h.jobs_total,'jobs posted')
+    +tile(h.applications_total,'applications')
+   +'</div>'+chartCard('New Hire families by week','Weekly counts, last 8 weeks','c-hire',w.hire_families)+'</section>'
+
+   +'<section><h2>Training</h2><p class="sub">training.mo-care.com · MO IHS hours</p><div class="tiles">'
+    +tile(tr.completions_30d,'course completions · 30 days','accent')
+    +tile(tr.hours_30d,'training hours · 30 days')
+    +tile(tr.hours_ytd,'training hours · year to date')
+    +tile(tr.roster_total,'learners on roster')
+   +'</div>'+chartCard('Course completions by week','Weekly counts, last 8 weeks','c-train',w.completions)+'</section>';
+  wireTooltips();
+}
+
+function wireTooltips(){
+  const tip=document.getElementById('tooltip');
+  document.querySelectorAll('rect.hit').forEach(rc=>{
+    rc.addEventListener('mousemove',e=>{
+      tip.style.display='block';
+      tip.textContent=rc.dataset.w+': '+rc.dataset.v;
+      tip.style.left=(e.clientX+12)+'px'; tip.style.top=(e.clientY-10)+'px';
+    });
+    rc.addEventListener('mouseleave',()=>{ tip.style.display='none'; });
+  });
+}
+
+sb.auth.onAuthStateChange(function(){});
+boot();
+</script>
+</body>
+</html>
