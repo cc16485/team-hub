@@ -1833,5 +1833,16 @@ document.addEventListener('keydown', e=>{
   }
 })();
 </script>
+<script>
+/* GHL embed polish: the GHL sidebar already carries the brand */
+(function(){
+  var emb=false; try{ emb=(window.self!==window.top); }catch(e){ emb=true; }
+  if(emb||/[?&]embed=1/.test(location.search)) document.documentElement.classList.add('embedded');
+})();
+</script>
+<style>
+html.embedded .topbar .logo-badge{ display:none; }
+html.embedded .topbar{ padding-top:6px; padding-bottom:6px; }
+</style>
 </body>
 </html>
