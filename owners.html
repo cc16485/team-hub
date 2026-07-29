@@ -61,6 +61,25 @@
   </div>
 </div>
 
+<!-- Shown to a signed-in staff member who isn't a founder. Every hub is now
+     visible to everyone inside GoHighLevel, which is deliberate for operational
+     work — but discipline files, pay and company financials are not that. -->
+<div id="notowner" style="display:none;min-height:70vh;align-items:center;justify-content:center;padding:2rem">
+  <div class="box" style="max-width:430px;text-align:center">
+    <div style="font-size:2rem">🔒</div>
+    <div style="font-weight:800;color:var(--navy);font-size:1.15rem;margin-top:.4rem">Owners only</div>
+    <p class="muted" style="margin:.7rem 0 1.1rem">
+      This page holds discipline records, company financials and the sale plan,
+      so it's limited to Samantha and Zach. Everything else in the hubs is open
+      to the whole office.
+    </p>
+    <div style="display:flex;gap:.5rem;justify-content:center;flex-wrap:wrap">
+      <a class="btn" style="text-decoration:none" href="https://hub.mo-care.com/">Back to Team Hub</a>
+      <button class="ghost btn" onclick="signOut()">Sign Out</button>
+    </div>
+  </div>
+</div>
+
 <div id="app">
 <header>
   <div>
@@ -222,7 +241,15 @@ let ATT_EVENTS=[], DISC_ACTIONS=[], OFFBOARDINGS=[], AUDITS=[], STAFF_SETTINGS={
 async function signIn(){
   const { error } = await sb.auth.signInWithPassword({ email:document.getElementById('si-email').value.trim(), password:document.getElementById('si-pass').value });
   if(error){ document.getElementById('si-err').textContent=error.message; return; }
-  function escFb(t){ return (t==null?'':String(t)).replace(/&/g,'&amp;').replace(/</g,'&lt;'); }
+  boot();
+}
+
+/* Owner feedback panel. These five were accidentally nested inside signIn(),
+   so none of them were global. boot() threw a ReferenceError on
+   renderOwnersFeedback, which silently killed every call after it — money,
+   budget, funnel, owner inbox and the growth pulse never rendered, and the
+   Mark seen / Delete buttons pointed at functions that didn't exist. */
+function escFb(t){ return (t==null?'':String(t)).replace(/&/g,'&amp;').replace(/</g,'&lt;'); }
 function renderOwnersFeedback(){
   const el=document.getElementById('fb-list'); if(!el) return;
   const rows=(FEEDBACK||[]).slice().sort((a,b)=>(b.at||'').localeCompare(a.at||''));
@@ -251,8 +278,7 @@ function renderOwnersFeedback(){
 async function fbSeen(id){ const f=(FEEDBACK||[]).find(x=>x.id===id); if(!f) return; f.seen=true; await save('feedback',f); renderOwnersFeedback(); }
 async function fbSeenAll(){ for(const f of (FEEDBACK||[])){ if(!f.seen){ f.seen=true; await save('feedback',f); } } renderOwnersFeedback(); }
 async function fbDel(id){ if(!confirm('Delete this feedback entry? It disappears from both hubs.')) return; const { error } = await sb.rpc('delete_app_data_item',{ target_key:'feedback', item_id:id }); if(error){ alert('Could not delete.'); return; } FEEDBACK=(FEEDBACK||[]).filter(x=>x.id!==id); renderOwnersFeedback(); }
-boot();
-}
+
 async function resetPw(){
   const email=document.getElementById('si-email').value.trim();
   if(!email){ document.getElementById('si-err').textContent='Type your email first, then click Forgot password.'; return; }
@@ -571,7 +597,17 @@ function renderDiscipline(){
   const b=document.getElementById('b-disc');
   b.style.display=pend.length?'inline':'none'; b.textContent=pend.length;
 }
-const DISC_APPROVERS=['samantha@mo-care.com','zach@mo-care.com'];
+// One list, two jobs: who may open this page at all, and who may approve
+// discipline. Add a founder here and nowhere else.
+const OWNERS=['samantha@mo-care.com','zach@mo-care.com'];
+const DISC_APPROVERS=OWNERS;
+
+// The app_data keys this page reads that must never be readable by regular
+// staff. The gate above is client-side and stops casual access; proper
+// enforcement is an RLS policy on these keys restricted to OWNERS. Until that
+// exists, treat the gate as a lock on the door, not a safe.
+const OWNER_KEYS=['discipline_actions','finance_snapshots','owner_settings',
+                  'budget_lines','budget_actuals','offboardings','file_audits'];
 async function approveWU(id){
   const a=DISC_ACTIONS.find(x=>x.id===id); if(!a) return;
   if(!DISC_APPROVERS.includes(ME.email)){ alert('Only Samantha or Zach can approve discipline.'); return; }
@@ -763,6 +799,17 @@ async function boot(){
   ME.name=ME.email.split('@')[0]; ME.name=ME.name[0].toUpperCase()+ME.name.slice(1);
   document.getElementById('who').textContent=ME.name;
   document.getElementById('signin').style.display='none';
+
+  // Owners gate. Until now the only check was "are you signed in", so any hub
+  // login that knew this URL could read discipline files and financials. Note
+  // this stops casual access, not a determined technical user — the real
+  // enforcement is RLS on the sensitive app_data keys (see OWNER_KEYS below).
+  if(!OWNERS.includes(ME.email)){
+    document.getElementById('notowner').style.display='flex';
+    document.getElementById('app').style.display='none';
+    return;                     // deliberately never loads the data
+  }
+
   document.getElementById('app').style.display='block';
   await loadAll();
   renderDiscipline(); renderOffboarding(); renderAudits(); renderOwnersFeedback();
