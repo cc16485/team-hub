@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<title>Admin — Caring Companions</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+:root{ --navy:#0D365F; --teal:#1F7A8C; --honey:#C17A12; --cream:#faf9f6; --panel:#f2f0e9;
+  --border:#e4e1d8; --ink:#2c3d4d; --muted:#6b7a88; --card:#ffffff; --red:#B23B2E; }
+*{ box-sizing:border-box; }
+body{ margin:0; background:var(--cream); color:var(--ink);
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; }
+h1,h2{ font-family:Georgia,'Times New Roman',serif; color:var(--navy); }
+.topbar{ display:flex; align-items:center; gap:12px; padding:10px 20px; background:#fff;
+  border-bottom:1px solid var(--border); position:sticky; top:0; z-index:5; }
+.topbar h1{ font-size:1.05rem; margin:0; }
+.spacer{ flex:1; }
+.pill{ font-size:.72rem; color:var(--muted); border:1px solid var(--border); border-radius:999px; padding:2px 10px; }
+.btn{ border:1px solid var(--border); background:#fff; color:var(--navy); border-radius:8px;
+  padding:6px 14px; font-size:.82rem; cursor:pointer; }
+.btn.primary{ background:var(--teal); border-color:var(--teal); color:#fff; }
+.btn.danger{ color:var(--red); }
+main{ max-width:920px; margin:0 auto; padding:18px 20px 80px; }
+section{ margin-top:26px; }
+section > h2{ font-size:1.15rem; margin:0 0 4px; }
+.sub{ color:var(--muted); font-size:.82rem; margin:0 0 12px; }
+.card{ background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px 18px; }
+.card + .card{ margin-top:10px; }
+label{ font-size:.76rem; color:var(--muted); display:block; margin-bottom:3px; }
+input,select{ padding:8px 10px; border:1px solid var(--border); border-radius:8px;
+  font-size:.86rem; font-family:inherit; width:100%; background:#fff; color:var(--ink); }
+.row{ display:grid; gap:10px; margin-bottom:10px; }
+table{ width:100%; border-collapse:collapse; font-size:.82rem; }
+th{ text-align:left; color:var(--muted); font-weight:600; font-size:.74rem;
+  border-bottom:1px solid var(--border); padding:6px 8px; }
+td{ padding:7px 8px; border-bottom:1px solid var(--border); vertical-align:middle; }
+.chip{ display:inline-block; font-size:.7rem; font-weight:700; padding:2px 8px; border-radius:999px; }
+.chip.ok{ background:#E1F1ED; color:var(--teal); }
+.chip.warn{ background:#FBF0DC; color:var(--honey); }
+.chip.bad{ background:#FDE8E8; color:var(--red); }
+.statusline{ display:flex; align-items:flex-start; gap:10px; padding:9px 0; border-bottom:1px solid var(--border); }
+.statusline:last-child{ border-bottom:none; }
+.statusline .what{ font-weight:600; color:var(--navy); min-width:190px; }
+.statusline .why{ color:var(--muted); font-size:.8rem; }
+.ref dt{ font-weight:700; color:var(--navy); font-size:.84rem; margin-top:10px; }
+.ref dd{ margin:2px 0 0; color:var(--muted); font-size:.8rem; }
+#gate{ min-height:100vh; display:flex; align-items:center; justify-content:center; }
+#gate .box{ background:#fff; border:1px solid var(--border); border-radius:14px; padding:28px; width:min(360px,92vw); }
+#gate .err{ color:var(--red); font-size:.8rem; margin-top:8px; min-height:1em; }
+#notadmin{ min-height:70vh; display:none; align-items:center; justify-content:center; padding:2rem; }
+#app{ display:none; }
+html.embedded .topbar .brandword{ display:none; }
+</style>
+</head>
+<body>
+
+<div id="gate">
+  <div class="box">
+    <div style="text-align:center;margin-bottom:1rem">
+      <div style="font-weight:800;color:var(--navy);font-size:1.15rem">Admin</div>
+      <div class="sub" style="margin:2px 0 0">Caring Companions system settings</div>
+    </div>
+    <label>Email</label><input id="si-email" type="email">
+    <label style="margin-top:10px">Password</label>
+    <input id="si-pass" type="password" onkeydown="if(event.key==='Enter')signIn()">
+    <button class="btn primary" style="width:100%;margin-top:14px" onclick="signIn()">Sign In</button>
+    <div class="err" id="si-err"></div>
+  </div>
+</div>
+
+<!-- Everything else in the hubs is open to the whole office on purpose. This
+     page changes how the system behaves, so it stays with the founders. -->
+<div id="notadmin">
+  <div class="card" style="max-width:430px;text-align:center">
+    <div style="font-size:2rem">🔒</div>
+    <div style="font-weight:800;color:var(--navy);font-size:1.1rem;margin-top:.4rem">Admin only</div>
+    <p class="sub" style="margin:.7rem 0 1.1rem">
+      This page controls how the whole system behaves, so it's limited to Samantha and Zach.
+      Everything else in the hubs is open to the office.
+    </p>
+    <a class="btn" style="text-decoration:none" href="https://hub.mo-care.com/">Back to Team Hub</a>
+    <button class="btn" onclick="signOut()">Sign Out</button>
+  </div>
+</div>
+
+<div id="app">
+  <div class="topbar">
+    <h1><span class="brandword">Caring Companions · </span>Admin</h1>
+    <span class="pill" id="whopill"></span>
+    <span class="spacer"></span>
+    <span class="pill" id="savepill">Saved</span>
+    <button class="btn" onclick="signOut()">Sign Out</button>
+  </div>
+
+  <main>
+    <section>
+      <h2>System status</h2>
+      <p class="sub">What is actually running right now. Anything switched off says so here rather than looking healthy and doing nothing.</p>
+      <div class="card" id="statusCard"></div>
+    </section>
+
+    <section>
+      <h2>Staff</h2>
+      <p class="sub">One list, shared by every hub. The email must be the address they sign into the hubs with, and the phone is what escalation texts.</p>
+      <div class="card">
+        <div id="staffTable"></div>
+        <div class="row" style="grid-template-columns:1.2fr 1.6fr 1fr .9fr auto;margin-top:14px">
+          <div><label>Name</label><input id="ns-name" placeholder="Krystal Land"></div>
+          <div><label>Hub sign-in email</label><input id="ns-email" placeholder="krystal@mo-care.com"></div>
+          <div><label>Mobile</label><input id="ns-phone" placeholder="(417) 555-0111"></div>
+          <div><label>Shift</label>
+            <select id="ns-shift">
+              <option value="">Not set</option><option value="day">Day 8 to 2</option>
+              <option value="evening">Evening 5 to 9</option><option value="manager">Manager</option>
+            </select>
+          </div>
+          <div style="display:flex;align-items:flex-end"><button class="btn primary" onclick="addStaff()">Add</button></div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Missed call chasing</h2>
+      <p class="sub">Missed calls are always captured and listed. These settings control whether anyone gets <b>texted</b> when one sits too long.</p>
+      <div class="card">
+        <div class="row" style="grid-template-columns:1fr 1fr">
+          <div>
+            <label>Chasing</label>
+            <select id="op-live">
+              <option value="false">Off. Capture and list only, nobody is texted</option>
+              <option value="true">On. Text whoever owns a call that is sitting</option>
+            </select>
+          </div>
+          <div>
+            <label>Backstop mobile (used when nobody is assigned)</label>
+            <input id="op-fallback" placeholder="(417) 555-0100">
+          </div>
+        </div>
+        <div class="row" style="grid-template-columns:1fr 1fr 1fr">
+          <div><label>Text the owner after (minutes)</label><input id="op-l1" type="number" min="1"></div>
+          <div><label>Then the backstop after (minutes)</label><input id="op-l2" type="number" min="1"></div>
+          <div><label>Ignore calls older than (hours)</label><input id="op-maxage" type="number" min="1"></div>
+        </div>
+        <p class="sub" style="margin:2px 0 12px">
+          The last one is a safety catch. It stops a backlog of old missed calls being texted out
+          all at once the day chasing is switched on.
+        </p>
+        <button class="btn primary" onclick="saveOps()">Save chasing settings</button>
+      </div>
+    </section>
+
+    <section>
+      <h2>On call</h2>
+      <p class="sub">Who catches things outside office hours. Used when a missed call has no owner yet.</p>
+      <div class="card">
+        <div id="oncallTable"></div>
+        <div class="row" style="grid-template-columns:1.6fr 1fr 1fr auto;margin-top:14px">
+          <div><label>Who</label><select id="oc-who"></select></div>
+          <div><label>From</label><input id="oc-start" type="date"></div>
+          <div><label>Through</label><input id="oc-end" type="date"></div>
+          <div style="display:flex;align-items:flex-end"><button class="btn primary" onclick="addOnCall()">Add</button></div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Where everything lives</h2>
+      <p class="sub">So nobody has to hunt. These are managed outside this page.</p>
+      <div class="card">
+        <dl class="ref" style="margin:0">
+          <dt>Staff logins</dt><dd>Supabase auth. A person needs a login before they can be assigned anything.</dd>
+          <dt>Phone numbers, texting, contacts</dt><dd>GoHighLevel. Note the office line is still on CareQB until it ports, and calls on it are invisible to the hubs.</dd>
+          <dt>Clients, schedules, EVV</dt><dd>AxisCare.</dd>
+          <dt>Interviews</dt><dd>Augusta, which books onto coordinators' Google Calendars.</dd>
+          <dt>Offers, onboarding paperwork, payroll</dt><dd>Viventium.</dd>
+          <dt>Orientation sessions and booking</dt><dd>Staffing Hub, Orientations tab.</dd>
+          <dt>Financials, discipline, sale plan</dt><dd>Owners Hub, founders only.</dd>
+          <dt>API keys and webhooks</dt><dd>Supabase edge function secrets. Not editable from any hub on purpose.</dd>
+        </dl>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+const SUPA_URL='https://zngsgedlsxinbygwmxwn.supabase.co';
+const SUPA_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpuZ3NnZWRsc3hpbmJ5Z3dteHduIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1NDIzNDQsImV4cCI6MjA5ODExODM0NH0.L_31_UKdccyRH9n7p1GaBlZTqcJipB008H-GIvxwLxM';
+const sb=window.supabase.createClient(SUPA_URL,SUPA_ANON);
+
+// Same list the Owners Hub uses. Add a founder here and there.
+const ADMINS=['samantha@mo-care.com','zach@mo-care.com'];
+
+let ME={email:''}, STAFF=[], ONCALL=[], OPS=null, OPSITEMS=[];
+
+(function(){ let emb=false; try{ emb=(window.self!==window.top); }catch(e){ emb=true; }
+  if(emb||/[?&]embed=1/.test(location.search)) document.documentElement.classList.add('embedded'); })();
+
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid=p=>p+Date.now().toString(36)+Math.floor(Math.random()*1e4).toString(36);
+function say(t){ const el=document.getElementById('savepill'); if(el) el.textContent=t; }
+
+async function signIn(){
+  const { error } = await sb.auth.signInWithPassword({
+    email:document.getElementById('si-email').value.trim(),
+    password:document.getElementById('si-pass').value });
+  if(error){ document.getElementById('si-err').textContent=error.message; return; }
+  boot();
+}
+async function signOut(){ await sb.auth.signOut(); location.reload(); }
+
+async function readKey(key){
+  const { data } = await sb.from('app_data').select('data').eq('key',key).maybeSingle();
+  return data ? data.data : null;
+}
+async function saveItem(key,item){
+  say('Saving…');
+  const { error } = await sb.rpc('upsert_app_data_item',{ target_key:key, item });
+  say(error ? 'Not saved' : 'Saved');
+  if(error) alert('Could not save. Check your connection and try again.');
+  return !error;
+}
+async function deleteItem(key,id){
+  say('Saving…');
+  const { error } = await sb.rpc('delete_app_data_item',{ target_key:key, item_id:id });
+  say(error ? 'Not saved' : 'Saved');
+  return !error;
+}
+async function saveWhole(key,data){
+  say('Saving…');
+  const { error } = await sb.from('app_data')
+    .upsert({ key, data, updated_at:new Date().toISOString() },{ onConflict:'key' });
+  say(error ? 'Not saved' : 'Saved');
+  if(error) alert('Could not save. Check your connection and try again.');
+  return !error;
+}
+
+/* ── status ─────────────────────────────────────────────────────────────── */
+function line(state,what,why){
+  const chip = state==='ok' ? '<span class="chip ok">On</span>'
+             : state==='warn' ? '<span class="chip warn">Partly</span>'
+             : '<span class="chip bad">Off</span>';
+  return '<div class="statusline">'+chip+'<div><div class="what">'+what+'</div>'
+       + (why?'<div class="why">'+why+'</div>':'')+'</div></div>';
+}
+function renderStatus(){
+  const withPhone=STAFF.filter(s=>s.phone).length;
+  const open=(OPSITEMS||[]).filter(i=>i.status==='open').length;
+  const cfg=OPS||{};
+  const canReach = withPhone>0 || !!cfg.fallback_phone;
+  let html='';
+  html+=line('ok','Capturing missed calls','Every unanswered inbound call becomes an item. '+open+' open right now.');
+  html+=line(STAFF.length?(withPhone?'ok':'warn'):'bad','Assigning an owner',
+        STAFF.length ? (withPhone? STAFF.length+' on the staff list, '+withPhone+' with a mobile.'
+                                 : STAFF.length+' on the staff list but none have a mobile, so nobody can be texted.')
+                     : 'Nobody is on the staff list yet, so calls cannot be assigned.');
+  html+=line(cfg.live?(canReach?'ok':'warn'):'bad','Chasing what is sitting',
+        cfg.live ? (canReach?'Owners get a text when a call sits too long.'
+                            :'Chasing is on but there is no mobile to text, so nothing is sent.')
+                 : 'Switched off. Calls are still captured and listed, nobody is texted.');
+  html+=line(ONCALL.length?'ok':'warn','On call cover',
+        ONCALL.length? ONCALL.length+' period(s) scheduled.' : 'Nothing scheduled, so out of hours calls fall to the backstop number.');
+  document.getElementById('statusCard').innerHTML=html;
+}
+
+/* ── staff ──────────────────────────────────────────────────────────────── */
+function renderStaff(){
+  const el=document.getElementById('staffTable');
+  if(!STAFF.length){ el.innerHTML='<p class="sub" style="margin:0">Nobody yet. Add your coordinators below.</p>'; fillOnCallWho(); return; }
+  el.innerHTML='<table><thead><tr><th>Name</th><th>Hub sign-in email</th><th>Mobile</th><th>Shift</th><th></th></tr></thead><tbody>'
+   + STAFF.map(s=>'<tr><td>'+esc(s.name||'')+'</td><td>'+esc(s.email||'')+'</td>'
+     +'<td>'+(s.phone?esc(s.phone):'<span class="chip bad">none</span>')+'</td>'
+     +'<td>'+esc(s.shift||'')+'</td>'
+     +'<td style="text-align:right"><button class="btn danger" onclick="delStaff(\''+s.id+'\')">Remove</button></td></tr>').join('')
+   + '</tbody></table>';
+  fillOnCallWho();
+}
+async function addStaff(){
+  const name=document.getElementById('ns-name').value.trim();
+  const email=document.getElementById('ns-email').value.trim().toLowerCase();
+  if(!name || !email){ alert('Name and hub sign-in email are both needed.'); return; }
+  const s={ id:uid('st'), name, email,
+    phone:document.getElementById('ns-phone').value.trim(),
+    shift:document.getElementById('ns-shift').value };
+  if(!(await saveItem('coordinator_staff',s))) return;
+  STAFF.push(s);
+  ['ns-name','ns-email','ns-phone'].forEach(i=>document.getElementById(i).value='');
+  renderStaff(); renderStatus();
+}
+async function delStaff(id){
+  const s=STAFF.find(x=>x.id===id); if(!s) return;
+  if(!confirm('Remove '+(s.name||'this person')+'? They disappear from every hub.')) return;
+  if(!(await deleteItem('coordinator_staff',id))) return;
+  STAFF=STAFF.filter(x=>x.id!==id);
+  renderStaff(); renderStatus();
+}
+
+/* ── missed call chasing ────────────────────────────────────────────────── */
+function fillOps(){
+  const c=OPS||{};
+  const lv=Array.isArray(c.levels)?c.levels:[];
+  document.getElementById('op-live').value = c.live ? 'true' : 'false';
+  document.getElementById('op-fallback').value = c.fallback_phone||'';
+  document.getElementById('op-l1').value = (lv[0]&&lv[0].after_min) || 15;
+  document.getElementById('op-l2').value = (lv[1]&&lv[1].after_min) || 45;
+  document.getElementById('op-maxage').value = c.max_age_hours || 12;
+}
+async function saveOps(){
+  const live=document.getElementById('op-live').value==='true';
+  const fb=document.getElementById('op-fallback').value.trim();
+  const l1=parseInt(document.getElementById('op-l1').value,10)||15;
+  const l2=parseInt(document.getElementById('op-l2').value,10)||45;
+  const maxage=parseInt(document.getElementById('op-maxage').value,10)||12;
+  if(live && !STAFF.some(s=>s.phone) && !fb){
+    alert('Chasing cannot be switched on yet. Nobody has a mobile number and there is no backstop number, so the texts would go nowhere.');
+    return;
+  }
+  if(l2<=l1 && !confirm('The backstop fires at or before the owner does. Save anyway?')) return;
+  const cfg={ live, fallback_phone:fb, max_age_hours:maxage,
+    callback_window_min:(OPS&&OPS.callback_window_min)||60,
+    levels:[{after_min:l1,to:'owner'},{after_min:l2,to:'fallback'}] };
+  if(!(await saveWhole('ops_settings',cfg))) return;
+  OPS=cfg; renderStatus();
+}
+
+/* ── on call ────────────────────────────────────────────────────────────── */
+function fillOnCallWho(){
+  const sel=document.getElementById('oc-who'); if(!sel) return;
+  sel.innerHTML=STAFF.map(s=>'<option value="'+esc(s.email||s.name)+'">'+esc(s.name||s.email)+'</option>').join('')
+    || '<option value="">Add staff first</option>';
+}
+function renderOnCall(){
+  const el=document.getElementById('oncallTable');
+  if(!ONCALL.length){ el.innerHTML='<p class="sub" style="margin:0">Nothing scheduled.</p>'; return; }
+  const rows=ONCALL.slice().sort((a,b)=>String(a.start_date||'').localeCompare(String(b.start_date||'')));
+  el.innerHTML='<table><thead><tr><th>Who</th><th>From</th><th>Through</th><th></th></tr></thead><tbody>'
+   + rows.map(o=>'<tr><td>'+esc(o.name||o.email||'')+'</td><td>'+esc(o.start_date||'')+'</td><td>'+esc(o.end_date||'')+'</td>'
+     +'<td style="text-align:right"><button class="btn danger" onclick="delOnCall(\''+o.id+'\')">Remove</button></td></tr>').join('')
+   + '</tbody></table>';
+}
+async function addOnCall(){
+  const who=document.getElementById('oc-who').value;
+  const s=STAFF.find(x=>(x.email||x.name)===who);
+  const start=document.getElementById('oc-start').value, end=document.getElementById('oc-end').value;
+  if(!who || !start || !end){ alert('Pick a person and both dates.'); return; }
+  if(end<start){ alert('The end date is before the start date.'); return; }
+  const o={ id:uid('oc'), email:(s&&s.email)||who, name:(s&&s.name)||who,
+            start_date:start, end_date:end, created_at:new Date().toISOString() };
+  if(!(await saveItem('on_call_schedule',o))) return;
+  ONCALL.push(o); renderOnCall(); renderStatus();
+}
+async function delOnCall(id){
+  if(!(await deleteItem('on_call_schedule',id))) return;
+  ONCALL=ONCALL.filter(x=>x.id!==id); renderOnCall(); renderStatus();
+}
+
+/* ── boot ───────────────────────────────────────────────────────────────── */
+async function boot(){
+  const { data:{ session } } = await sb.auth.getSession();
+  if(!session) return;
+  ME.email=(session.user.email||'').toLowerCase();
+  document.getElementById('gate').style.display='none';
+
+  if(!ADMINS.includes(ME.email)){
+    document.getElementById('notadmin').style.display='flex';
+    return;                       // deliberately loads nothing
+  }
+
+  document.getElementById('notadmin').style.display='none';
+  document.getElementById('whopill').textContent=ME.email;
+  document.getElementById('app').style.display='block';
+
+  STAFF=(await readKey('coordinator_staff'))||[];
+  ONCALL=(await readKey('on_call_schedule'))||[];
+  OPS=(await readKey('ops_settings'))||null;
+  OPSITEMS=(await readKey('ops_items'))||[];
+
+  renderStaff(); renderOnCall(); fillOps(); renderStatus();
+}
+boot();
+</script>
+</body>
+</html>

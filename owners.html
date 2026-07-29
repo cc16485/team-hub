@@ -810,6 +810,7 @@ async function boot(){
     return;                     // deliberately never loads the data
   }
 
+  document.getElementById('notowner').style.display='none';
   document.getElementById('app').style.display='block';
   await loadAll();
   renderDiscipline(); renderOffboarding(); renderAudits(); renderOwnersFeedback();
