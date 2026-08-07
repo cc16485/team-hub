@@ -29,8 +29,9 @@ section > h2{ font-size:1.15rem; margin:0 0 4px; }
 .card{ background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px 18px; }
 .card + .card{ margin-top:10px; }
 label{ font-size:.76rem; color:var(--muted); display:block; margin-bottom:3px; }
-input,select{ padding:8px 10px; border:1px solid var(--border); border-radius:8px;
+input,select,textarea{ padding:8px 10px; border:1px solid var(--border); border-radius:8px;
   font-size:.86rem; font-family:inherit; width:100%; background:#fff; color:var(--ink); }
+textarea{ resize:vertical; line-height:1.5; }
 .row{ display:grid; gap:10px; margin-bottom:10px; }
 table{ width:100%; border-collapse:collapse; font-size:.82rem; }
 th{ text-align:left; color:var(--muted); font-weight:600; font-size:.74rem;
@@ -161,6 +162,46 @@ html.embedded .topbar .brandword{ display:none; }
           <div><label>From</label><input id="oc-start" type="date"></div>
           <div><label>Through</label><input id="oc-end" type="date"></div>
           <div style="display:flex;align-items:flex-end"><button class="btn primary" onclick="addOnCall()">Add</button></div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Care hub settings</h2>
+      <p class="sub">These used to live in one browser, so a key pasted on one computer left the same panel switched off on everybody else's. They now belong to the agency. Saving here changes them for every person on every device.</p>
+      <div class="card">
+        <label for="cfg_training_hub_key">Training Hub read key</label>
+        <p class="sub" style="margin:0 0 6px">Switches on the texts, emails and calls shown on a lead, the Sync from Training Hub button, and escalation alerts. Starts with <code>cchub_</code>.</p>
+        <input id="cfg_training_hub_key" type="password" placeholder="cchub_…">
+
+        <div class="row" style="grid-template-columns:1fr 1fr;margin-top:12px">
+          <div>
+            <label for="cfg_axiscare_site">AxisCare site number</label>
+            <input id="cfg_axiscare_site" placeholder="16485">
+          </div>
+          <div>
+            <label for="cfg_axiscare_token">AxisCare API token</label>
+            <input id="cfg_axiscare_token" type="password" placeholder="axc_…">
+          </div>
+        </div>
+
+        <div class="row" style="grid-template-columns:1fr 1fr;margin-top:12px">
+          <div>
+            <label for="cfg_checkin_cadence">Client check-in every (days)</label>
+            <input id="cfg_checkin_cadence" type="number" min="1" placeholder="30">
+          </div>
+          <div>
+            <label for="cfg_supervisory_window">Supervisory visit due-soon window (days)</label>
+            <input id="cfg_supervisory_window" type="number" min="1" placeholder="60">
+          </div>
+        </div>
+
+        <label style="margin-top:12px" for="cfg_escalation_protocol">Escalation protocol</label>
+        <textarea id="cfg_escalation_protocol" rows="3" placeholder="Who to call, in what order, when something goes wrong out of hours."></textarea>
+
+        <div style="display:flex;gap:10px;align-items:center;margin-top:12px;flex-wrap:wrap">
+          <button class="btn" onclick="saveHubCfg(this)">Save for everyone</button>
+          <span class="sub" id="cfgNote" style="margin:0"></span>
         </div>
       </div>
     </section>
@@ -377,6 +418,42 @@ async function boot(){
   OPSITEMS=(await readKey('ops_items'))||[];
 
   renderStaff(); renderOnCall(); fillOps(); renderStatus();
+  await loadHubCfg();
+}
+
+/* ── Care hub settings ──────────────────────────────────────────────────────
+   The same app_data row the care hub reads on sign-in, so whatever is set
+   here is what every coordinator gets, on whatever computer they open. */
+const HUB_CFG_KEY='cc_hub_config';
+const HUB_CFG_FIELDS=['training_hub_key','axiscare_site','axiscare_token',
+  'checkin_cadence','supervisory_window','escalation_protocol'];
+async function loadHubCfg(){
+  const cfg=(await readKey(HUB_CFG_KEY))||{};
+  for(const f of HUB_CFG_FIELDS){
+    const el=document.getElementById('cfg_'+f);
+    if(el && cfg[f]!==undefined && cfg[f]!==null) el.value=cfg[f];
+  }
+  const note=document.getElementById('cfgNote');
+  if(note) note.textContent = cfg.training_hub_key
+    ? 'Communications panel is switched on.'
+    : 'No Training Hub key yet, so the texts and emails on a lead stay hidden.';
+}
+async function saveHubCfg(btn){
+  if(btn){ btn.disabled=true; btn.textContent='Saving…'; }
+  const cfg=(await readKey(HUB_CFG_KEY))||{};
+  for(const f of HUB_CFG_FIELDS){
+    const el=document.getElementById('cfg_'+f);
+    if(!el) continue;
+    const v=el.value.trim();
+    if(el.type==='number') cfg[f]= v? parseInt(v,10) : undefined;
+    else cfg[f]=v;
+  }
+  const ok=await saveWhole(HUB_CFG_KEY,cfg);
+  if(btn){ btn.disabled=false; btn.textContent='Save for everyone'; }
+  const note=document.getElementById('cfgNote');
+  if(note) note.textContent = ok
+    ? 'Saved. Everyone picks these up the next time they open the care hub.'
+    : 'Not saved. Check your connection and try again.';
 }
 boot();
 </script>
