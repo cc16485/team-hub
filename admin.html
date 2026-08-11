@@ -122,6 +122,18 @@ html.embedded .topbar .brandword{ display:none; }
       </div>
     </section>
 
+    <!-- Read-only. Same source of truth the future write-capable page will
+         modify: persons, entity_memberships, staff_roles, auth_identities,
+         auth.users. No temporary data path that later needs replacing. -->
+    <section>
+      <h2>Staff &amp; Access <span style="font-weight:500;font-size:.72rem;color:var(--muted)">— read only</span></h2>
+      <p class="sub">Who exists, what they belong to, and what they hold, read from the
+        structural identity model rather than from any list of email addresses in the code.
+        The list above is the legacy staff list; this is what replaces it. Nothing here can be
+        edited yet.</p>
+      <div class="card"><div id="staffAccessTable"><div class="sub">Loading…</div></div></div>
+    </section>
+
     <section>
       <h2>Missed call chasing</h2>
       <p class="sub">Missed calls are always captured and listed. These settings control whether anyone gets <b>texted</b> when one sits too long.</p>
@@ -305,6 +317,68 @@ function renderStatus(){
   document.getElementById('statusCard').innerHTML=html;
 }
 
+/* ── Staff & Access, read only ──────────────────────────────────────────────
+   Renders staff_access_overview(), which is Owner/Admin only and enforces that
+   inside the function. This page is already gated on ADMINS, but that gate is
+   not what protects the data: a non-owner calling the same RPC from anywhere
+   gets an empty set from the database. Two independent gates, and only the
+   second one is load-bearing.
+
+   Reads the SAME tables the future write-capable page will modify. There is no
+   temporary read path here to be replaced later; writes get added around this.
+
+   Nothing here writes. ---------------------------------------------------- */
+async function renderStaffAccess(){
+  const el=document.getElementById('staffAccessTable'); if(!el) return;
+  try{
+    const { data, error } = await sb.rpc('staff_access_overview');
+    if(error) throw error;
+    const rows=data||[];
+    if(!rows.length){
+      el.innerHTML='<p class="sub" style="margin:0">Nothing to show. Either nobody is '
+        +'seeded yet, or this account does not hold Owner/Admin. The database decides '
+        +'that, not this page.</p>';
+      return;
+    }
+    const chip=(t,cls)=>'<span class="chip'+(cls?' '+cls:'')+'">'+esc(t)+'</span>';
+    const when=s=>{ if(!s) return '—';
+      const d=Math.floor((Date.now()-new Date(s))/86400000);
+      return d===0?'today':d===1?'yesterday':d+' days ago'; };
+
+    el.innerHTML='<table><thead><tr><th>Person</th><th>Work email</th><th>Account</th>'
+      +'<th>Active</th><th>Entity</th><th>Hub access</th><th>Roles</th><th>Last sign-in</th>'
+      +'</tr></thead><tbody>'
+      + rows.map(r=>{
+        const acct = !r.has_account       ? chip('none','bad')
+                   : !r.account_confirmed ? chip('unconfirmed','warn')
+                   :                        chip('yes','ok');
+        // An absent hub_access array still grants every hub, because the
+        // fallback allows when the field is missing. Saying "all (default)"
+        // rather than "none" keeps that visible instead of reassuring.
+        const access=(r.hub_access&&r.hub_access.length)
+          ? r.hub_access.map(h=>chip(h)).join(' ')
+          : chip('all (default)','warn');
+        const roles=(r.roles&&r.roles.length)
+          ? r.roles.map(x=>chip(x, x==='owner_admin'?'ok':'')).join(' ')
+          : '<span class="sub">none</span>';
+        return '<tr'+(r.active?'':' style="opacity:.5"')+'>'
+          +'<td><b>'+esc(r.full_name||'')+'</b></td>'
+          +'<td>'+esc(r.email||'—')+'</td><td>'+acct+'</td>'
+          +'<td>'+(r.active?'yes':chip('inactive'))+'</td>'
+          +'<td>'+esc((r.entities||[]).join(', ')||'—')+'</td>'
+          +'<td>'+access+'</td><td>'+roles+'</td>'
+          +'<td class="sub">'+when(r.last_sign_in)+'</td></tr>';
+      }).join('')
+      + '</tbody></table>'
+      + '<p class="sub" style="margin:10px 0 0">'+rows.length+' person(s) · '
+      + rows.filter(r=>(r.roles||[]).includes('owner_admin')).length+' Owner/Admin · '
+      + rows.filter(r=>!r.has_account).length+' without a sign-in account</p>';
+  }catch(e){
+    el.innerHTML='<p class="sub" style="margin:0;color:var(--red)">Could not load: '
+      +esc(e.message||String(e))+'</p>';
+  }
+}
+
 /* ── staff ──────────────────────────────────────────────────────────────── */
 function renderStaff(){
   const el=document.getElementById('staffTable');
@@ -418,6 +492,9 @@ async function boot(){
   OPSITEMS=(await readKey('ops_items'))||[];
 
   renderStaff(); renderOnCall(); fillOps(); renderStatus();
+  // Read-only, and deliberately not awaited: a slow or missing RPC must not
+  // hold up the rest of this page.
+  renderStaffAccess();
   await loadHubCfg();
 }
 
