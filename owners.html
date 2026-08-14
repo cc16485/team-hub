@@ -344,10 +344,10 @@ async function loadGrowthPulse(){
       +(sub?'<div class="muted">'+sub+'</div>':'')+'</div>';
     const rate=R.hours?Math.round(R.est_revenue/R.hours):0;
     box.innerHTML='<div style="display:flex;gap:.7rem;flex-wrap:wrap;margin-bottom:.9rem">'
-      +tile('Billed revenue · 30 days',fmt$(R.est_revenue),delta(R.est_revenue,P.est_revenue),'estimated from AxisCare charge rates')
-      +tile('Billable hours · 30 days',(R.hours||0).toLocaleString(),delta(R.hours,P.hours),rate?('≈ '+fmt$(rate)+'/hr average bill rate'):'')
-      +tile('Clients served',R.clients||0,delta(R.clients,P.clients),'census, last 30 days')
-      +tile('Caregivers working',R.caregivers||0,delta(R.caregivers,P.caregivers),(R.caregivers?('≈ '+Math.round((R.hours||0)/R.caregivers)+' hrs each'):''))
+      +tile('Scheduled revenue · 30 days',fmt$(R.est_revenue),delta(R.est_revenue,P.est_revenue),'scheduled visits at AxisCare charge rates. Not confirmed delivered or billed.')
+      +tile('Scheduled hours · 30 days',(R.hours||0).toLocaleString(),delta(R.hours,P.hours),rate?('≈ '+fmt$(rate)+'/hr average bill rate'):'')
+      +tile('Clients scheduled',R.clients||0,delta(R.clients,P.clients),'on the schedule, last 30 days')
+      +tile('Caregivers scheduled',R.caregivers||0,delta(R.caregivers,P.caregivers),(R.caregivers?('≈ '+Math.round((R.hours||0)/R.caregivers)+' hrs each'):''))
       +'</div>'
       +(newEra?'<div class="muted" style="margin-bottom:.5rem">ℹ️ No prior-month comparison yet — scheduling moved into AxisCare recently. Trend arrows appear once there are two full months of data.</div>':'');
   }catch(e){ box.innerHTML='<div style="color:var(--red);font-size:.85rem">Could not pull the pulse: '+esc(e&&e.message?e.message:'error')+'</div><div class="muted" style="margin-top:.3rem"><button class="linklike" onclick="localStorage.removeItem(\'own_thk\');loadGrowthPulse()">re-enter the key</button></div>'; }
