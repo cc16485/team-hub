@@ -831,13 +831,14 @@ async function copyQuickAddLink(){
 /* ---------------- AUTH ---------------- */
 // Real access control lives in Supabase Auth's app_metadata.hub_access, set
 // only via the Team Access invite automation (service_role, never the browser).
-// A missing hub_access array means the account predates this system — treat
-// that as grandfathered in rather than denied, so deploying this never locks
-// out the existing team. Restriction only starts once an owner explicitly
-// sets someone's portal access from Manage Team Access.
+// A missing hub_access array is DENIED. The old grandfather default-allow
+// protected the pre-system team from a deploy-day lockout; every account has
+// carried an explicit array since 2026-08-12 and invites write one, so that
+// door is closed (script 158 backfills any stragglers). A denial here just
+// means no access is recorded yet — an owner grants it from Manage Team
+// Access and the next sign-in works.
 function hasHubAccess(user){
   const access = user && user.app_metadata && user.app_metadata.hub_access;
-  if(access === undefined || access === null) return true;
   return Array.isArray(access) && access.includes(HUB_SLUG);
 }
 async function signIn(){
@@ -850,7 +851,7 @@ async function signIn(){
   if(error){ errEl.textContent = error.message; errEl.style.display = 'block'; return; }
   if(!hasHubAccess(data.user)){
     await sb.auth.signOut();
-    errEl.textContent = "You don't have access to Team Hub. Contact your owner to be granted access.";
+    errEl.textContent = "No hub access is recorded for this account yet. An owner can grant it from Manage Team Access, then sign in again.";
     errEl.style.display = 'block';
     return;
   }
@@ -1815,7 +1816,7 @@ document.addEventListener('keydown', e=>{
       if(!hasHubAccess(session.user)){
         await sb.auth.signOut();
         const errEl = document.getElementById('loginError');
-        errEl.textContent = "You don't have access to Team Hub. Contact your owner to be granted access.";
+        errEl.textContent = "No hub access is recorded for this account yet. An owner can grant it from Manage Team Access, then sign in again.";
         errEl.style.display = 'block';
         return;
       }
