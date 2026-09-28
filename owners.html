@@ -110,11 +110,6 @@
   <h2>Growth &amp; Value</h2>
   <div class="muted" style="margin-bottom:1rem">The operating pulse, straight from AxisCare and the lead pipeline — the numbers a buyer will ask about first.</div>
   <div id="owner-inbox"></div>
-  <div class="card noprint" id="growth-key-card" style="display:none">
-    <b style="font-size:.9rem;color:var(--navy)">One-time setup</b>
-    <div class="muted" style="margin:.25rem 0 .5rem">Paste the Training Hub read key (ask Samantha / it's in the other hubs' Settings) — stored only on this device.</div>
-    <div style="display:flex;gap:.5rem"><input id="growth-key" type="password" placeholder="cchub_…" style="flex:1"><button class="btn" onclick="saveGrowthKey()">Save</button></div>
-  </div>
   <div id="growth-pulse"><div class="muted">Loading the pulse…</div></div>
   <div class="card">
     <b style="font-size:.95rem;color:var(--navy)">Lead funnel — this month vs last</b>
@@ -323,14 +318,8 @@ let FEEDBACK=[];
 const HUB_FN='https://rdqujxiycycwhskyvrwa.supabase.co/functions/v1/axiscare-open-shifts';
 const HUB_FN_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkcXVqeGl5Y3ljd2hza3l2cndhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMyMTg1NDgsImV4cCI6MjA5ODc5NDU0OH0.SFjAfj--b-tWrk8bMVLeM-tGwD8VBaPsEBtUAp5tPew';
 const fmt$=n=>'$'+Math.round(n||0).toLocaleString('en-US');
-function growthKey(){ return localStorage.getItem('own_thk')||''; }
-function saveGrowthKey(){
-  const v=document.getElementById('growth-key').value.trim();
-  if(!v) return;
-  localStorage.setItem('own_thk',v);
-  document.getElementById('growth-key-card').style.display='none';
-  loadGrowthPulse();
-}
+/* T3 (2026-09-28): the pulse uses your own sign-in; the key this browser used to keep is removed. */
+try{ localStorage.removeItem('own_thk'); }catch(e){}
 async function loadGrowthPulse(){
   const box=document.getElementById('growth-pulse'); if(!box) return;
   box.innerHTML='<div class="muted">Pulling the last 60 days from AxisCare…</div>';
@@ -338,7 +327,7 @@ async function loadGrowthPulse(){
     /* T1 (2026-09-28): the pulse checks YOUR sign-in (owners only), not a saved key. */
     const {data:{session}}=await sb.auth.getSession();
     const r=await fetch(HUB_FN,{method:'POST',headers:{'x-hub-token':(session&&session.access_token)||'','apikey':HUB_FN_ANON,'Authorization':'Bearer '+HUB_FN_ANON,'Content-Type':'application/json'},
-      body:JSON.stringify({key:growthKey()||undefined,mode:'metrics',days:60})});
+      body:JSON.stringify({mode:'metrics',days:60})});
     const d=await r.json();
     if(d.error) throw new Error(d.error);
     const R=d.recent||{}, P=d.prior||{};

@@ -182,18 +182,10 @@ html.embedded .topbar .brandword{ display:none; }
       <h2>Care hub settings</h2>
       <p class="sub">These used to live in one browser, so a key pasted on one computer left the same panel switched off on everybody else's. They now belong to the agency. Saving here changes them for every person on every device.</p>
       <div class="card">
-        <label for="cfg_training_hub_key">Training Hub read key</label>
-        <p class="sub" style="margin:0 0 6px">Switches on the texts, emails and calls shown on a lead, the Sync from Training Hub button, and escalation alerts. Starts with <code>cchub_</code>.</p>
-        <input id="cfg_training_hub_key" type="password" placeholder="cchub_…">
-
-        <div class="row" style="grid-template-columns:1fr 1fr;margin-top:12px">
+        <div class="row" style="grid-template-columns:1fr 1fr">
           <div>
             <label for="cfg_axiscare_site">AxisCare site number</label>
             <input id="cfg_axiscare_site" placeholder="16485">
-          </div>
-          <div>
-            <label for="cfg_axiscare_token">AxisCare API token</label>
-            <input id="cfg_axiscare_token" type="password" placeholder="axc_…">
           </div>
         </div>
 
@@ -502,7 +494,7 @@ async function boot(){
    The same app_data row the care hub reads on sign-in, so whatever is set
    here is what every coordinator gets, on whatever computer they open. */
 const HUB_CFG_KEY='cc_hub_config';
-const HUB_CFG_FIELDS=['training_hub_key','axiscare_site','axiscare_token',
+const HUB_CFG_FIELDS=['axiscare_site',
   'checkin_cadence','supervisory_window','escalation_protocol'];
 async function loadHubCfg(){
   const cfg=(await readKey(HUB_CFG_KEY))||{};
@@ -511,13 +503,14 @@ async function loadHubCfg(){
     if(el && cfg[f]!==undefined && cfg[f]!==null) el.value=cfg[f];
   }
   const note=document.getElementById('cfgNote');
-  if(note) note.textContent = cfg.training_hub_key
-    ? 'Communications panel is switched on.'
-    : 'No Training Hub key yet, so the texts and emails on a lead stay hidden.';
+  if(note) note.textContent = '';
 }
 async function saveHubCfg(btn){
   if(btn){ btn.disabled=true; btn.textContent='Saving…'; }
   const cfg=(await readKey(HUB_CFG_KEY))||{};
+  /* T3 (2026-09-28): keys and tokens never live in shared settings. Texts, emails and Training use each person's own
+     sign-in; AxisCare is reached only through our server. */
+  delete cfg.training_hub_key; delete cfg.axiscare_token;
   for(const f of HUB_CFG_FIELDS){
     const el=document.getElementById('cfg_'+f);
     if(!el) continue;
