@@ -294,13 +294,13 @@ function copyViv(){
 }
 async function markViventium(){
   const btn=document.getElementById('vivDoneBtn');
-  if(!window._offerId||!window._hubKey) return;
+  if(!window._offerId) return;
   btn.disabled=true; btn.textContent='Saving…';
   try{
-    const r=await fetch('https://rdqujxiycycwhskyvrwa.supabase.co/rest/v1/rpc/hub_offer_update',{
-      method:'POST',headers:{'apikey':TRAINING_ANON,'Authorization':'Bearer '+TRAINING_ANON,'Content-Type':'application/json'},
-      body:JSON.stringify({p_key:window._hubKey,p_id:window._offerId,p_viventium:true,
-        p_who:document.getElementById('f_by').value.trim()||sessionEmail||'staff'})});
+    /* T2 (2026-09-28): your own sign-in; the server records you as the person who entered it. */
+    const r=await fetch('https://rdqujxiycycwhskyvrwa.supabase.co/functions/v1/hub-training-data?action=offer_update',{
+      method:'POST',headers:{'x-hub-token':await trainHubTok(),'apikey':TRAINING_ANON,'Authorization':'Bearer '+TRAINING_ANON,'Content-Type':'application/json'},
+      body:JSON.stringify({p_id:window._offerId,p_viventium:true})});
     const data=await r.json();
     if(!data||data.error||data.ok===false) throw new Error((data&&data.error)||'save failed');
     btn.textContent='✓ Viventium entry recorded — reminder watch is on';
