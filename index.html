@@ -775,7 +775,7 @@ applyHubLinks();
 /* ---- Live Training pulse on the Training Hub card ----
    Reads the training platform's secure hub endpoint (key pasted once in
    Settings — never committed to this public repo) and shows live counts. */
-const TRAINING_API = 'https://rdqujxiycycwhskyvrwa.supabase.co/rest/v1/rpc/hub_training_status';
+const TRAINING_API = 'https://rdqujxiycycwhskyvrwa.supabase.co/functions/v1/hub-training-data?action=training_status';   /* T2 (2026-09-28): your own sign-in, not the shared key */
 const TRAINING_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkcXVqeGl5Y3ljd2hza3l2cndhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMyMTg1NDgsImV4cCI6MjA5ODc5NDU0OH0.SFjAfj--b-tWrk8bMVLeM-tGwD8VBaPsEBtUAp5tPew';
 function appVisible(){
   const a = document.getElementById('appScreen');
@@ -786,12 +786,13 @@ async function loadTrainingPulse(){
   const card = document.getElementById('trainingHubLink');
   if(!card) return;
   const sub = card.querySelector('.sub');
-  if(!CONFIG.training_hub_key){ return; } // no key yet — keep the static caption
   try{
+    const { data:{ session } } = await sb.auth.getSession();
+    if(!session) return; // not signed in yet — keep the static caption
     const r = await fetch(TRAINING_API, {
       method:'POST',
-      headers:{ 'apikey':TRAINING_ANON, 'Authorization':'Bearer '+TRAINING_ANON, 'Content-Type':'application/json' },
-      body: JSON.stringify({ p_key: CONFIG.training_hub_key })
+      headers:{ 'x-hub-token':session.access_token, 'apikey':TRAINING_ANON, 'Authorization':'Bearer '+TRAINING_ANON, 'Content-Type':'application/json' },
+      body: '{}'
     });
     const data = await r.json();
     if(!Array.isArray(data)) return;
