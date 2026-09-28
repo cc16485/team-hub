@@ -363,7 +363,8 @@ function renderFunnel(){
   const inMonth=(l,a,b)=>{ const t=new Date(l.created_at||0); return t>=a&&t<b; };
   const now=new Date(Date.now()+86400000);
   const row=(label,a,b)=>{
-    const leads=LEADS.filter(l=>inMonth(l,a,b));
+    /* Lead numbers S1 (2026-09-28): a lead marked as spam (not a real inquiry) never counts */
+    const leads=LEADS.filter(l=>inMonth(l,a,b)&&!(l&&l.spam&&l.spam.at));
     const conv=leads.filter(l=>l.status==='Converted').length;
     const lost=leads.filter(l=>l.status==='Lost').length;
     return '<div style="display:flex;gap:1rem;align-items:center;padding:.45rem 0;border-bottom:1px solid var(--border);font-size:.86rem;flex-wrap:wrap">'
