@@ -333,11 +333,12 @@ function saveGrowthKey(){
 }
 async function loadGrowthPulse(){
   const box=document.getElementById('growth-pulse'); if(!box) return;
-  if(!growthKey()){ document.getElementById('growth-key-card').style.display='block'; box.innerHTML=''; return; }
   box.innerHTML='<div class="muted">Pulling the last 60 days from AxisCare…</div>';
   try{
-    const r=await fetch(HUB_FN,{method:'POST',headers:{'apikey':HUB_FN_ANON,'Authorization':'Bearer '+HUB_FN_ANON,'Content-Type':'application/json'},
-      body:JSON.stringify({key:growthKey(),mode:'metrics',days:60})});
+    /* T1 (2026-09-28): the pulse checks YOUR sign-in (owners only), not a saved key. */
+    const {data:{session}}=await sb.auth.getSession();
+    const r=await fetch(HUB_FN,{method:'POST',headers:{'x-hub-token':(session&&session.access_token)||'','apikey':HUB_FN_ANON,'Authorization':'Bearer '+HUB_FN_ANON,'Content-Type':'application/json'},
+      body:JSON.stringify({key:growthKey()||undefined,mode:'metrics',days:60})});
     const d=await r.json();
     if(d.error) throw new Error(d.error);
     const R=d.recent||{}, P=d.prior||{};
@@ -354,7 +355,7 @@ async function loadGrowthPulse(){
       +tile('Caregivers scheduled',R.caregivers||0,delta(R.caregivers,P.caregivers),(R.caregivers?('≈ '+Math.round((R.hours||0)/R.caregivers)+' hrs each'):''))
       +'</div>'
       +(newEra?'<div class="muted" style="margin-bottom:.5rem">ℹ️ No prior-month comparison yet — scheduling moved into AxisCare recently. Trend arrows appear once there are two full months of data.</div>':'');
-  }catch(e){ box.innerHTML='<div style="color:var(--red);font-size:.85rem">Could not pull the pulse: '+esc(e&&e.message?e.message:'error')+'</div><div class="muted" style="margin-top:.3rem"><button class="linklike" onclick="localStorage.removeItem(\'own_thk\');loadGrowthPulse()">re-enter the key</button></div>'; }
+  }catch(e){ box.innerHTML='<div style="color:var(--red);font-size:.85rem">Could not pull the pulse: '+esc(e&&e.message?e.message:'error')+'</div><div class="muted" style="margin-top:.3rem"><button class="linklike" onclick="loadGrowthPulse()">try again</button></div>'; }
 }
 function renderFunnel(){
   const box=document.getElementById('growth-funnel'); if(!box) return;
