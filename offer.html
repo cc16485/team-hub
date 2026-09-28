@@ -154,6 +154,9 @@ const SHARED_URL='https://zngsgedlsxinbygwmxwn.supabase.co';
 const SHARED_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpuZ3NnZWRsc3hpbmJ5Z3dteHduIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1NDIzNDQsImV4cCI6MjA5ODExODM0NH0.L_31_UKdccyRH9n7p1GaBlZTqcJipB008H-GIvxwLxM';
 const TRAINING_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkcXVqeGl5Y3ljd2hza3l2cndhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMyMTg1NDgsImV4cCI6MjA5ODc5NDU0OH0.SFjAfj--b-tWrk8bMVLeM-tGwD8VBaPsEBtUAp5tPew';
 const OFFER_API='https://rdqujxiycycwhskyvrwa.supabase.co/functions/v1/job-offer';
+/* 2026-09-27: lead texts, GoHighLevel replies and job offers need the staff member's own Hub sign-in (x-hub-token), not
+   the shared Training key; the Training functions check it with the Hub and run the Hub's opt-out check. */
+async function trainHubTok(){ try{ const {data:{session}}=await sb.auth.getSession(); return (session&&session.access_token)||''; }catch(e){ return ''; } }
 
 const ATTRS=[
   ['alzheimers',"Alzheimer's Disease","Has experience assisting with Alzheimer's"],
@@ -247,7 +250,7 @@ async function submitOffer(){
   btn.disabled=true; btn.textContent='Sending…';
   try{
     const r=await fetch(OFFER_API,{method:'POST',
-      headers:{'apikey':TRAINING_ANON,'Authorization':'Bearer '+TRAINING_ANON,'Content-Type':'application/json'},
+      headers:{'apikey':TRAINING_ANON,'Authorization':'Bearer '+TRAINING_ANON,'x-hub-token':await trainHubTok(),'Content-Type':'application/json'},
       body:JSON.stringify({key:window._hubKey,offer})});
     const res=await r.json();
     if(!r.ok||res.error) throw new Error(res.error||('save failed ('+r.status+')'));
