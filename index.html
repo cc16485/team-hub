@@ -598,7 +598,7 @@
 <div class="modal-backdrop" id="inviteModalBackdrop">
   <div class="modal">
     <h2 id="inviteModalTitle">Invite Person</h2>
-    <p class="modal-sub">Sends a real login invite by email once your Zapier automation is connected (Settings → Team Access Automation). Without it, this still tracks who should have access.</p>
+    <p class="modal-sub">Records who should have access to which hubs. Their sign-in is set up separately; no invite email goes out from here.</p>
     <input type="hidden" id="iv_id">
     <div class="grid2">
       <div><label>Full Name</label><input id="iv_name" placeholder="Full name"></div>
@@ -660,12 +660,6 @@
     </div>
 
     <div class="settings-section">
-      <h3>Team Access Automation</h3>
-      <p class="hint">The Zapier webhook that actually sends invite emails and grants hub access (see Hub_Access_Zapier_Setup_Guide.md). Until this is set, Manage Team Access still tracks who should have access, it just can't send the invite itself.</p>
-      <label>Zapier Webhook URL</label><input id="set_access_webhook_url" placeholder="https://hooks.zapier.com/hooks/catch/...">
-    </div>
-
-    <div class="settings-section">
       <h3>Admin Passcode</h3>
       <p class="hint">Keep this separate from staff login passwords.</p>
       <label>Current</label><input type="password" id="set_current_passcode">
@@ -684,14 +678,13 @@
 let sb = null;
 let CONFIG = JSON.parse(localStorage.getItem('th_config') || '{}');
 /* T3 (2026-09-28): the shared Training key is retired; the Training card uses your own sign-in. */
-if('training_hub_key' in CONFIG){ delete CONFIG.training_hub_key; try{ localStorage.setItem('th_config', JSON.stringify(CONFIG)); }catch(e){} }
+if('training_hub_key' in CONFIG || 'access_webhook_url' in CONFIG){ delete CONFIG.training_hub_key; delete CONFIG.access_webhook_url; /* Zapier is gone (2026-09-28) */ try{ localStorage.setItem('th_config', JSON.stringify(CONFIG)); }catch(e){} }
 CONFIG.admin_passcode = CONFIG.admin_passcode || '';
 CONFIG.cc_hub_url = CONFIG.cc_hub_url || 'https://cc.mo-care.com';
 CONFIG.staffing_hub_url = CONFIG.staffing_hub_url || 'https://sc.mo-care.com';
 CONFIG.lead_caregiver_hub_url = CONFIG.lead_caregiver_hub_url || 'https://lead.mo-care.com';
 CONFIG.nurse_hub_url = CONFIG.nurse_hub_url || 'https://nurse.mo-care.com';
 CONFIG.training_hub_url = CONFIG.training_hub_url || 'https://training.mo-care.com';
-CONFIG.access_webhook_url = CONFIG.access_webhook_url || '';
 // Same Supabase project as Care Coordinator's Hub and Staffing Hub — shared backend, shared staff logins.
 CONFIG.supabase_url = CONFIG.supabase_url || 'https://zngsgedlsxinbygwmxwn.supabase.co';
 CONFIG.supabase_anon_key = CONFIG.supabase_anon_key || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpuZ3NnZWRsc3hpbmJ5Z3dteHduIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1NDIzNDQsImV4cCI6MjA5ODExODM0NH0.L_31_UKdccyRH9n7p1GaBlZTqcJipB008H-GIvxwLxM';
@@ -875,7 +868,7 @@ async function signOut(){
    read key) live in app_data alongside the rest of the team data, so they
    follow every signed-in device — no more per-browser re-pasting. The owner
    edits them (Settings is owner-gated); everyone else just receives them. */
-const CLOUD_CFG_FIELDS = ['cc_hub_url','staffing_hub_url','lead_caregiver_hub_url','nurse_hub_url','training_hub_url','access_webhook_url'];
+const CLOUD_CFG_FIELDS = ['cc_hub_url','staffing_hub_url','lead_caregiver_hub_url','nurse_hub_url','training_hub_url'];
 function applyCloudConfig(){
   const cloud = (DATA.team_hub_settings||[]).find(x => x.id === 'hub_config');
   if(!cloud) return;
@@ -1428,26 +1421,9 @@ async function saveAccessUser(){
     updated_at: new Date().toISOString()
   };
 
-  // auth_user_id (once known) lets the Zap update an existing person's access
-  // directly, with no need to look the user up by email in Supabase.
-  let sent = false;
-  if(CONFIG.access_webhook_url){
-    try{
-      const res = await fetch(CONFIG.access_webhook_url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: record.auth_user_id ? 'update' : 'invite', ...record })
-      });
-      sent = !!res.ok;
-      if(sent){
-        try{
-          const body = await res.json();
-          if(body && body.auth_user_id) record.auth_user_id = body.auth_user_id;
-        }catch(e){ /* Zap may not echo JSON back — fine, not required */ }
-      }
-    }catch(e){ sent = false; }
-  }
-  record.status = sent ? (existing.status==='active' ? 'active' : 'invited') : 'pending_setup';
+  /* The Zapier invite (which created the sign-in and emailed the person) ended when the Zapier account was deleted
+     (2026-09-28). The roster keeps who should have access; their sign-in is set up separately. */
+  record.status = existing.status==='active' ? 'active' : 'pending_setup';
 
   const idx = DATA.user_hub_access_directory.findIndex(x=>x.id===id);
   if(idx>=0) DATA.user_hub_access_directory[idx]=record; else DATA.user_hub_access_directory.push(record);
@@ -1455,11 +1431,7 @@ async function saveAccessUser(){
   closeModal('inviteModalBackdrop');
   renderAccessPanel();
 
-  if(!CONFIG.access_webhook_url){
-    alert("Saved to the roster. No Zapier webhook is configured yet (Settings → Team Access Automation), so no invite email was sent — set that up to actually grant access.");
-  } else if(!sent){
-    alert("Saved to the roster, but the invite automation didn't respond — double check the webhook URL in Settings, then try Edit → Save again.");
-  }
+  if(record.status!=='active') alert("Saved to the roster. Their sign-in still has to be set up; no invite email goes out from here.");
 }
 
 async function removeAccessUser(id){
@@ -1769,7 +1741,6 @@ function openSettingsModal(){
   document.getElementById('set_lead_caregiver_hub_url').value = CONFIG.lead_caregiver_hub_url||'';
   document.getElementById('set_nurse_hub_url').value = CONFIG.nurse_hub_url||'';
   document.getElementById('set_training_hub_url').value = CONFIG.training_hub_url||'';
-  document.getElementById('set_access_webhook_url').value = CONFIG.access_webhook_url||'';
   document.getElementById('settingsModalBackdrop').classList.add('open');
 }
 function saveSettings(){
@@ -1783,7 +1754,6 @@ function saveSettings(){
   CONFIG.lead_caregiver_hub_url = document.getElementById('set_lead_caregiver_hub_url').value.trim() || 'https://lead.mo-care.com';
   CONFIG.nurse_hub_url = document.getElementById('set_nurse_hub_url').value.trim() || 'https://nurse.mo-care.com';
   CONFIG.training_hub_url = document.getElementById('set_training_hub_url').value.trim() || 'https://training.mo-care.com';
-  CONFIG.access_webhook_url = document.getElementById('set_access_webhook_url').value.trim();
   if(newCode) CONFIG.admin_passcode = newCode;
   localStorage.setItem('th_config', JSON.stringify(CONFIG));
   initSupabase();
