@@ -408,7 +408,7 @@
       <div class="section-header">
         <h2 style="cursor:pointer" onclick="toggleBlock('accessSection')">🔐 Manage Team Access <span class="chev">▸</span></h2>
       </div>
-      <p style="font-size:12px;color:var(--text-muted);margin:-6px 0 12px;">Invite people to the hub(s) they need, assign their role and contact info, and see who has access to what. Owners only.</p>
+      <p style="font-size:12px;color:var(--text-muted);margin:-6px 0 12px;">Access to every hub is now given in one place: <b>My Team</b> in the Care Coordinator Hub. This keeps the hub links and the old list for reference.</p>
       <div class="card" style="padding:16px 18px 18px;" id="accessPanelWrap"></div>
     </section>
 
@@ -845,7 +845,7 @@ async function signIn(){
   if(error){ errEl.textContent = error.message; errEl.style.display = 'block'; return; }
   if(!hasHubAccess(data.user)){
     await sb.auth.signOut();
-    errEl.textContent = "No hub access is recorded for this account yet. An owner can grant it from Manage Team Access, then sign in again.";
+    errEl.textContent = "No hub access is recorded for this account yet. Ask Samantha or Zach to give it from My Team in the Care Coordinator Hub, then sign in again.";
     errEl.style.display = 'block';
     return;
   }
@@ -1318,7 +1318,7 @@ function renderAccessPanel(){
     wrap.innerHTML = `<div class="access-locked">
       <div style="font-size:28px;">🔒</div>
       <div style="font-weight:700;color:var(--navy);margin-top:6px;">Owners only</div>
-      <div style="font-size:12px;color:var(--text-muted);margin:6px 0 14px;">Unlock to invite people and manage who has access to which hub.</div>
+      <div style="font-size:12px;color:var(--text-muted);margin:6px 0 14px;">Unlock to see the hub links and the old access list. Access itself is given in My Team (Care Coordinator Hub).</div>
       <button class="secondary" onclick="openAccessLock()">Unlock Manage Team Access</button>
     </div>`;
     return;
@@ -1340,13 +1340,20 @@ function renderAccessPanel(){
     </div>
   </div>`;
 
-  html += `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
-    <div style="font-size:13px;font-weight:700;color:var(--navy);">Team Members (${users.length})</div>
-    <button class="primary" onclick="openInviteModal()">+ Invite Person</button>
+  /* Team Access A3 (2026-09-29): inviting here only ever added a line to this list once the Zapier invite was gone.
+     Access to every hub (Care Coordinator, Staffing, Team) is given from My Team in the Care Coordinator Hub, which
+     sends the invitation and records who did it. This list is kept as history; anyone on it who never got a sign-in
+     is shown as still waiting so nobody is lost. */
+  const waiting = users.filter(u=>u.status!=='active');
+  html += `<div style="background:#EAF6F5;border:1px solid #54BDB8;border-radius:10px;padding:12px 14px;margin-bottom:14px;">
+    <div style="font-weight:800;color:var(--navy);">Give or remove access in My Team</div>
+    <div style="font-size:12.5px;margin-top:4px;">Open the <a href="https://cc.mo-care.com/#myteam" target="_blank" rel="noopener">Care Coordinator Hub → My Team</a>, pick the person, then <b>Hub access</b>. Each hub has its own switch; the first one sends their invitation email, and they choose their password when they open it.</div>
+    ${waiting.length?`<div style="font-size:12.5px;margin-top:8px;color:#A8660E;"><b>${waiting.length} on the old list may still be waiting</b> (added here after the old invite stopped working): ${waiting.map(u=>escapeHtml(u.name||u.email)).join(', ')}. Give them access in My Team.</div>`:''}
   </div>`;
+  html += `<div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:10px;">The old list (${users.length}), kept for reference</div>`;
 
   if(users.length===0){
-    html += `<div class="empty">No one invited yet.</div>`;
+    html += `<div class="empty">The old list is empty.</div>`;
   } else {
     html += `<table><thead><tr><th>Name</th><th>Role</th><th>Email</th><th>Phone</th><th>Portals</th><th>Status</th><th></th></tr></thead><tbody>`;
     html += users.map(u=>{
@@ -1360,8 +1367,8 @@ function renderAccessPanel(){
         <td>${escapeHtml(u.email)}</td>
         <td>${escapeHtml(u.phone)||'—'}</td>
         <td>${portalBadges}</td>
-        <td><span class="access-status ${u.status||'invited'}">${(u.status||'invited').replace('_',' ')}</span></td>
-        <td style="white-space:nowrap;"><button class="linklike" onclick="openInviteModal('${u.id}')">Edit</button><button class="linklike" onclick="removeAccessUser('${u.id}')">Remove</button></td>
+        <td><span class="access-status ${u.status||'invited'}">${u.status==='active'?'active':'still waiting?'}</span></td>
+        <td style="white-space:nowrap;"><button class="linklike" onclick="removeAccessUser('${u.id}')">Remove from list</button></td>
       </tr>`;
     }).join('');
     html += `</tbody></table>`;
@@ -1435,7 +1442,7 @@ async function saveAccessUser(){
 }
 
 async function removeAccessUser(id){
-  if(!confirm('Remove this person from the access roster? This does not delete their actual login — do that from Supabase if needed.')) return;
+  if(!confirm('Remove this line from the old list? It does not change anyone\'s access: that is done from My Team in the Care Coordinator Hub.')) return;
   DATA.user_hub_access_directory = (DATA.user_hub_access_directory||[]).filter(u=>u.id!==id);
   await removeItem('user_hub_access_directory', id);
   renderAccessPanel();
@@ -1785,7 +1792,7 @@ document.addEventListener('keydown', e=>{
       if(!hasHubAccess(session.user)){
         await sb.auth.signOut();
         const errEl = document.getElementById('loginError');
-        errEl.textContent = "No hub access is recorded for this account yet. An owner can grant it from Manage Team Access, then sign in again.";
+        errEl.textContent = "No hub access is recorded for this account yet. Ask Samantha or Zach to give it from My Team in the Care Coordinator Hub, then sign in again.";
         errEl.style.display = 'block';
         return;
       }
