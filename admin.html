@@ -272,13 +272,32 @@ async function deleteItem(key,id){
   say(error ? 'Not saved' : 'Saved');
   return !error;
 }
-async function saveWhole(key,data){
+/* Safe saves, step 1 (2026-10-04, Samantha "yes to all"). A shared settings record is never saved whole from this
+   page's copy any more. The old whole save of the chasing settings replaced the record that holds EVERY Hub switch
+   and setting (ops_settings) with just those five. mergeSave reads the current record, applies only this page's own
+   change to it, and saves only if nobody saved in between (app_data_save, the 421 compare-and-save); if someone did,
+   it reads again and reapplies the change. apply(next, base) changes next and returns the names of what it changed. */
+async function readKeyV(key){
+  const { data, error } = await sb.from('app_data').select('data, version').eq('key',key).maybeSingle();
+  if(error) throw error;
+  return { data: data ? data.data : null, version: data ? Number(data.version)||0 : 0, exists: !!data };
+}
+async function mergeSave(key, apply){
   say('Saving…');
-  const { error } = await sb.from('app_data')
-    .upsert({ key, data, updated_at:new Date().toISOString() },{ onConflict:'key' });
-  say(error ? 'Not saved' : 'Saved');
-  if(error) alert('Could not save. Check your connection and try again.');
-  return !error;
+  for(let i=0;i<5;i++){
+    let cur;
+    try{ cur=await readKeyV(key); }catch(e){ say('Not saved'); alert('Could not read the current settings, so nothing was saved. Check your connection and try again.'); return { ok:false }; }
+    const base=(cur.data && typeof cur.data==='object' && !Array.isArray(cur.data)) ? cur.data : {};
+    const next=JSON.parse(JSON.stringify(base));
+    const changed=apply(next, base)||[];
+    if(!changed.length){ say('Nothing changed'); return { ok:true, changed, data:base }; }
+    const { data, error } = await sb.rpc('app_data_save',{ p_key:key, p_data:next, p_expected_version: cur.exists ? cur.version : 0 });
+    if(error){ say('Not saved'); alert('Could not save ('+error.message+'). Nothing was changed.'); return { ok:false }; }
+    if(data && data.ok){ say('Saved'); return { ok:true, changed, data:next }; }
+    /* someone else saved a moment ago: read again and reapply only this change */
+  }
+  say('Not saved'); alert('Someone else kept saving at the same moment, so this was not saved. Try again.');
+  return { ok:false };
 }
 
 /* ── status ─────────────────────────────────────────────────────────────── */
@@ -424,11 +443,16 @@ async function saveOps(){
     return;
   }
   if(l2<=l1 && !confirm('The backstop fires at or before the owner does. Save anyway?')) return;
-  const cfg={ live, fallback_phone:fb, max_age_hours:maxage,
-    callback_window_min:(OPS&&OPS.callback_window_min)||60,
-    levels:[{after_min:l1,to:'owner'},{after_min:l2,to:'fallback'}] };
-  if(!(await saveWhole('ops_settings',cfg))) return;
-  OPS=cfg; renderStatus();
+  const mine={ live, fallback_phone:fb, max_age_hours:maxage, levels:[{after_min:l1,to:'owner'},{after_min:l2,to:'fallback'}] };
+  /* Only these chasing settings change; every other Hub switch and setting in ops_settings is kept as it is now. */
+  const out=await mergeSave('ops_settings',(m,base)=>{
+    const ch=[];
+    for(const [k,v] of Object.entries(mine)){ if(JSON.stringify(base[k])!==JSON.stringify(v)){ m[k]=v; ch.push(k); } }
+    if(m.callback_window_min==null){ m.callback_window_min=60; ch.push('callback_window_min'); }
+    return ch;
+  });
+  if(!out.ok) return;
+  OPS=out.data; renderStatus();
 }
 
 /* ── on call ────────────────────────────────────────────────────────────── */
@@ -507,18 +531,25 @@ async function loadHubCfg(){
 }
 async function saveHubCfg(btn){
   if(btn){ btn.disabled=true; btn.textContent='Saving…'; }
-  const cfg=(await readKey(HUB_CFG_KEY))||{};
-  /* T3 (2026-09-28): keys and tokens never live in shared settings. Texts, emails and Training use each person's own
-     sign-in; AxisCare is reached only through our server. */
-  delete cfg.training_hub_key; delete cfg.axiscare_token;
+  const vals={};
   for(const f of HUB_CFG_FIELDS){
     const el=document.getElementById('cfg_'+f);
     if(!el) continue;
     const v=el.value.trim();
-    if(el.type==='number') cfg[f]= v? parseInt(v,10) : undefined;
-    else cfg[f]=v;
+    vals[f] = el.type==='number' ? (v? parseInt(v,10) : undefined) : v;
   }
-  const ok=await saveWhole(HUB_CFG_KEY,cfg);
+  const out=await mergeSave(HUB_CFG_KEY,(cfg,base)=>{
+    const ch=[];
+    /* T3 (2026-09-28): keys and tokens never live in shared settings. Texts, emails and Training use each person's own
+       sign-in; AxisCare is reached only through our server. */
+    for(const k of ['training_hub_key','axiscare_token']) if(k in cfg){ delete cfg[k]; ch.push(k); }
+    for(const [f,v] of Object.entries(vals)){
+      if(v===undefined){ if(f in cfg){ delete cfg[f]; ch.push(f); } }
+      else if(JSON.stringify(base[f])!==JSON.stringify(v)){ cfg[f]=v; ch.push(f); }
+    }
+    return ch;
+  });
+  const ok=out.ok;
   if(btn){ btn.disabled=false; btn.textContent='Save for everyone'; }
   const note=document.getElementById('cfgNote');
   if(note) note.textContent = ok
