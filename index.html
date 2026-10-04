@@ -285,8 +285,7 @@
   <main>
 
     <!-- Replies waiting on the automation (training) line — filled by loadRepliesWaiting -->
-    <!-- Automation replies moved to the Staffing Hub's 💬 Communication tab
-         (sc.mo-care.com) — that's the desk that answers them. -->
+    <!-- Automation replies are answered in the Care Coordinator Hub (the old Staffing hub page is retired). -->
 
     <!-- ===================== QUICK LINKS ===================== -->
     <div class="quicklink-grid">
@@ -306,11 +305,11 @@
         </div>
         <div class="arrow">↗</div>
       </a>
-      <a class="quicklink-card accent-amber" id="staffingHubLink" href="https://sc.mo-care.com" target="_blank" rel="noopener">
+      <a class="quicklink-card accent-amber" id="staffingHubLink" href="https://cc.mo-care.com/#cgbackground" target="_blank" rel="noopener">
         <div class="icon-badge">🗓</div>
         <div>
-          <div class="label">Staffing Coordinator's Hub</div>
-          <div class="sub">Candidates &amp; compliance</div>
+          <div class="label">Hiring &amp; Background Checks</div>
+          <div class="sub">In the Care Coordinator Hub</div>
         </div>
         <div class="arrow">↗</div>
       </a>
@@ -647,7 +646,7 @@
       <h3>Hub Links</h3>
       <p class="hint">Where the four quick-link buttons point. Update here if any hub's domain ever changes. Lead Caregiver's Hub and Nurse's Hub aren't built yet — their links are placeholders until those hubs are live.</p>
       <label>Care Coordinator's Hub URL</label><input id="set_cc_hub_url" placeholder="https://cc.mo-care.com">
-      <label>Staffing Coordinator's Hub URL</label><input id="set_staffing_hub_url" placeholder="https://sc.mo-care.com">
+      <label>Hiring &amp; Background Checks link</label><input id="set_staffing_hub_url" placeholder="https://cc.mo-care.com/#cgbackground">
       <label>Lead Caregiver's Hub URL</label><input id="set_lead_caregiver_hub_url" placeholder="https://lead.mo-care.com">
       <label>Nurse's Hub URL</label><input id="set_nurse_hub_url" placeholder="https://nurse.mo-care.com">
       <label>Training Hub URL</label><input id="set_training_hub_url" placeholder="https://training.mo-care.com">
@@ -681,7 +680,10 @@ let CONFIG = JSON.parse(localStorage.getItem('th_config') || '{}');
 if('training_hub_key' in CONFIG || 'access_webhook_url' in CONFIG){ delete CONFIG.training_hub_key; delete CONFIG.access_webhook_url; /* Zapier is gone (2026-09-28) */ try{ localStorage.setItem('th_config', JSON.stringify(CONFIG)); }catch(e){} }
 CONFIG.admin_passcode = CONFIG.admin_passcode || '';
 CONFIG.cc_hub_url = CONFIG.cc_hub_url || 'https://cc.mo-care.com';
-CONFIG.staffing_hub_url = CONFIG.staffing_hub_url || 'https://sc.mo-care.com';
+/* 2026-10-04: the old Staffing hub page (sc.mo-care.com) is retired; hiring lives in the Care Coordinator Hub. A saved
+   link to the old page is treated as unset. */
+if (/sc\.mo-care\.com\/?$/.test(String(CONFIG.staffing_hub_url || ''))) CONFIG.staffing_hub_url = '';
+CONFIG.staffing_hub_url = CONFIG.staffing_hub_url || 'https://cc.mo-care.com/#cgbackground';
 CONFIG.lead_caregiver_hub_url = CONFIG.lead_caregiver_hub_url || 'https://lead.mo-care.com';
 CONFIG.nurse_hub_url = CONFIG.nurse_hub_url || 'https://nurse.mo-care.com';
 CONFIG.training_hub_url = CONFIG.training_hub_url || 'https://training.mo-care.com';
@@ -758,7 +760,7 @@ function toggleBlock(id){
 }
 function applyHubLinks(){
   document.getElementById('ccHubLink').href = CONFIG.cc_hub_url;
-  document.getElementById('staffingHubLink').href = CONFIG.staffing_hub_url;
+  document.getElementById('staffingHubLink').href = /sc\.mo-care\.com\/?$/.test(String(CONFIG.staffing_hub_url || '')) ? 'https://cc.mo-care.com/#cgbackground' : CONFIG.staffing_hub_url;
   document.getElementById('leadCaregiverHubLink').href = CONFIG.lead_caregiver_hub_url;
   document.getElementById('nurseHubLink').href = CONFIG.nurse_hub_url;
   document.getElementById('trainingHubLink').href = CONFIG.training_hub_url;
@@ -1757,7 +1759,7 @@ function saveSettings(){
   CONFIG.supabase_url = document.getElementById('set_supabase_url').value.trim();
   CONFIG.supabase_anon_key = document.getElementById('set_supabase_anon_key').value.trim();
   CONFIG.cc_hub_url = document.getElementById('set_cc_hub_url').value.trim() || 'https://cc.mo-care.com';
-  CONFIG.staffing_hub_url = document.getElementById('set_staffing_hub_url').value.trim() || 'https://sc.mo-care.com';
+  CONFIG.staffing_hub_url = document.getElementById('set_staffing_hub_url').value.trim() || 'https://cc.mo-care.com/#cgbackground';
   CONFIG.lead_caregiver_hub_url = document.getElementById('set_lead_caregiver_hub_url').value.trim() || 'https://lead.mo-care.com';
   CONFIG.nurse_hub_url = document.getElementById('set_nurse_hub_url').value.trim() || 'https://nurse.mo-care.com';
   CONFIG.training_hub_url = document.getElementById('set_training_hub_url').value.trim() || 'https://training.mo-care.com';
