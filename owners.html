@@ -108,12 +108,16 @@
 <!-- ============ GROWTH & VALUE ============ -->
 <section class="panel active" id="panel-growth">
   <h2>Growth &amp; Value</h2>
-  <div class="muted" style="margin-bottom:1rem">The operating pulse, straight from AxisCare and the lead pipeline — the numbers a buyer will ask about first.</div>
+  <div class="muted" style="margin-bottom:1rem">The operating pulse, straight from AxisCare and the lead pipeline: the numbers a buyer will ask about first.</div>
   <div id="owner-inbox"></div>
   <div id="growth-pulse"><div class="muted">Loading the pulse…</div></div>
   <div class="card">
-    <b style="font-size:.95rem;color:var(--navy)">Lead funnel — this month vs last</b>
+    <b style="font-size:.95rem;color:var(--navy)">Lead funnel: this month vs last</b>
     <div id="growth-funnel" style="margin-top:.5rem"><div class="muted">Loading…</div></div>
+  </div>
+  <div class="card">
+    <b style="font-size:.95rem;color:var(--navy)">Hiring funnel: how far each month's applicants got</b>
+    <div id="hiring-funnel" style="margin-top:.5rem"><div class="muted">Loading…</div></div>
   </div>
 </section>
 
@@ -356,15 +360,56 @@ function renderFunnel(){
     /* Lead numbers S1 (2026-09-28): a lead marked as spam (not a real inquiry) never counts */
     const leads=LEADS.filter(l=>inMonth(l,a,b)&&!(l&&l.spam&&l.spam.at));
     const conv=leads.filter(l=>l.status==='Converted').length;
+    /* 2026-10-04 (idea 5): families who started care this month, whichever month they first called */
+    const started=LEADS.filter(l=>l&&l.status==='Converted'&&l.converted_at&&!(l.spam&&l.spam.at)&&(t=>t>=a&&t<b)(new Date(l.converted_at))).length;
     const lost=leads.filter(l=>l.status==='Lost').length;
     return '<div style="display:flex;gap:1rem;align-items:center;padding:.45rem 0;border-bottom:1px solid var(--border);font-size:.86rem;flex-wrap:wrap">'
       +'<b style="min-width:90px">'+label+'</b>'
-      +'<span>'+leads.length+' inquiries</span><span style="color:var(--green);font-weight:700">'+conv+' became clients</span>'
+      +'<span>'+leads.length+' inquiries</span><span style="color:var(--green);font-weight:700">'+conv+' of them became clients so far</span>'
+      +'<span style="font-weight:700;color:var(--navy)">'+started+' client'+(started===1?'':'s')+' started this month</span>'
       +'<span class="muted">'+lost+' lost</span>'
       +'<span style="flex:1"></span><span class="chip" style="background:#E4EDF6;color:#2F6FB0">'+(leads.length?Math.round(conv/leads.length*100):0)+'% conversion</span></div>';
   };
   box.innerHTML=row('This month',mStart,now)+row('Last month',pStart,mStart)
-    +'<div class="muted" style="margin-top:.4rem">Full pipeline detail lives in the Care Coordinator Hub → Reports.</div>';
+    +'<div class="muted" style="margin-top:.4rem">"Became clients" counts that month\'s inquiries that have started care, so the newest month fills in over time. "Started this month" counts every family who started, whenever they first called. Full pipeline detail lives in the Care Coordinator Hub → Reports.</div>';
+}
+
+
+/* ---------------- Hiring funnel (2026-10-04, idea 5: https://claude.ai/artifact/6FdA6bE9aaobS5E6aY7E42) ----------------
+   For the people who applied in each of the last 3 months, how far they got. The Hub's server (hiring-funnel, owners
+   only) works it out from the applications, interviews, start forms, the Hub's lists and AxisCare, and returns counts
+   only: no names. */
+async function loadHiringFunnel(){
+  const box=document.getElementById('hiring-funnel'); if(!box) return;
+  box.innerHTML='<div class="muted">Counting…</div>';
+  try{
+    const { data, error } = await sb.functions.invoke('hiring-funnel', { body:{} });
+    let d=data;
+    if(error){ let m=error.message||'error'; try{ const j=await error.context.json(); if(j&&j.error) m=j.error; }catch(_){} throw new Error(m); }
+    if(!d||d.error) throw new Error((d&&d.error)||'no answer');
+    const mName=m=>new Date(m+'-15T12:00:00Z').toLocaleDateString('en-US',{month:'long',timeZone:'UTC'});
+    const steps=[['applied','Applied'],['interviewed','Interviewed'],['offered','Offered'],['start_form','Start form in'],['cleared','Cleared (references and checks)'],['started','Started']];
+    const pct=(n,of)=>of?' <span class="muted">('+Math.round(n/of*100)+'%)</span>':'';
+    let h='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:.86rem;min-width:420px"><thead><tr><th style="text-align:left;padding:.35rem .4rem;border-bottom:1px solid var(--border)">Applied in</th>'
+      +d.months.map(m=>'<th style="text-align:right;padding:.35rem .4rem;border-bottom:1px solid var(--border)">'+esc(mName(m.month))+'</th>').join('')+'</tr></thead><tbody>';
+    for(const [k,label] of steps){
+      h+='<tr><td style="padding:.35rem .4rem;border-bottom:1px solid var(--border)">'+esc(label)+'</td>'
+        +d.months.map(m=>'<td style="text-align:right;padding:.35rem .4rem;border-bottom:1px solid var(--border);font-weight:'+(k==='started'?'800':'500')+'">'+(m[k]||0)+(k==='applied'?'':pct(m[k]||0,m.applied))+'</td>').join('')+'</tr>';
+    }
+    h+='<tr><td style="padding:.35rem .4rem" class="muted">No-shows</td>'+d.months.map(m=>'<td style="text-align:right;padding:.35rem .4rem" class="muted">'+(m.noshow||0)+'</td>').join('')+'</tr></tbody></table></div>';
+    const md=d.medians||{}, dd=v=>v==null?'not enough yet':v+' day'+(v===1?'':'s');
+    h+='<div style="display:flex;gap:1.2rem;flex-wrap:wrap;margin-top:.6rem;font-size:.84rem">'
+      +'<span>Applied to interview: <b>'+dd(md.applied_to_interview)+'</b></span>'
+      +'<span>Interview to offer: <b>'+dd(md.interview_to_offer)+'</b></span>'
+      +'<span>Offer to start: <b>'+dd(md.offer_to_start)+'</b></span>'
+      +'<span>No-show rate: <b>'+(d.noshow_rate==null?'not enough yet':d.noshow_rate+'%')+'</b></span></div>';
+    const r=d.retention;
+    h+='<div style="margin-top:.5rem;font-size:.84rem">'+(r
+      ? 'Still working at 90 days: <b>'+r.still_active+' of '+r.hired+'</b> caregivers AxisCare shows starting 90 to 365 days ago'+(r.hired?' ('+Math.round(r.still_active/r.hired*100)+'%)':'')+'.'
+      : '<span style="color:var(--red)">Still working at 90 days: AxisCare could not be read just now ('+esc(d.census_error||'unknown')+'). The other numbers use the Hub\'s own caregiver list.</span>')+'</div>';
+    h+='<div class="muted" style="margin-top:.4rem">Typical days are the middle value across the three months. People are matched by phone or email, never by name. Counts only.</div>';
+    box.innerHTML=h;
+  }catch(e){ box.innerHTML='<div style="color:var(--red);font-size:.85rem">Could not count the hiring funnel: '+esc(e&&e.message?e.message:'error')+'</div><div class="muted" style="margin-top:.3rem"><button class="linklike" onclick="loadHiringFunnel()">try again</button></div>'; }
 }
 
 /* ---------------- Financials & sale goal ---------------- */
@@ -809,7 +854,7 @@ async function boot(){
   document.getElementById('app').style.display='block';
   await loadAll();
   renderDiscipline(); renderOffboarding(); renderAudits(); renderOwnersFeedback();
-  renderMoney(); renderBudget(); renderFunnel(); renderOwnerInbox(); loadGrowthPulse();
+  renderMoney(); renderBudget(); renderFunnel(); renderOwnerInbox(); loadGrowthPulse(); loadHiringFunnel();
 }
 boot();
 </script>
