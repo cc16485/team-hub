@@ -52,6 +52,15 @@ td{ padding:7px 8px; border-bottom:1px solid var(--border); vertical-align:middl
 #gate .err{ color:var(--red); font-size:.8rem; margin-top:8px; min-height:1em; }
 #notadmin{ min-height:70vh; display:none; align-items:center; justify-content:center; padding:2rem; }
 #app{ display:none; }
+.swgroup{ font-size:.72rem; font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:var(--teal); margin:14px 0 2px; display:flex; justify-content:space-between; align-items:baseline; }
+.swgroup:first-child{ margin-top:0; }
+.swgroup a{ font-size:.74rem; font-weight:600; letter-spacing:0; text-transform:none; color:var(--teal); }
+.swrow{ display:flex; align-items:flex-start; gap:10px; padding:9px 0; border-bottom:1px solid var(--border); }
+.swrow:last-child{ border-bottom:none; }
+.swrow .what{ font-weight:600; color:var(--navy); }
+.swrow .why{ color:var(--muted); font-size:.8rem; }
+.swrow .grow{ flex:1; }
+.swrow .btn{ white-space:nowrap; }
 html.embedded .topbar .brandword{ display:none; }
 </style>
 </head>
@@ -100,6 +109,12 @@ html.embedded .topbar .brandword{ display:none; }
       <h2>System status</h2>
       <p class="sub">What is actually running right now. Anything switched off says so here rather than looking healthy and doing nothing.</p>
       <div class="card" id="statusCard"></div>
+    </section>
+
+    <section>
+      <h2>Switches</h2>
+      <p class="sub">Every Hub on/off switch in one place. Off means practice: it is found and listed, but nobody is texted and nothing changes. These are the same switches as in the Care Coordinator Hub's Settings: flip one on either page and both show it.</p>
+      <div class="card" id="swBox"><div class="sub" style="margin:0">Loading…</div></div>
     </section>
 
     <section>
@@ -218,9 +233,9 @@ html.embedded .topbar .brandword{ display:none; }
           <dt>Staff logins</dt><dd>Supabase auth. A person needs a login before they can be assigned anything.</dd>
           <dt>Phone numbers, texting, contacts</dt><dd>GoHighLevel. Note the office line is still on CareQB until it ports, and calls on it are invisible to the hubs.</dd>
           <dt>Clients, schedules, EVV</dt><dd>AxisCare.</dd>
-          <dt>Interviews</dt><dd>Augusta, which books onto coordinators' Google Calendars.</dd>
+          <dt>Interviews</dt><dd>Care Coordinator Hub, Recruit (in person at the office; applicants book on the Hub's own interview calendar).</dd>
           <dt>Offers, onboarding paperwork, payroll</dt><dd>Viventium.</dd>
-          <dt>Orientation sessions and booking</dt><dd>Staffing Hub, Orientations tab.</dd>
+          <dt>Orientation sessions and booking</dt><dd>Care Coordinator Hub, Orientations (the online welcome call first; the in-person office orientation is the backup).</dd>
           <dt>Financials, discipline, sale plan</dt><dd>Owners Hub, founders only.</dd>
           <dt>API keys and webhooks</dt><dd>Supabase edge function secrets. Not editable from any hub on purpose.</dd>
         </dl>
@@ -487,6 +502,111 @@ async function delOnCall(id){
 }
 
 /* ── boot ───────────────────────────────────────────────────────────────── */
+/* ── Switches (2026-10-04, Samantha "yes to all": https://claude.ai/artifact/QDoebXX7ZaD4dgbzZe3Kor) ─────────────
+   Every Hub on/off switch on this page. They are the SAME ops_settings switches the Care Coordinator Hub's Settings
+   flips, with the same questions and the same rules: a caregiver missed clock-in text needs missed clock-ins to be
+   watched; running-late replies and admin texts need running-late notices; turning running-late notices off turns
+   those two off as well. Saved with mergeSave (only this switch changes; nobody's other change is lost) and recorded
+   in op_events with who did it, like the Hub. Founders only (this page). */
+const CC_SETTINGS='https://cc.mo-care.com/#settings';
+const SWITCHES=[
+  ['Hiring', [
+    { k:'intake_auto_import_live', name:'Start forms import themselves', what:'A new start form from someone we sent a start link to becomes a Background & References candidate by itself.',
+      on:'Turn on start forms importing themselves? From the next check (every 5 minutes), a new start form from someone we sent a start link to becomes a Background & References candidate; everyone else gets a Needs Attention card. Nothing is sent to them or their references.',
+      off:'Turn off start forms importing themselves? It goes back to practice: it only lists what it would do, and Import works by hand as before.' },
+    { k:'cg_connect_live', name:'Caregiver connect', what:'Each AxisCare caregiver is connected to their Hub record when it is certain; everyone else goes to Needs Attention.',
+      on:'Turn on caregiver connect? From the next hourly check, AxisCare caregivers it is sure about are connected to their Hub record, moved over from Background & References, or given a new Hub record. Everyone else goes to Needs Attention. Each one shows on the Caregivers list with "Not this person" to undo it.',
+      off:'Turn off caregiver connect? The hourly check goes back to practice: it only lists what it would do.' },
+    { k:'orient_remind_live', name:'Office orientation reminders', what:'The Hub texts the day-before reminder for the in-person office orientation. Turn it on when you turn off the GoHighLevel workflow "Orientation booked - remind".',
+      on:'Turn on office orientation reminders from the Hub?\n\nFrom 10am tomorrow (or today, if it is before 6pm and someone is booked for tomorrow), everyone still booked on the next day\'s in-person office orientation gets one reminder text.\n\nTurn off the GoHighLevel workflow "Orientation booked - remind" at the same time, or people get two reminders.',
+      off:'Turn off office orientation reminders from the Hub? It goes back to practice: it only lists who it would remind, and nobody gets a reminder unless the GoHighLevel workflow is on.' },
+    { k:'prn_reconfirm_live', name:'PRN check-in texts', what:'PRN CNAs whose availability is 60+ days old get one check-in text with their one-tap link.',
+      on:'Turn on the PRN check-in texts? From the next weekday run, PRN CNAs whose availability is 60+ days old get one text with their one-tap link.',
+      off:'Turn off the PRN check-in texts? They go back to practice: worked out, nothing sent.' },
+  ]],
+  ['Shifts and visits', [
+    { k:'timekeeper_text_live', name:'Missed clock-ins: caregiver text', what:'A caregiver who has not clocked in gets one short text asking them to clock in.', needs:'timekeeper_watch_live', needsWhy:'missed clock-ins are not being watched yet',
+      on:'Turn on caregiver texts? From the next missed clock-in, the caregiver gets one short text asking her to clock in (no EVV form).',
+      off:'Turn off caregiver texts? Missed clock-ins are still found and the admins still alerted; caregivers get no text.' },
+    { k:'timekeeper_admin_loop_live', name:'Missed clock-ins: admin texts', what:'Every admin is texted every few minutes until someone taps Resolved. Hours follow the quiet hours on the Missed clock-ins card in the Care Coordinator Hub.',
+      on:'Turn on the admin texts? From the next missed clock-in, every admin is texted every few minutes until someone taps Resolved on their link. The hours follow the quiet hours set on the Missed clock-ins card in the Care Coordinator Hub.',
+      off:'Turn off the admin texts? Missed clock-ins go back to practice (recorded, not texted to admins). Caregivers still get their text.' },
+    { k:'callin_reminders_live', name:'Call-in reminders', what:'A call-in nobody has claimed, confirmed or closed reminds every admin who got its text, a few times.',
+      on:'Turn on call-in reminders? From the next check (every 3 minutes), a call-in nobody has claimed, confirmed or closed reminds every admin who got its text, a few times (how often and how many are on the call-in card in the Care Coordinator Hub).',
+      off:'Turn off call-in reminders? They go back to practice: recorded, not texted.' },
+    { k:'late_watch_live', name:'Running late: notices', what:'A caregiver\'s running-late message opens a Needs Attention card, and their missed clock-in texts wait until 5 minutes after the time they gave.', offAlso:['late_cg_reply_live','late_admin_live'],
+      on:'Turn on running-late notices? From the next check, a caregiver\'s running-late message opens a card in Needs Attention, and their missed clock-in texts wait until 5 minutes after the time they gave. Nothing is texted yet.',
+      off:'Turn off running-late notices? It goes back to practice (found and listed, nothing else). Caregiver replies and admin texts for running late turn off too.' },
+    { k:'late_cg_reply_live', name:'Running late: caregiver replies', what:'The caregiver gets one thank-you with their time, or one "about what time?"', needs:'late_watch_live', needsWhy:'running-late notices are off',
+      on:'Turn on caregiver replies? A caregiver who texts that they\'re running late gets one thank-you with their time, or one "about what time?"', off:'Turn off caregiver replies?' },
+    { k:'late_admin_live', name:'Running late: admin texts', what:'Every admin is texted a link, every 5 minutes until someone taps Seen.', needs:'late_watch_live', needsWhy:'running-late notices are off',
+      on:'Turn on admin texts? Every admin is texted a link now and every 5 minutes until someone taps Seen.', off:'Turn off admin texts? The card still opens in Needs Attention.' },
+    { k:'late_call_live', name:'Running late: calls', what:'A caregiver\'s call that says they are running late opens a card too. On unless turned off.', defaultOn:true,
+      on:'Turn calls back on? A caregiver\'s call that says they\'re running late opens a card, and when they gave a time the missed clock-in texts pause until 5 minutes after it.',
+      off:'Turn off calls? Calls are still read, but only in practice: no card, and the missed clock-in texts are never paused because of a call.' },
+    { k:'missed_notes_live', name:'Missed care notes', what:'A caregiver who clocks out with no care note is texted (8am to 9pm), and misses count toward 3 in 30 days.', since:'missed_notes_live_since',
+      on:'Turn on missed-note texts? From the next run, a caregiver who clocks out with no care note is texted right away (8am to 9pm), and misses start counting toward 3 in 30 days from today.',
+      off:'Turn off missed-note texts? It goes back to practice: misses are found and listed, nobody is texted, nothing new counts.' },
+    { k:'evv_next_visit_live', name:'EVV next-visit signature texts', what:'When a correction form is waiting for the client\'s signature, the caregiver gets one text with the signing link at her next visit with that client.',
+      on:'Turn on next-visit signature texts? When a correction form is waiting for the client\'s signature, the caregiver gets ONE text with the signing link at her next visit with that client (10 minutes after she clocks in, never 8pm to 7am). Nothing is ever sent to the client or family.',
+      off:'Turn off next-visit signature texts? Waiting forms go back to practice (who would be texted is recorded; nobody is texted).' },
+  ]],
+  ['Calls', [
+    { k:'call_pull_live', name:'Calls from GoHighLevel', what:'A new-client call creates the lead and drafts a follow-up for your approval (nothing is sent).', since:'call_pull_live_since',
+      on:'Turn on calls from GoHighLevel?\n\nFrom the next run (within 10 minutes), a new-client call creates the lead, drafts a follow-up for your approval (nothing is sent), and tags the GoHighLevel contact "lead", which your AxisCare sync picks up. Calls already read in practice are not redone.',
+      off:'Switch back to practice? Calls are still read and listed, but nothing is created.' },
+  ]],
+  ['Shown here, switched by a Desktop step', [
+    { k:'coverage_send_live', name:'Open-shift texts', what:'The coverage engine texts caregivers about open shifts.', readOnly:true },
+    { k:'timekeeper_watch_live', name:'Missed clock-ins watched', what:'Missed clock-ins are found and alerted.', readOnly:true },
+    { k:'promises_live', name:'Client promises', what:'The promise engine tracks what we owe each new client.', readOnly:true },
+  ]],
+];
+const swIsOn=(sw, st)=> sw.defaultOn ? (st||{})[sw.k]!==false : (st||{})[sw.k]===true;
+function renderSwitches(){
+  const box=document.getElementById('swBox'); if(!box) return;
+  const st=OPS||{};
+  box.innerHTML=SWITCHES.map(([g,list],gi)=>'<div class="swgroup"><span>'+esc(g)+'</span>'
+      +(gi<3?'<a href="'+CC_SETTINGS+'" target="_blank" rel="noopener">More settings ↗</a>':'')+'</div>'
+    +list.map(sw=>{
+      const on=swIsOn(sw,st), blocked=!on && sw.needs && st[sw.needs]!==true;
+      const chip=on?'<span class="chip ok">On</span>':'<span class="chip warn">'+(sw.readOnly?'Off':'Off · practice')+'</span>';
+      const btn=sw.readOnly?'':'<button class="btn'+(on?'':' primary')+'" data-sw="'+esc(sw.k)+'"'+(blocked?' disabled title="'+esc('Can\'t turn on yet: '+sw.needsWhy+'.')+'" style="opacity:.55"':'')+' onclick="swToggle(\''+esc(sw.k)+'\',this)">'+(on?'Turn off':'Turn on')+'</button>';
+      return '<div class="swrow">'+chip+'<div class="grow"><div class="what">'+esc(sw.name)+'</div><div class="why">'+esc(sw.what)
+        +(blocked?' <b>Can\'t turn on yet: '+esc(sw.needsWhy)+'.</b>':'')+'</div></div>'+btn+'</div>';
+    }).join('')).join('');
+}
+function swFind(k){ for(const [,list] of SWITCHES){ const sw=list.find(x=>x.k===k); if(sw) return sw; } return null; }
+async function swToggle(k, btn){
+  const sw=swFind(k); if(!sw || sw.readOnly) return;
+  const on=!swIsOn(sw, OPS);
+  if(on && sw.needs && (OPS||{})[sw.needs]!==true){ alert('Can\'t turn this on yet: '+sw.needsWhy+'.'); return; }
+  if(!confirm(on?sw.on:sw.off)) return;
+  if(btn) btn.disabled=true;
+  let refused='';
+  const out=await mergeSave('ops_settings',(m,base)=>{
+    /* decided against the record as it is NOW, not this page's copy */
+    if(on && sw.needs && base[sw.needs]!==true){ refused=sw.needsWhy; return []; }
+    const ch=[];
+    if(swIsOn(sw, base)!==on){ m[sw.k]=on; ch.push(sw.name+(on?' ON':' OFF')); }
+    if(on && sw.since && !m[sw.since]){ m[sw.since]=new Date().toISOString(); }
+    if(!on) (sw.offAlso||[]).forEach(x=>{ if(base[x]===true){ m[x]=false; ch.push((swFind(x)||{name:x}).name+' OFF'); } });
+    return ch;
+  });
+  if(btn) btn.disabled=false;
+  if(refused){ alert('Not changed: '+refused+'.'); }
+  if(out.ok){
+    if(out.data) OPS=out.data;
+    if(out.changed && out.changed.length){
+      sb.from('op_events').insert({ actor_email:ME.email, actor_name:ME.email.split('@')[0], verb:'setting_changed', item_id:'ops_settings', area:'admin',
+        summary:ME.email.split('@')[0]+' changed switches on the Admin page: '+out.changed.join(', '), data:{ changed:out.changed } })
+        .then(r=>{ if(r&&r.error) console.warn('[op_events] not recorded:', r.error.message); }, e=>console.warn('[op_events] not recorded:', e));
+    }
+  }
+  renderSwitches(); try{ renderStatus(); }catch(_){}
+}
+window.swToggle=swToggle;
+
 async function boot(){
   const { data:{ session } } = await sb.auth.getSession();
   if(!session) return;
@@ -507,7 +627,7 @@ async function boot(){
   OPS=(await readKey('ops_settings'))||null;
   OPSITEMS=(await readKey('ops_items'))||[];
 
-  renderStaff(); renderOnCall(); fillOps(); renderStatus();
+  renderStaff(); renderOnCall(); fillOps(); renderStatus(); renderSwitches();
   // Read-only, and deliberately not awaited: a slow or missing RPC must not
   // hold up the rest of this page.
   renderStaffAccess();
