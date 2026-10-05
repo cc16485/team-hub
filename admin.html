@@ -117,6 +117,15 @@ html.embedded .topbar .brandword{ display:none; }
       <div class="card" id="swBox"><div class="sub" style="margin:0">Loading…</div></div>
     </section>
 
+    <!-- 2026-10-05 (her call): every Care Coordinator Hub setting starts here; the Hub's sidebar has no Settings tab.
+         Each opens that one setting in the Hub in a new tab (#settings/<name>), so there is one copy of each setting. -->
+    <section id="hubsettings">
+      <h2>Hub settings</h2>
+      <p class="sub">Every Care Coordinator Hub setting, by what it is for. Each one opens by itself in the Hub in a new tab.
+        Changes there are recorded in the activity log, the same as here.</p>
+      <div class="card" id="hsBox"></div>
+    </section>
+
     <section>
       <h2>Staff</h2>
       <p class="sub">One list, shared by every hub. The email must be the address they sign into the hubs with, and the phone is what escalation texts.</p>
@@ -579,6 +588,42 @@ const SWITCHES=[
     { k:'promises_live', name:'Client promises', what:'The promise engine tracks what we owe each new client.', readOnly:true },
   ]],
 ];
+/* Hub settings: name, what it controls, and its link (cc.mo-care.com/#settings/<name>). */
+const HUB_SETTINGS=[
+  ['Texts to caregivers', [
+    ['missed-clockins','Missed clock-ins','The caregiver\'s text when there is no clock-in yet, how many minutes before it goes, the admin texts and who gets them.'],
+    ['running-late','Running late','What happens when a caregiver texts or calls that they are running late or can\'t make it.'],
+    ['missed-notes','Missed care notes','The text when a caregiver clocks out with no care note.'],
+    ['callout-texts','Callout texts','Every open-shift message the coverage engine sends, in your words.'],
+    ['send-application','Send the application','The text sent from Applicants when someone calls about a job.'],
+    ['orientation-reminders','Office orientation reminders','The text the day before an in-person office orientation.'],
+    ['prn','PRN CNA Team','The minimum bench and the 60-day availability check-in text.'] ]],
+  ['Calls', [
+    ['calls-ring','Calls: your phone rings first','Who is linked to a GoHighLevel user, so the Hub\'s Call buttons ring their phone first.'],
+    ['calls-ghl','Calls from GoHighLevel','Answered calls are read every 10 minutes; new-client calls become leads with a drafted follow-up.'] ]],
+  ['Today and the office', [
+    ['routing','Right person first, then escalate','Who holds Operations, Staffing and Owner Escalation when nobody is scheduled.'],
+    ['loops','The Hub closes its own loops','Finished shifts, case cards, family calls, EVV fixes and the weekly EVV review.'],
+    ['fresh-start','Fresh start: clear past-due work','Close past-due work with a note, with Undo for 7 days. Owners only.'],
+    ['morning-brief','Morning Brief','Who gets the 8am email and what is in it.'],
+    ['afternoon-interviews','Afternoon interviews','From what time interviews are marked as one person\'s.'],
+    ['cadences','Cadences','How often clients get a check-in, and when supervisory visits show as due soon.'] ]],
+  ['New people and records', [
+    ['start-forms','Start forms','Whether a new start form becomes a Background & References candidate by itself.'],
+    ['caregiver-connect','Caregiver connect','Ties each AxisCare caregiver to their Hub record.'],
+    ['staff','Coordinator list','Who the Hub knows as office staff, their shift and notifications.'],
+    ['transcripts','Transcript retention','Whether raw visit transcripts are cleared once the care plan is in AxisCare.'],
+    ['after-hours','After-hours escalation protocol','The after-hours steps, kept for reference.'],
+    ['lead-intake','Lead intake','How website forms reach Leads & Starts (information only).'] ]],
+];
+const CC_SET='https://cc.mo-care.com/#settings/';
+function renderHubSettings(){
+  const box=document.getElementById('hsBox'); if(!box) return;
+  box.innerHTML=HUB_SETTINGS.map(([g,list])=>'<div class="swgroup"><span>'+esc(g)+'</span></div>'
+    +list.map(([k,name,what])=>'<div class="swrow"><div class="grow"><div class="what">'+esc(name)+'</div><div class="why">'+esc(what)+'</div></div>'
+      +'<a class="btn" style="text-decoration:none" href="'+CC_SET+esc(k)+'" target="_blank" rel="noopener">Open ↗</a></div>').join('')).join('')
+    +'<div class="sub" style="margin:12px 0 0">Older connection settings (Supabase, AxisCare site number, passcode) are under <a href="https://cc.mo-care.com/#settings" target="_blank" rel="noopener">all Hub settings ↗</a>.</div>';
+}
 const swIsOn=(sw, st)=> sw.defaultOn ? (st||{})[sw.k]!==false : (st||{})[sw.k]===true;
 function renderSwitches(){
   const box=document.getElementById('swBox'); if(!box) return;
@@ -644,7 +689,7 @@ async function boot(){
   OPS=(await readKey('ops_settings'))||null;
   OPSITEMS=(await readKey('ops_items'))||[];
 
-  renderStaff(); renderOnCall(); fillOps(); renderStatus(); renderSwitches();
+  renderStaff(); renderOnCall(); fillOps(); renderStatus(); renderSwitches(); renderHubSettings();
   // Read-only, and deliberately not awaited: a slow or missing RPC must not
   // hold up the rest of this page.
   renderStaffAccess();
