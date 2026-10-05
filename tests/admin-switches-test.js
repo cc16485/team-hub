@@ -38,8 +38,8 @@ const rows = (h) => h.split('<div class="swrow">').slice(1).map((r) => ({
   disabled: /<button[^>]* disabled/.test(r), text: r }));
 (async () => {
   let W = world(); W.X.renderSwitches(); let R = rows(W.box.innerHTML);
-  ck('all the switches are listed, grouped: Hiring, Shifts and visits, Calls, and the three set by a Desktop step', R.length === 17 && /Hiring/.test(W.box.innerHTML) && /Shifts and visits/.test(W.box.innerHTML) && /Calls/.test(W.box.innerHTML) && /Shown here, switched by a Desktop step/.test(W.box.innerHTML), R.map((r) => r.name));
-  ck('14 have a Turn on / Turn off button; the three Desktop ones have none', R.filter((r) => r.btn).length === 14 && R.filter((r) => !r.btn).map((r) => r.name).join() === 'Open-shift texts,Missed clock-ins watched,Client promises', R.filter((r) => !r.btn).map((r) => r.name));
+  ck('all the switches are listed, grouped: Hiring, Shifts and visits, Calls, and the three set by a Desktop step', R.length === 18 && /Hiring/.test(W.box.innerHTML) && /Shifts and visits/.test(W.box.innerHTML) && /Calls/.test(W.box.innerHTML) && /Shown here, switched by a Desktop step/.test(W.box.innerHTML), R.map((r) => r.name));
+  ck('15 have a Turn on / Turn off button; the three Desktop ones have none', R.filter((r) => r.btn).length === 15 && R.filter((r) => !r.btn).map((r) => r.name).join() === 'Open-shift texts,Missed clock-ins watched,Client promises', R.filter((r) => !r.btn).map((r) => r.name));
   ck('the state is read from the shared settings: caregiver connect On, start forms Off (practice), running-late calls On by default', R.find((r) => r.name === 'Caregiver connect').on && !R.find((r) => r.name === 'Start forms import themselves').on && /Off · practice/.test(R.find((r) => r.name === 'Start forms import themselves').text) && R.find((r) => r.name === 'Running late: calls').on);
   ck('"More settings" links to the Care Coordinator Hub Settings', (W.box.innerHTML.match(/href="https:\/\/cc\.mo-care\.com\/#settings"/g) || []).length === 3);
 
