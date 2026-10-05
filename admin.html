@@ -62,6 +62,21 @@ td{ padding:7px 8px; border-bottom:1px solid var(--border); vertical-align:middl
 .swrow .grow{ flex:1; }
 .swrow .btn{ white-space:nowrap; }
 html.embedded .topbar .brandword{ display:none; }
+/* Tabs: Admin and Hub settings (2026-10-05). */
+.atabs{ display:flex; gap:4px; padding:0 20px; background:#fff; border-bottom:1px solid var(--border); position:sticky; top:49px; z-index:4; }
+.atabs button{ border:0; background:none; padding:10px 14px; font-size:.86rem; font-weight:600; color:var(--muted); cursor:pointer; border-bottom:3px solid transparent; font-family:inherit; }
+.atabs button.on{ color:var(--navy); border-bottom-color:var(--teal); }
+#hsView{ display:none; max-width:1240px; margin:0 auto; padding:18px 20px 80px; }
+.hsgrid{ display:grid; grid-template-columns:260px minmax(0,1fr); gap:16px; align-items:start; }
+.hslist{ position:sticky; top:104px; max-height:calc(100vh - 120px); overflow:auto; }
+.hslist .swgroup{ margin:14px 0 4px; }
+.hslist button{ display:block; width:100%; text-align:left; border:0; background:none; padding:7px 10px; border-radius:8px; font-size:.84rem; color:var(--ink); cursor:pointer; font-family:inherit; }
+.hslist button:hover{ background:var(--panel); }
+.hslist button.on{ background:#E1F1ED; color:var(--navy); font-weight:700; }
+.hshead{ display:flex; gap:10px; align-items:baseline; flex-wrap:wrap; margin-bottom:8px; }
+.hshead h2{ margin:0; font-size:1.15rem; }
+#hsFrame{ width:100%; min-height:520px; border:1px solid var(--border); border-radius:12px; background:#fff; display:block; }
+@media (max-width:760px){ .hsgrid{ grid-template-columns:1fr; } .hslist{ position:static; max-height:none; } }
 </style>
 </head>
 <body>
@@ -104,7 +119,11 @@ html.embedded .topbar .brandword{ display:none; }
     <button class="btn" onclick="signOut()">Sign Out</button>
   </div>
 
-  <main>
+  <nav class="atabs" id="atabs">
+    <button data-t="admin" class="on" onclick="adminTab('admin')">Admin</button>
+    <button data-t="hubsettings" onclick="adminTab('hubsettings')">Hub settings</button>
+  </nav>
+  <main id="adminView">
     <section>
       <h2>System status</h2>
       <p class="sub">What is actually running right now. Anything switched off says so here rather than looking healthy and doing nothing.</p>
@@ -117,14 +136,6 @@ html.embedded .topbar .brandword{ display:none; }
       <div class="card" id="swBox"><div class="sub" style="margin:0">Loading…</div></div>
     </section>
 
-    <!-- 2026-10-05 (her call): every Care Coordinator Hub setting starts here; the Hub's sidebar has no Settings tab.
-         Each opens that one setting in the Hub in a new tab (#settings/<name>), so there is one copy of each setting. -->
-    <section id="hubsettings">
-      <h2>Hub settings</h2>
-      <p class="sub">Every Care Coordinator Hub setting, by what it is for. Each one opens by itself in the Hub in a new tab.
-        Changes there are recorded in the activity log, the same as here.</p>
-      <div class="card" id="hsBox"></div>
-    </section>
 
     <section>
       <h2>Staff</h2>
@@ -257,6 +268,19 @@ html.embedded .topbar .brandword{ display:none; }
       </div>
     </section>
   </main>
+  <!-- 2026-10-05 (her call): every Care Coordinator Hub setting, right here. The setting itself is the Hub's own, shown
+       in place (cc.mo-care.com/?embed=settings#settings/<name>), so there is one copy of each and saving works the same. -->
+  <div id="hsView">
+    <div class="hsgrid">
+      <div class="card hslist" id="hsList"></div>
+      <div>
+        <div class="hshead"><h2 id="hsTitle"></h2><span class="sub" id="hsWhat" style="margin:0"></span>
+          <span style="flex:1"></span><a id="hsOwn" class="sub" style="margin:0" target="_blank" rel="noopener">Open in its own tab ↗</a></div>
+        <iframe id="hsFrame" title="Hub setting"></iframe>
+        <div class="sub" style="margin-top:8px">If this asks you to sign in, use your Hub sign-in once; it is remembered after that.</div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -612,24 +636,53 @@ const HUB_SETTINGS=[
     ['start-forms','Start forms','Whether a new start form becomes a Background & References candidate by itself.'],
     ['caregiver-connect','Caregiver connect','Ties each AxisCare caregiver to their Hub record.'],
     ['staff','Coordinator list','Who the Hub knows as office staff, their shift and notifications.'],
+    ['profile-enforcement','Profile standard: enforcement','Whether the client and caregiver profile standards block Ready for Staffing, assignment and First Shift. All off now (shadow mode).'],
     ['transcripts','Transcript retention','Whether raw visit transcripts are cleared once the care plan is in AxisCare.'],
     ['after-hours','After-hours escalation protocol','The after-hours steps, kept for reference.'],
     ['lead-intake','Lead intake','How website forms reach Leads & Starts (information only).'] ]],
 ];
-const CC_SET='https://cc.mo-care.com/#settings/';
+let CC_HUB='https://cc.mo-care.com/';   /* let: a test points it at a local copy */
+let HS_CUR=null;
+function hsFind(k){ for(const [,l] of HUB_SETTINGS){ const x=l.find(r=>r[0]===k); if(x) return x; } return null; }
 function renderHubSettings(){
-  const box=document.getElementById('hsBox'); if(!box) return;
+  const box=document.getElementById('hsList'); if(!box) return;
   box.innerHTML=HUB_SETTINGS.map(([g,list])=>'<div class="swgroup"><span>'+esc(g)+'</span></div>'
-    +list.map(([k,name,what])=>'<div class="swrow"><div class="grow"><div class="what">'+esc(name)+'</div><div class="why">'+esc(what)+'</div></div>'
-      +'<a class="btn" style="text-decoration:none" href="'+CC_SET+esc(k)+'" target="_blank" rel="noopener">Open ↗</a></div>').join('')).join('')
-    +'<div class="sub" style="margin:12px 0 0">Older connection settings (Supabase, AxisCare site number, passcode) are under <a href="https://cc.mo-care.com/#settings" target="_blank" rel="noopener">all Hub settings ↗</a>.</div>';
+    +list.map(([k,name])=>'<button data-k="'+esc(k)+'" class="'+(k===HS_CUR?'on':'')+'" onclick="hsShow(\''+esc(k)+'\')">'+esc(name)+'</button>').join('')).join('')
+    +'<div class="swgroup"><span>Everything else</span></div>'
+    +'<button data-k="" class="'+(HS_CUR===''?'on':'')+'" onclick="hsShow(\'\')">All Hub settings on one page</button>'
+    +'<div class="sub" style="margin:4px 10px 0">Includes the older connection settings (Supabase, AxisCare site number, passcode).</div>';
 }
+function hsShow(k){
+  HS_CUR=k; const row=k?hsFind(k):null; if(k && !row) return hsShow('missed-clockins');
+  const url=CC_HUB+'?embed=settings#settings'+(k?'/'+k:'');
+  const fr=document.getElementById('hsFrame');
+  /* Same page, new #: the Hub switches setting without loading again. */
+  if(fr.getAttribute('src')!==url) fr.setAttribute('src', url);
+  document.getElementById('hsTitle').textContent=row?row[1]:'All Hub settings';
+  document.getElementById('hsWhat').textContent=row?row[2]:'';
+  document.getElementById('hsOwn').href=CC_HUB+'#settings'+(k?'/'+k:'');
+  try{ history.replaceState(null,'','#hubsettings'+(k?'/'+k:'')); localStorage.setItem('admin_hs', k); }catch(e){}
+  renderHubSettings();
+}
+function adminTab(t){
+  const hs=t==='hubsettings';
+  document.getElementById('adminView').style.display=hs?'none':'';
+  document.getElementById('hsView').style.display=hs?'block':'none';
+  document.querySelectorAll('#atabs button').forEach(b=>b.classList.toggle('on', b.dataset.t===t));
+  if(hs){ let k=HS_CUR; if(k===null){ try{ k=localStorage.getItem('admin_hs'); }catch(e){} } if(k===null) k='missed-clockins'; hsShow(k); }
+  else { try{ history.replaceState(null,'',location.pathname); }catch(e){} }
+}
+/* The Hub frame says how tall the setting is, so the page scrolls as one. */
+if(typeof window!=='undefined' && window.addEventListener) window.addEventListener('message', (e)=>{
+  if(e.origin!=='https://cc.mo-care.com' || !e.data || e.data.type!=='cc-settings-height') return;
+  const fr=document.getElementById('hsFrame'); if(fr) fr.style.height=Math.max(520, Math.min(20000, Number(e.data.h)||0))+'px';
+});
 const swIsOn=(sw, st)=> sw.defaultOn ? (st||{})[sw.k]!==false : (st||{})[sw.k]===true;
 function renderSwitches(){
   const box=document.getElementById('swBox'); if(!box) return;
   const st=OPS||{};
   box.innerHTML=SWITCHES.map(([g,list],gi)=>'<div class="swgroup"><span>'+esc(g)+'</span>'
-      +(gi<3?'<a href="'+CC_SETTINGS+'" target="_blank" rel="noopener">More settings ↗</a>':'')+'</div>'
+      +(gi<3?'<a href="#hubsettings" onclick="adminTab(\'hubsettings\');return false;">More settings</a>':'')+'</div>'
     +list.map(sw=>{
       const on=swIsOn(sw,st), blocked=!on && sw.needs && st[sw.needs]!==true;
       const chip=on?'<span class="chip ok">On</span>':'<span class="chip warn">'+(sw.readOnly?'Off':'Off · practice')+'</span>';
@@ -690,6 +743,7 @@ async function boot(){
   OPSITEMS=(await readKey('ops_items'))||[];
 
   renderStaff(); renderOnCall(); fillOps(); renderStatus(); renderSwitches(); renderHubSettings();
+  { const m=/^#hubsettings(?:\/([a-z-]*))?$/.exec(location.hash||''); if(m){ if(m[1]!==undefined) HS_CUR=m[1]; adminTab('hubsettings'); } }
   // Read-only, and deliberately not awaited: a slow or missing RPC must not
   // hold up the rest of this page.
   renderStaffAccess();
