@@ -1321,7 +1321,7 @@ function renderAccessPanel(){
   const waiting = users.filter(u=>u.status!=='active');
   html += `<div style="background:#EAF6F5;border:1px solid #54BDB8;border-radius:10px;padding:12px 14px;margin-bottom:14px;">
     <div style="font-weight:800;color:var(--navy);">Give or remove access in My Team</div>
-    <div style="font-size:12.5px;margin-top:4px;">Open the <a href="https://cc.mo-care.com/#myteam" target="_blank" rel="noopener">Care Coordinator Hub → My Team</a>, pick the person, then <b>Hub access</b>. Each hub has its own switch; the first one sends their invitation email, and they choose their password when they open it.</div>
+    <div style="font-size:12.5px;margin-top:4px;">Open the <a href="https://hub.mo-care.com/admin.html#team" target="_blank" rel="noopener">Owners Hub Admin page → Team</a> and press <b>Hub access</b> beside the person. Each hub has its own switch; the first one sends their invitation email, and they choose their password when they open it.</div>
     ${waiting.length?`<div style="font-size:12.5px;margin-top:8px;color:#A8660E;"><b>${waiting.length} on the old list may still be waiting</b> (added here after the old invite stopped working): ${waiting.map(u=>escapeHtml(u.name||u.email)).join(', ')}. Give them access in My Team.</div>`:''}
   </div>`;
   html += `<div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:10px;">The old list (${users.length}), kept for reference</div>`;
