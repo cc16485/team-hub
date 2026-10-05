@@ -339,50 +339,21 @@
       </a>
     </div>
 
-    <div class="daily-grid">
-    <!-- ===================== STAND-UP BOARD ===================== -->
-    <section class="block" id="standupSection">
-      <div class="section-header">
-        <h2>🚨 Stand-Up Board</h2>
-        <button class="primary" onclick="openStandupModal()">+ Add Item</button>
-      </div>
-      <p style="font-size:12px;color:var(--text-muted);margin:-6px 0 12px;">Anything that happened after hours or over the weekend that the daytime team needs to know — a caregiver call-out, a client concern, a scheduling issue. Care coordinators and staffing coordinators both post and read here.</p>
-      <div class="card" style="padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
-        <div style="flex:1;min-width:200px;">
-          <div style="font-size:13px;font-weight:600;color:var(--navy);">📱 Away from a computer?</div>
-          <div style="font-size:12px;color:var(--text-muted);">Bookmark the no-login quick-add page to your phone — add an item in one tap, no sign-in.</div>
+    <!-- ===================== STAND-UP + TEAM MEETINGS: MOVED (2026-10-05) =====================
+         Both now live in the Caring Companions Hub under Today, on the same saved lists, so every
+         past item and meeting is there. The no-sign-in quick-add page is retired (anyone with its
+         link could write to the board); "+ Add to Stand-Up" in the Hub works on a phone. -->
+    <section class="block" id="standupMovedSection">
+      <div class="card video-card" style="flex-wrap:wrap;gap:12px;">
+        <div style="flex:1;min-width:220px;">
+          <div class="label">Stand-Up and Team Meetings have moved</div>
+          <div class="sub">They are now tabs under <b>Today</b> in the Caring Companions Hub, with everything from before. Add an item from your phone with <b>＋ Add to Stand-Up</b> after signing in.</div>
         </div>
-        <button class="secondary" onclick="copyQuickAddLink()">Copy Quick-Add Link</button>
+        <a href="https://cc.mo-care.com/#standup" style="text-decoration:none;padding:8px 16px;border-radius:6px;background:#fff;color:var(--navy);font-size:13px;font-weight:700;">Open Stand-Up</a>
+        <a href="https://cc.mo-care.com/#teammeetings" style="text-decoration:none;padding:8px 14px;border-radius:6px;border:1px solid rgba(255,255,255,.6);color:#fff;font-size:13px;font-weight:600;">Team Meetings</a>
+        <button class="secondary" onclick="startVideoMeeting()">Start / Join Video Meeting</button>
       </div>
-      <div class="toolbar" id="standupFilters"></div>
-      <div class="toolbar" style="margin-top:-8px;">
-        <select class="mini-select" id="standupAssigneeFilter" onchange="setStandupAssigneeFilter(this.value)"></select>
-      </div>
-      <div class="card"><div id="standupListWrap"></div></div>
     </section>
-
-    <!-- ===================== TEAM MEETINGS ===================== -->
-    <section class="block" id="meetingsSection">
-      <div class="section-header">
-        <h2>📅 Team Meetings</h2>
-        <button class="primary" onclick="openMeetingModal()">+ Log Meeting</button>
-      </div>
-      <p style="font-size:12px;color:var(--text-muted);margin:-6px 0 12px;">Notes, decisions, and action items from team meetings — so anyone who missed one can catch up without chasing someone down.</p>
-      <div class="card video-card">
-        <div style="flex:1;min-width:200px;">
-          <div class="label">🎥 Team Video Room</div>
-          <div class="sub">One click, everyone lands in the same call — remote or in-office.</div>
-        </div>
-        <button class="primary" onclick="startVideoMeeting()">Start / Join Video Meeting</button>
-      </div>
-      <div class="toolbar">
-        <input id="meetingSearchInput" type="text" placeholder="🔍 Search meeting notes, decisions, action items…" style="max-width:340px;" oninput="setMeetingSearch(this.value)">
-        <div class="spacer"></div>
-        <button class="linklike" onclick="toggleAllMeetingMonths()" id="meetingsExpandToggle">Expand All</button>
-      </div>
-      <div class="card"><div id="meetingsListWrap"></div></div>
-    </section>
-    </div><!-- /daily-grid -->
 
     <!-- ===================== TEAM DIRECTORY ===================== -->
     <section class="block collapsed" id="directorySection">
@@ -955,7 +926,8 @@ async function flushPendingSync(){
 }
 window.addEventListener('online', flushPendingSync);
 
-function renderAll(){ renderDirectory(); renderStandup(); renderMeetings(); renderAccessPanel(); }
+/* Stand-Up and Team Meetings moved to the CC Hub (Today) on 2026-10-05; their old renderers stay unused. */
+function renderAll(){ renderDirectory(); renderAccessPanel(); }
 
 /* ---------------- TEAM DIRECTORY ---------------- */
 const TD_ROLE_META = {
