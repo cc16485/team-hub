@@ -601,6 +601,13 @@ const SWITCHES=[
       on:'Turn on next-visit signature texts? When a correction form is waiting for the client\'s signature, the caregiver gets ONE text with the signing link at her next visit with that client (10 minutes after she clocks in, never 8pm to 7am). Nothing is ever sent to the client or family.',
       off:'Turn off next-visit signature texts? Waiting forms go back to practice (who would be texted is recorded; nobody is texted).' },
   ]],
+  ['Today and the office', [
+    /* My Desk 6b (2026-10-06): the shift-note reader suggests kind words; a person's yes puts them in the jar. No texts. */
+    { k:'kind_words_suggest_live', name:'Kind words from shift notes', what:'When a client or family member said something kind in a caregiver\'s shift note, the words wait in the Kind Words jar under "Waiting for a yes" for an owner or coordinator. Sends nothing.',
+      needs:'care_notes_flag_live', needsWhy:'shift-note flags are not running',
+      on:'Turn on kind words from shift notes?\n\nFrom the next shift-note run (every two hours), kind words a client or family member said, copied word for word from the caregiver\'s note, wait in the Kind Words jar under "Waiting for a yes". Only owners and coordinators see them. Nothing goes in the jar or on anyone\'s desk until one of you says yes.\n\nNobody is texted or emailed.',
+      off:'Turn off kind words from shift notes? Nothing new is suggested. Anything already waiting stays in the jar\'s "Waiting for a yes" until someone answers it.' },
+  ]],
   ['Calls', [
     { k:'call_pull_live', name:'Calls from GoHighLevel', what:'A new-client call creates the lead and drafts a follow-up for your approval (nothing is sent).', since:'call_pull_live_since',
       on:'Turn on calls from GoHighLevel?\n\nFrom the next run (within 10 minutes), a new-client call creates the lead, drafts a follow-up for your approval (nothing is sent), and tags the GoHighLevel contact "lead", which your AxisCare sync picks up. Calls already read in practice are not redone.',
