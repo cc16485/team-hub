@@ -614,6 +614,10 @@ const SWITCHES=[
     { k:'talk_email_live', name:'To talk about emails', what:'When someone tags a person or replies on To talk about, everyone on that thread except the writer gets one email with the whole card. Office staff only.',
       on:'Turn on To talk about emails?\n\nWhen someone tags a person or replies on To talk about, everyone on that thread except the writer gets one email with the whole card, the thread, and a button to open it in the Hub. Office staff only. Someone who just got one waits 10 minutes, then gets the latest in one email.',
       off:'Turn off To talk about emails? Tags and threads still work in the Hub; nobody is emailed.' },
+    /* 2026-10-06: Tell on a kind word about a caregiver texts it to them from the office number (kind-tell, Desktop 474) */
+    { k:'kind_tell_live', name:'Texting kind words to caregivers', what:'Tell on a kind word about a caregiver sends it from the office number after a person reads it and presses Send.',
+      on:'Turn on texting kind words to caregivers?\n\nOn a kind word about a caregiver, Tell opens the text: the person reads it, edits it, and presses Send, and it goes from the office number after the same opt-out checks as every caregiver text. Nothing is sent without Send.',
+      off:'Turn off texting kind words to caregivers? Tell still shows the words; nothing can be sent.' },
     { k:'kind_words_suggest_live', name:'Kind words from shift notes', what:'When a client or family member said something kind in a caregiver\'s shift note, the words wait in the Kind Words jar under "Waiting for a yes" for an owner or coordinator. Sends nothing.',
       needs:'care_notes_flag_live', needsWhy:'shift-note flags are not running',
       on:'Turn on kind words from shift notes?\n\nFrom the next shift-note run (every two hours), kind words a client or family member said, copied word for word from the caregiver\'s note, wait in the Kind Words jar under "Waiting for a yes". Only owners and coordinators see them. Nothing goes in the jar or on anyone\'s desk until one of you says yes.\n\nNobody is texted or emailed.',
