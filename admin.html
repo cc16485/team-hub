@@ -610,6 +610,10 @@ const SWITCHES=[
   ]],
   ['Today and the office', [
     /* My Desk 6b (2026-10-06): the shift-note reader suggests kind words; a person's yes puts them in the jar. No texts. */
+    /* 2026-10-06: To talk about tags and threads email the people on the thread (talk-notify, Desktop 473) */
+    { k:'talk_email_live', name:'To talk about emails', what:'When someone tags a person or replies on To talk about, everyone on that thread except the writer gets one email with the whole card. Office staff only.',
+      on:'Turn on To talk about emails?\n\nWhen someone tags a person or replies on To talk about, everyone on that thread except the writer gets one email with the whole card, the thread, and a button to open it in the Hub. Office staff only. Someone who just got one waits 10 minutes, then gets the latest in one email.',
+      off:'Turn off To talk about emails? Tags and threads still work in the Hub; nobody is emailed.' },
     { k:'kind_words_suggest_live', name:'Kind words from shift notes', what:'When a client or family member said something kind in a caregiver\'s shift note, the words wait in the Kind Words jar under "Waiting for a yes" for an owner or coordinator. Sends nothing.',
       needs:'care_notes_flag_live', needsWhy:'shift-note flags are not running',
       on:'Turn on kind words from shift notes?\n\nFrom the next shift-note run (every two hours), kind words a client or family member said, copied word for word from the caregiver\'s note, wait in the Kind Words jar under "Waiting for a yes". Only owners and coordinators see them. Nothing goes in the jar or on anyone\'s desk until one of you says yes.\n\nNobody is texted or emailed.',
@@ -642,6 +646,7 @@ const HUB_SETTINGS=[
     ['calls-ring','Calls: your phone rings first','Who is linked to a GoHighLevel user, so the Hub\'s Call buttons ring their phone first.'],
     ['calls-ghl','Calls from GoHighLevel','Answered calls are read every 10 minutes; new-client calls become leads with a drafted follow-up.'] ]],
   ['Today and the office', [
+    ['talk-emails','To talk about emails','Whether tags and replies on To talk about email the people on the thread.'],
     ['my-desk','My Desk','Who sees My Desk (each person\'s own planner page and sticky notes) while it is being tried, or everyone with a desk.'],
     ['routing','Right person first, then escalate','Who holds Operations, Staffing and Owner Escalation when nobody is scheduled.'],
     ['loops','The Hub closes its own loops','Finished shifts, case cards, family calls, EVV fixes and the weekly EVV review.'],
