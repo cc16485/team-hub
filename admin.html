@@ -607,6 +607,10 @@ const SWITCHES=[
     { k:'evv_next_visit_live', name:'EVV next-visit signature texts', what:'When a correction form is waiting for the client\'s signature, the caregiver gets one text with the signing link at her next visit with that client.',
       on:'Turn on next-visit signature texts? When a correction form is waiting for the client\'s signature, the caregiver gets ONE text with the signing link at her next visit with that client (10 minutes after she clocks in, never 8pm to 7am). Nothing is ever sent to the client or family.',
       off:'Turn off next-visit signature texts? Waiting forms go back to practice (who would be texted is recorded; nobody is texted).' },
+    /* 2026-10-06: click a visit on the Live Schedule and change it in AxisCare (visit-change, Desktop 480) */
+    { k:'visit_change_live', name:'Changing visits from the Live Schedule', what:'Office staff click a visit on the Live Schedule to change its caregiver, take the caregiver off, or change its time or day, after a preview and with one of AxisCare\'s change reasons. Undo the same day. Nobody is texted.',
+      on:'Turn on changing visits from the Live Schedule?\n\nOffice staff can click a visit on the Live Schedule and change its caregiver, take the caregiver off, or change its time or day. Each change shows exactly what will change in AxisCare first, needs one of AxisCare\'s change reasons, touches only that one visit, is read back from AxisCare, and can be undone the same day. Visits that have started or are verified are never changed. Nobody is texted.',
+      off:'Turn off changing visits from the Live Schedule? The calendar still shows everything; changes are made in AxisCare.' },
   ]],
   ['Today and the office', [
     /* My Desk 6b (2026-10-06): the shift-note reader suggests kind words; a person's yes puts them in the jar. No texts. */
