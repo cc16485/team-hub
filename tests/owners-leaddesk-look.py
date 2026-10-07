@@ -16,12 +16,12 @@ with sync_playwright() as pw:
     r=pg.evaluate(r"""()=>{
       window.__RealDate=Date; window.__NOW=new __RealDate('2026-10-06T15:10:00Z').getTime();
       Date=class extends __RealDate{ constructor(...a){ if(a.length) super(...a); else super(window.__NOW); } static now(){ return window.__NOW; } };
-      OPS_SET={ lead_response_hours:{ days:[0,1,2,3,4,5,6], start:'08:00', end:'18:00' } };
+      OPS_SET={ lead_response_hours:{ days:[0,1,2,3,4,5,6], start:'08:00', end:'18:00' } }; ORGS={ org1:{ name:'Mercy Rehab', type:'Rehab / Skilled Nursing' } };
       LEADS=[
         { id:'a', created_at:'2026-10-06T14:58:00Z', first_human_attempt_at:'2026-10-06T15:02:00Z', first_human_contact_at:'2026-10-06T15:02:00Z', assigned_coordinator:'Krystal' },
         { id:'b', created_at:'2026-10-06T02:02:00Z', first_human_attempt_at:'2026-10-06T13:12:00Z', assigned_coordinator:'Krystal' },
         { id:'c', created_at:'2026-10-01T15:00:00Z', assigned_coordinator:'Krystal' },
-        { id:'d', created_at:'2026-09-20T15:00:00Z', first_human_attempt_at:'2026-09-20T16:30:00Z', first_human_contact_at:'2026-09-20T16:30:00Z', said_yes_at:'2026-09-28T15:00:00Z', status:'Converted', converted_at:'2026-09-28T15:00:00Z', assigned_coordinator:'Samantha' },
+        { id:'d', created_at:'2026-09-20T15:00:00Z', first_human_attempt_at:'2026-09-20T16:30:00Z', first_human_contact_at:'2026-09-20T16:30:00Z', said_yes_at:'2026-09-28T15:00:00Z', status:'Converted', converted_at:'2026-09-28T15:00:00Z', first_shift_at:'2026-10-02T13:00:00Z', referral_org_id:'org1', schedule:{ days:['Mon'], times:'', hours_per_week:20 }, assigned_coordinator:'Samantha' },
         { id:'e', created_at:'2026-09-25T15:00:00Z', first_human_attempt_at:'2026-09-25T15:03:00Z', status:'Lost', lost_at:'2026-10-02T15:00:00Z', lost_reason_key:'could_not_staff', lost_schedule:{ hours_per_week:20, city:'Ozark' }, assigned_coordinator:'Krystal' },
         { id:'f', created_at:'2026-09-26T15:00:00Z', first_human_attempt_at:'2026-09-26T15:03:00Z', status:'Lost', lost_at:'2026-10-03T15:00:00Z', lost_reason:'Price', schedule:{ days:['Mon'], times:'', hours_per_week:8 }, assigned_coordinator:'Krystal' },
         { id:'g', created_at:'2026-09-01T15:00:00Z', first_human_attempt_at:'2026-09-01T15:30:00Z', assigned_coordinator:'Krystal' },
@@ -35,6 +35,8 @@ ok=[('without the rules file the card says so and shows no numbers', 'did not lo
     ('never attempted: 1', 'never attempted' in r and '\n1 vs 0 before\nnever attempted' in r),
     ('said yes 1, typically 8 days from inquiry to yes', 'typically 8 days from inquiry to yes' in r),
     ('lost 2 for 28 hrs/wk', '28 hrs/wk walked away' in r),
+    ('started care 1, typically 4 days from yes to first shift', 'started care' in r and 'typically 4 days from yes to first shift' in r),
+    ('referral partners: Mercy Rehab sent 1, reached 1, assessed 1, said yes 1, started 1, 12 days, 20 hrs', 'Mercy Rehab · Rehab / Skilled Nursing\t1\t1\t1\t1\t1\t12\t20' in r),
     ('speed buckets drawn in order, ≤5 min first and never last', '\n≤5 min\n5–15 min\n15–60 min\n1–4 h\nover 4 h\nnever\n' in r),
     ('lost by reason: could not staff (20 hrs, Ozark) above Price (8)', 'Could not staff the schedule\t1\t20\tOzark' in r and 'Price\t1\t8' in r and r.index('Could not staff') < r.index('Price')),
     ('by owner: Krystal 5 inquiries, median 4 min, 1 never attempted; Samantha 1, 1 h 30 min, said yes', 'Krystal\t5\t4 min\t1\t1\t0' in r and 'Samantha\t1\t1 h 30 min\t1\t0\t1' in r),

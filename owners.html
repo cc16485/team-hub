@@ -6,7 +6,7 @@
 <meta name="robots" content="noindex">
 <title>Owners Hub — Caring Companions</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://cc.mo-care.com/lead-rules.js?v=5"></script><!-- Leads intake desk Stage 5 (2026-10-07): the same rules file the CC Hub runs; the owners' numbers come from it -->
+<script src="https://cc.mo-care.com/lead-rules.js?v=9"></script><!-- Leads intake desk Stage 5 (2026-10-07): the same rules file the CC Hub runs; the owners' numbers come from it -->
 <style>
   :root{ --navy:#0D365F; --navy2:#0D365F; --teal:#54BDB8; --gold:#F0A63A; --red:#DC2626; --red-bg:#FEE2E2;
     --amber:#B45309; --amber-bg:#FEF3C7; --green:#16A34A; --green-bg:#DCFCE7;
@@ -244,7 +244,7 @@ const SUPA_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsIn
 const sb=window.supabase.createClient(SUPA_URL,SUPA_ANON);
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let ME={email:'',name:''};
-let ATT_EVENTS=[], DISC_ACTIONS=[], OFFBOARDINGS=[], AUDITS=[], STAFF_SETTINGS={}, LEADS=[], OPS_SET={}, SNAPS=[], BUDGET=[], BUD_ACT=[], OTASKS=[], OSET={id:'main',mult_low:3,mult_high:5,goal_price:0,ready:{}};
+let ATT_EVENTS=[], DISC_ACTIONS=[], OFFBOARDINGS=[], AUDITS=[], STAFF_SETTINGS={}, LEADS=[], OPS_SET={}, ORGS={}, SNAPS=[], BUDGET=[], BUD_ACT=[], OTASKS=[], OSET={id:'main',mult_low:3,mult_high:5,goal_price:0,ready:{}};
 
 async function signIn(){
   const { error } = await sb.auth.signInWithPassword({ email:document.getElementById('si-email').value.trim(), password:document.getElementById('si-pass').value });
@@ -296,7 +296,7 @@ async function resetPw(){
 async function signOut(){ await sb.auth.signOut(); location.reload(); }
 
 async function loadAll(){
-  const { data } = await sb.from('app_data').select('key,data').in('key',['attendance_events','discipline_actions','offboardings','file_audits','settings','leads','ops_settings','finance_snapshots','owner_settings','budget_lines','budget_actuals','staffing_tasks','feedback']);
+  const { data } = await sb.from('app_data').select('key,data').in('key',['attendance_events','discipline_actions','offboardings','file_audits','settings','leads','ops_settings','referral_orgs','finance_snapshots','owner_settings','budget_lines','budget_actuals','staffing_tasks','feedback']);
   (data||[]).forEach(r=>{
     if(r.key==='attendance_events')  ATT_EVENTS=r.data||[];
     if(r.key==='discipline_actions') DISC_ACTIONS=r.data||[];
@@ -305,6 +305,7 @@ async function loadAll(){
     if(r.key==='settings')           STAFF_SETTINGS=r.data||{};
     if(r.key==='leads')              LEADS=r.data||[];
     if(r.key==='ops_settings')       OPS_SET=(r.data&&!Array.isArray(r.data))?r.data:{};
+    if(r.key==='referral_orgs')      ORGS=Object.fromEntries((r.data||[]).filter(o=>o&&o.id).map(o=>[o.id,{ name:o.name, type:o.type }]));
     if(r.key==='finance_snapshots')  SNAPS=r.data||[];
     if(r.key==='budget_lines')       BUDGET=r.data||[];
     if(r.key==='staffing_tasks')     OTASKS=r.data||[];
@@ -389,7 +390,7 @@ function renderLeadDesk(){
   const box=document.getElementById('growth-leaddesk'); if(!box) return;
   const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
   if(typeof LeadRules==='undefined'){ box.innerHTML='<div class="muted">The rules file (cc.mo-care.com/lead-rules.js) did not load, so these numbers are not shown rather than guessed. Reload the page.</div>'; return; }
-  const N=LeadRules.ownerNumbers(LEADS, LeadRules.responseHours(OPS_SET||{}), {});
+  const N=LeadRules.ownerNumbers(LEADS, LeadRules.responseHours(OPS_SET||{}), { orgs:ORGS||{} });
   const a=N.now, b=N.prior;
   const mins=m=>m==null?'no data':(m<60?m+' min':(Math.floor(m/60)+' h'+(m%60?' '+(m%60)+' min':'')));
   const vs=(x,y,fmt)=>'<span class="muted" style="font-size:.72rem"> vs '+(fmt||(v=>v==null?'no data':v))(y)+' before</span>';
@@ -401,6 +402,7 @@ function renderLeadDesk(){
     +tile('reached within 24 h', pct(a.reached_24h_pct)+vs(0,b.reached_24h_pct,pct), a.reached_24h+' of '+a.inquiries+' had a real conversation in a day')
     +tile('never attempted', a.never_attempted+vs(0,b.never_attempted), 'older than a day, nobody has called', a.never_attempted?'#DC2626':'#15803D')
     +tile('said yes', a.said_yes+vs(0,b.said_yes), a.inquiry_to_yes_median_days!=null?'typically '+a.inquiry_to_yes_median_days+' days from inquiry to yes':'')
+    +tile('started care', a.started+vs(0,b.started), a.yes_to_first_shift_median_days!=null?'typically '+a.yes_to_first_shift_median_days+' days from yes to first shift':'first shift date comes from the client journey', '#15803D')
     +tile('lost', a.lost+vs(0,b.lost), a.lost_hours_week+' hrs/wk walked away'+(a.lost_after_yes?' · '+a.lost_after_yes+' after a yes':''), a.lost?'#B45309':'var(--navy)')
     +'</div>';
   /* speed buckets */
@@ -415,12 +417,18 @@ function renderLeadDesk(){
   else h+='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:.82rem;min-width:380px"><thead><tr><th style="text-align:left;padding:.3rem .4rem;border-bottom:1px solid var(--border)">Reason</th><th style="text-align:right;padding:.3rem .4rem;border-bottom:1px solid var(--border)">Families</th><th style="text-align:right;padding:.3rem .4rem;border-bottom:1px solid var(--border)">Hrs/wk</th><th style="text-align:left;padding:.3rem .4rem;border-bottom:1px solid var(--border)">Where</th></tr></thead><tbody>'
     +a.by_reason.map(r=>'<tr><td style="padding:.3rem .4rem;border-bottom:1px solid var(--border)">'+esc(r.label)+'</td><td style="padding:.3rem .4rem;border-bottom:1px solid var(--border);text-align:right">'+r.count+'</td><td style="padding:.3rem .4rem;border-bottom:1px solid var(--border);text-align:right">'+(r.hours||'')+'</td><td style="padding:.3rem .4rem;border-bottom:1px solid var(--border)" class="muted">'+esc(Object.entries(r.towns).map(([t,n])=>t+(n>1?' ×'+n:'')).join(', '))+'</td></tr>').join('')+'</tbody></table></div>';
   h+='</div>';
+  /* referral partners */
+  h+='<div style="margin-top:.8rem"><div style="font-size:.78rem;font-weight:700;margin-bottom:.3rem">Referral partners, this period <span class="muted" style="font-weight:400">(who sent us families, and what came of them)</span></div>';
+  if(!a.by_partner.length) h+='<div class="muted" style="font-size:.8rem">No referred inquiries in this period.</div>';
+  else h+='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:.82rem;min-width:520px"><thead><tr>'+['Partner','Sent','Reached in 24 h','Assessed','Said yes','Started','Days to start','Hrs/wk'].map((x,i)=>'<th style="text-align:'+(i?'right':'left')+';padding:.3rem .4rem;border-bottom:1px solid var(--border)">'+x+'</th>').join('')+'</tr></thead><tbody>'
+    +a.by_partner.map(r=>'<tr><td style="padding:.3rem .4rem;border-bottom:1px solid var(--border)">'+esc(r.name)+(r.type?' <span class="muted">· '+esc(r.type)+'</span>':'')+'</td>'+[r.sent, r.reached_24h, r.assessed, r.said_yes, r.started, r.days_to_start_median==null?'':r.days_to_start_median, r.hours||''].map(v=>'<td style="padding:.3rem .4rem;border-bottom:1px solid var(--border);text-align:right">'+v+'</td>').join('')+'</tr>').join('')+'</tbody></table></div>';
+  h+='</div>';
   /* by owner */
   h+='<div style="margin-top:.8rem"><div style="font-size:.78rem;font-weight:700;margin-bottom:.3rem">By Care Coordinator, this period</div>';
   if(!a.by_owner.length) h+='<div class="muted" style="font-size:.8rem">No inquiries in this period.</div>';
   else h+='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:.82rem;min-width:420px"><thead><tr>'+['Owner','Inquiries','Median first attempt','Reached in 24 h','Never attempted','Said yes'].map((x,i)=>'<th style="text-align:'+(i?'right':'left')+';padding:.3rem .4rem;border-bottom:1px solid var(--border)">'+x+'</th>').join('')+'</tr></thead><tbody>'
     +a.by_owner.map(o=>'<tr><td style="padding:.3rem .4rem;border-bottom:1px solid var(--border)">'+esc(o.owner)+'</td>'+[o.inquiries, mins(o.median_first_attempt_min), o.reached_24h, o.never_attempted, o.said_yes].map(v=>'<td style="padding:.3rem .4rem;border-bottom:1px solid var(--border);text-align:right">'+v+'</td>').join('')+'</tr>').join('')+'</tbody></table></div>';
-  h+='</div><div class="muted" style="margin-top:.5rem;font-size:.72rem">Spam never counts. "Said yes" is the They said yes button; yes to first shift will appear here once the client journey\'s first-visit date is on the record.</div>';
+  h+='</div><div class="muted" style="margin-top:.5rem;font-size:.72rem">Spam never counts. "Said yes" is the They said yes button; "started care" is the first visit the client journey saw in AxisCare.</div>';
   box.innerHTML=h;
 }
 
