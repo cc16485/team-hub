@@ -16,18 +16,19 @@ with sync_playwright() as pw:
     r=pg.evaluate(r"""()=>{
       window.__RealDate=Date; window.__NOW=new __RealDate('2026-10-06T15:10:00Z').getTime();
       Date=class extends __RealDate{ constructor(...a){ if(a.length) super(...a); else super(window.__NOW); } static now(){ return window.__NOW; } };
-      OPS_SET={ lead_response_hours:{ days:[0,1,2,3,4,5,6], start:'08:00', end:'18:00' } }; ORGS={ org1:{ name:'Mercy Rehab', type:'Rehab / Skilled Nursing' } };
+      OPS_SET={ lead_response_hours:{ days:[0,1,2,3,4,5,6], start:'08:00', end:'18:00' } }; ORGS={ org1:{ name:'Mercy Rehab', type:'Rehab / Skilled Nursing' } }; LEADS=[];
       LEADS=[
-        { id:'a', created_at:'2026-10-06T14:58:00Z', first_human_attempt_at:'2026-10-06T15:02:00Z', first_human_contact_at:'2026-10-06T15:02:00Z', assigned_coordinator:'Krystal' },
+        { id:'a', source:'Website', created_at:'2026-10-06T14:58:00Z', first_human_attempt_at:'2026-10-06T15:02:00Z', first_human_contact_at:'2026-10-06T15:02:00Z', assigned_coordinator:'Krystal', rungs:{ owner_at:'2026-10-06T15:03:00Z' }, speed_miss:{ owner:'krystal@mo-care.com', minutes:30 }, comm_log:[{ kind:'owner', body:'Angiel took this inquiry from Krystal' }] },
         { id:'b', created_at:'2026-10-06T02:02:00Z', first_human_attempt_at:'2026-10-06T13:12:00Z', assigned_coordinator:'Krystal' },
         { id:'c', created_at:'2026-10-01T15:00:00Z', assigned_coordinator:'Krystal' },
-        { id:'d', created_at:'2026-09-20T15:00:00Z', first_human_attempt_at:'2026-09-20T16:30:00Z', first_human_contact_at:'2026-09-20T16:30:00Z', said_yes_at:'2026-09-28T15:00:00Z', status:'Converted', converted_at:'2026-09-28T15:00:00Z', first_shift_at:'2026-10-02T13:00:00Z', referral_org_id:'org1', schedule:{ days:['Mon'], times:'', hours_per_week:20 }, assigned_coordinator:'Samantha' },
+        { id:'d', source:'Referral', created_at:'2026-09-20T15:00:00Z', first_human_attempt_at:'2026-09-20T16:30:00Z', first_human_contact_at:'2026-09-20T16:30:00Z', said_yes_at:'2026-09-28T15:00:00Z', status:'Converted', converted_at:'2026-09-28T15:00:00Z', first_shift_at:'2026-10-02T13:00:00Z', referral_org_id:'org1', schedule:{ days:['Mon'], times:'', hours_per_week:20 }, assigned_coordinator:'Samantha' },
         { id:'e', created_at:'2026-09-25T15:00:00Z', first_human_attempt_at:'2026-09-25T15:03:00Z', status:'Lost', lost_at:'2026-10-02T15:00:00Z', lost_reason_key:'could_not_staff', lost_schedule:{ hours_per_week:20, city:'Ozark' }, assigned_coordinator:'Krystal' },
         { id:'f', created_at:'2026-09-26T15:00:00Z', first_human_attempt_at:'2026-09-26T15:03:00Z', status:'Lost', lost_at:'2026-10-03T15:00:00Z', lost_reason:'Price', schedule:{ days:['Mon'], times:'', hours_per_week:8 }, assigned_coordinator:'Krystal' },
         { id:'g', created_at:'2026-09-01T15:00:00Z', first_human_attempt_at:'2026-09-01T15:30:00Z', assigned_coordinator:'Krystal' },
         { id:'s', created_at:'2026-10-05T15:00:00Z', spam:{ at:'x' } } ];
-      renderLeadDesk(); document.getElementById('growth-leaddesk').scrollIntoView();
-      return document.getElementById('growth-leaddesk').innerText; }""")
+      renderLeadDesk(); renderFunnel(); document.getElementById('growth-leaddesk').scrollIntoView();
+      return [document.getElementById('growth-leaddesk').innerText, document.getElementById('growth-funnel').innerText]; }""")
+    r,f=r
     pg.wait_for_timeout(200); b.close()
 ok=[('without the rules file the card says so and shows no numbers', 'did not load' in before and '%' not in before),
     ('median first attempt 4 min vs 30 min before; 6 inquiries, 5 tried', '4 min vs 30 min before' in r and '6 inquiries, 5 tried' in r),
@@ -40,7 +41,11 @@ ok=[('without the rules file the card says so and shows no numbers', 'did not lo
     ('speed buckets drawn in order, ≤5 min first and never last', '\n≤5 min\n5–15 min\n15–60 min\n1–4 h\nover 4 h\nnever\n' in r),
     ('lost by reason: could not staff (20 hrs, Ozark) above Price (8)', 'Could not staff the schedule\t1\t20\tOzark' in r and 'Price\t1\t8' in r and r.index('Could not staff') < r.index('Price')),
     ('by owner: Krystal 5 inquiries, median 4 min, 1 never attempted; Samantha 1, 1 h 30 min, said yes', 'Krystal\t5\t4 min\t1\t1\t0' in r and 'Samantha\t1\t1 h 30 min\t1\t0\t1' in r),
-    ('no em dash', '—' not in r), ('no page errors', not errs)]
+    ('item 4 · Medicaid pipeline block: waiting on the state, heard from us this week, over 45 days, bridge hours offered', 'waiting on the state' in r and 'heard from us this week' in r and 'over 45 days' in r and 'bridge hours offered' in r),
+    ('item 4 · by source table with Website and the referral subtype', 'By source, this period' in r and 'Website' in r and 'Referral · Rehab / skilled nursing' in r),
+    ('item 4 · the team table has Late, Misses, Took and Missing required; Krystal 1 late, 1 miss; Angiel took 1', 'Late\tMisses\tTook\tMissing required' in r and 'Krystal\t5\t4 min\t1\t1\t0\t1\t1\t0' in r and 'Angiel' in r),
+    ('item 4 · the funnel card is bars for this month and last with %', 'Inquiry' in f and 'First shift' in f and '%' in f and 'This month' in f and 'Last month' in f),
+    ('no em dash', '—' not in r and '—' not in f), ('no page errors', not errs)]
 for n,c in ok: print(('PASS ' if c else 'FAIL ')+n)
-if not all(c for _,c in ok): print(r[:1500])
+if not all(c for _,c in ok): print(r[r.find("By Care Coordinator"):][:700])
 print(sum(c for _,c in ok),'/',len(ok))

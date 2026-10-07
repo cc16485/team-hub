@@ -6,7 +6,7 @@
 <meta name="robots" content="noindex">
 <title>Owners Hub — Caring Companions</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://cc.mo-care.com/lead-rules.js?v=9"></script><!-- Leads intake desk Stage 5 (2026-10-07): the same rules file the CC Hub runs; the owners' numbers come from it -->
+<script src="https://cc.mo-care.com/lead-rules.js?v=12"></script><!-- Leads intake desk Stage 5 (2026-10-07): the same rules file the CC Hub runs; the owners' numbers come from it -->
 <style>
   :root{ --navy:#0D365F; --navy2:#0D365F; --teal:#54BDB8; --gold:#F0A63A; --red:#DC2626; --red-bg:#FEE2E2;
     --amber:#B45309; --amber-bg:#FEF3C7; --green:#16A34A; --green-bg:#DCFCE7;
@@ -358,27 +358,22 @@ async function loadGrowthPulse(){
   }catch(e){ box.innerHTML='<div style="color:var(--red);font-size:.85rem">Could not pull the pulse: '+esc(e&&e.message?e.message:'error')+'</div><div class="muted" style="margin-top:.3rem"><button class="linklike" onclick="loadGrowthPulse()">try again</button></div>'; }
 }
 function renderFunnel(){
+  /* item 4 (2026-10-07): the funnel as bars, from the CC Hub's own lead-rules.js (the same counts the Leads board uses): for the
+     families who first called in each month, how far they got. Inquiry → Contact → Assessment → Won → First shift, with %. */
   const box=document.getElementById('growth-funnel'); if(!box) return;
-  const mStart=new Date(); mStart.setDate(1); mStart.setHours(0,0,0,0);
-  const pStart=new Date(mStart); pStart.setMonth(pStart.getMonth()-1);
-  const inMonth=(l,a,b)=>{ const t=new Date(l.created_at||0); return t>=a&&t<b; };
-  const now=new Date(Date.now()+86400000);
-  const row=(label,a,b)=>{
-    /* Lead numbers S1 (2026-09-28): a lead marked as spam (not a real inquiry) never counts */
-    const leads=LEADS.filter(l=>inMonth(l,a,b)&&!(l&&l.spam&&l.spam.at));
-    const conv=leads.filter(l=>l.status==='Converted').length;
-    /* 2026-10-04 (idea 5): families who started care this month, whichever month they first called */
-    const started=LEADS.filter(l=>l&&l.status==='Converted'&&l.converted_at&&!(l.spam&&l.spam.at)&&(t=>t>=a&&t<b)(new Date(l.converted_at))).length;
-    const lost=leads.filter(l=>l.status==='Lost').length;
-    return '<div style="display:flex;gap:1rem;align-items:center;padding:.45rem 0;border-bottom:1px solid var(--border);font-size:.86rem;flex-wrap:wrap">'
-      +'<b style="min-width:90px">'+label+'</b>'
-      +'<span>'+leads.length+' inquiries</span><span style="color:var(--green);font-weight:700">'+conv+' of them became clients so far</span>'
-      +'<span style="font-weight:700;color:var(--navy)">'+started+' client'+(started===1?'':'s')+' started this month</span>'
-      +'<span class="muted">'+lost+' lost</span>'
-      +'<span style="flex:1"></span><span class="chip" style="background:#E4EDF6;color:#2F6FB0">'+(leads.length?Math.round(conv/leads.length*100):0)+'% conversion</span></div>';
-  };
-  box.innerHTML=row('This month',mStart,now)+row('Last month',pStart,mStart)
-    +'<div class="muted" style="margin-top:.4rem">"Became clients" counts that month\'s inquiries that have started care, so the newest month fills in over time. "Started this month" counts every family who started, whenever they first called. Full pipeline detail lives in the Care Coordinator Hub → Reports.</div>';
+  const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  if(typeof LeadRules==='undefined'){ box.innerHTML='<div class="muted">The rules file (cc.mo-care.com/lead-rules.js) did not load, so these numbers are not shown rather than guessed. Reload the page.</div>'; return; }
+  const now=new Date(), hours=LeadRules.responseHours(OPS_SET||{});
+  const mStart=new Date(now.getFullYear(), now.getMonth(), 1), pStart=new Date(now.getFullYear(), now.getMonth()-1, 1), nowPlus=new Date(now.getTime()+86400000);
+  const STEPS=[['inquiries','Inquiry'],['contacted','Contact'],['assessed','Assessment'],['won','Won'],['started','First shift']];
+  const col=(label,from,to)=>{
+    const F=LeadRules.periodNumbers(LEADS, hours, from.toISOString(), to.toISOString(), now.toISOString(), { orgs:ORGS||{} }).funnel, tot=F.inquiries||0;
+    return '<div style="flex:1 1 260px;min-width:0"><div style="font-size:.8rem;font-weight:700;margin-bottom:.35rem">'+label+' <span class="muted" style="font-weight:400">'+tot+' inquir'+(tot===1?'y':'ies')+'</span></div>'
+      +STEPS.map(([k,lab],i)=>{ const n=F[k]||0, w=tot?Math.round(n/tot*100):0; return '<div style="display:flex;gap:.5rem;align-items:center;font-size:.8rem;margin:.18rem 0"><span style="width:76px;flex:none">'+lab+'</span>'
+        +'<div style="flex:1;height:14px;background:#EEF2F6;border-radius:4px;overflow:hidden"><div style="width:'+Math.max(w,n?3:0)+'%;height:100%;background:'+(k==='started'?'#15803D':k==='won'?'#2E8F8A':'var(--navy)')+'"></div></div>'
+        +'<span style="width:74px;flex:none;text-align:right;font-variant-numeric:tabular-nums"><b>'+n+'</b>'+(i?' <span class="muted">'+(tot?w+'%':'')+'</span>':'')+'</span></div>'; }).join('')+'</div>'; };
+  box.innerHTML='<div style="display:flex;gap:1.2rem;flex-wrap:wrap">'+col('This month',mStart,nowPlus)+col('Last month',pStart,mStart)+'</div>'
+    +'<div class="muted" style="margin-top:.4rem">Each column follows the families who first called that month, so the newest month fills in over time. Spam never counts. Won is the They said yes button; First shift is the first visit the client journey saw in AxisCare.</div>';
 }
 
 
@@ -423,12 +418,28 @@ function renderLeadDesk(){
   else h+='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:.82rem;min-width:520px"><thead><tr>'+['Partner','Sent','Reached in 24 h','Assessed','Said yes','Started','Days to start','Hrs/wk'].map((x,i)=>'<th style="text-align:'+(i?'right':'left')+';padding:.3rem .4rem;border-bottom:1px solid var(--border)">'+x+'</th>').join('')+'</tr></thead><tbody>'
     +a.by_partner.map(r=>'<tr><td style="padding:.3rem .4rem;border-bottom:1px solid var(--border)">'+esc(r.name)+(r.type?' <span class="muted">· '+esc(r.type)+'</span>':'')+'</td>'+[r.sent, r.reached_24h, r.assessed, r.said_yes, r.started, r.days_to_start_median==null?'':r.days_to_start_median, r.hours||''].map(v=>'<td style="padding:.3rem .4rem;border-bottom:1px solid var(--border);text-align:right">'+v+'</td>').join('')+'</tr>').join('')+'</tbody></table></div>';
   h+='</div>';
-  /* by owner */
-  h+='<div style="margin-top:.8rem"><div style="font-size:.78rem;font-weight:700;margin-bottom:.3rem">By Care Coordinator, this period</div>';
+  /* item 4 (2026-10-07): the Medicaid pipeline right now */
+  const M=LeadRules.medicaidPipeline(LEADS, LeadRules.ymd(new Date()), new Date().toISOString());
+  h+='<div style="margin-top:.8rem"><div style="font-size:.78rem;font-weight:700;margin-bottom:.3rem">Medicaid pipeline, right now <span class="muted" style="font-weight:400">(families waiting on the state; at '+M.long_days+' days the case manager gets a call)</span></div>'
+    +'<div style="display:flex;gap:.6rem;flex-wrap:wrap">'
+    +tile('waiting on the state', M.waiting, M.hours_week+' hrs/wk waiting'+(M.median_days!=null?' · typically '+M.median_days+' days so far':''), M.waiting?'var(--navy)':'#15803D')
+    +tile('heard from us this week', M.checked_in_week+(M.waiting?' of '+M.waiting:''), 'a call, text or partner update in the last 7 days', M.waiting&&M.checked_in_week<M.waiting?'#B45309':'#15803D')
+    +tile('over '+M.long_days+' days', M.over_45, 'call the case manager; offer private bridge hours', M.over_45?'#DC2626':'#15803D')
+    +tile('bridge hours offered', M.bridge_offered, 'private-pay hours while the state decides')
+    +'</div></div>';
+  /* by source */
+  h+='<div style="margin-top:.8rem"><div style="font-size:.78rem;font-weight:700;margin-bottom:.3rem">By source, this period <span class="muted" style="font-weight:400">(where inquiries come from, and which ones become care)</span></div>';
+  if(!a.by_source.length) h+='<div class="muted" style="font-size:.8rem">No inquiries in this period.</div>';
+  else h+='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:.82rem;min-width:460px"><thead><tr>'+['Source','Inquiries','Reached','Won','Started','Hrs/wk'].map((x,i)=>'<th style="text-align:'+(i?'right':'left')+';padding:.3rem .4rem;border-bottom:1px solid var(--border)">'+x+'</th>').join('')+'</tr></thead><tbody>'
+    +a.by_source.map(r=>'<tr><td style="padding:.3rem .4rem;border-bottom:1px solid var(--border)">'+esc(r.source)+'</td>'+[r.inquiries, r.contacted+(r.inquiries?' <span class="muted">('+Math.round(r.contacted/r.inquiries*100)+'%)</span>':''), r.won, r.started, r.hours||''].map(v=>'<td style="padding:.3rem .4rem;border-bottom:1px solid var(--border);text-align:right">'+v+'</td>').join('')+'</tr>').join('')+'</tbody></table></div>';
+  h+='</div>';
+  /* by owner (the team): late at 5 minutes, misses at 30, backup takes, and what is missing on their open inquiries */
+  const MR=LeadRules.missingRequired(LEADS);
+  h+='<div style="margin-top:.8rem"><div style="font-size:.78rem;font-weight:700;margin-bottom:.3rem">By Care Coordinator, this period'+(MR.count?' <span class="chip" style="background:#FDECEA;color:#B42318;font-size:.7rem">'+MR.count+' missing required</span>':'')+' <span class="muted" style="font-weight:400">(late = the 5-minute text went; miss = 30 minutes with nobody calling; took = stepped in as backup)</span></div>';
   if(!a.by_owner.length) h+='<div class="muted" style="font-size:.8rem">No inquiries in this period.</div>';
-  else h+='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:.82rem;min-width:420px"><thead><tr>'+['Owner','Inquiries','Median first attempt','Reached in 24 h','Never attempted','Said yes'].map((x,i)=>'<th style="text-align:'+(i?'right':'left')+';padding:.3rem .4rem;border-bottom:1px solid var(--border)">'+x+'</th>').join('')+'</tr></thead><tbody>'
-    +a.by_owner.map(o=>'<tr><td style="padding:.3rem .4rem;border-bottom:1px solid var(--border)">'+esc(o.owner)+'</td>'+[o.inquiries, mins(o.median_first_attempt_min), o.reached_24h, o.never_attempted, o.said_yes].map(v=>'<td style="padding:.3rem .4rem;border-bottom:1px solid var(--border);text-align:right">'+v+'</td>').join('')+'</tr>').join('')+'</tbody></table></div>';
-  h+='</div><div class="muted" style="margin-top:.5rem;font-size:.72rem">Spam never counts. "Said yes" is the They said yes button; "started care" is the first visit the client journey saw in AxisCare.</div>';
+  else h+='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:.82rem;min-width:560px"><thead><tr>'+['Owner','Inquiries','Median first attempt','Reached in 24 h','Never attempted','Said yes','Late','Misses','Took','Missing required'].map((x,i)=>'<th style="text-align:'+(i?'right':'left')+';padding:.3rem .4rem;border-bottom:1px solid var(--border)">'+x+'</th>').join('')+'</tr></thead><tbody>'
+    +a.by_owner.map(o=>'<tr><td style="padding:.3rem .4rem;border-bottom:1px solid var(--border)">'+esc(o.owner)+'</td>'+[o.inquiries, mins(o.median_first_attempt_min), o.reached_24h, o.never_attempted, o.said_yes, o.late, o.misses?'<b style="color:#DC2626">'+o.misses+'</b>':0, o.took, MR.by_owner[o.owner]||0].map(v=>'<td style="padding:.3rem .4rem;border-bottom:1px solid var(--border);text-align:right">'+v+'</td>').join('')+'</tr>').join('')+'</tbody></table></div>';
+  h+='</div><div class="muted" style="margin-top:.5rem;font-size:.72rem">Spam never counts. "Said yes" is the They said yes button; "started care" is the first visit the client journey saw in AxisCare. Misses are counted by the speed-to-lead check once it is switched on.</div>';
   box.innerHTML=h;
 }
 
