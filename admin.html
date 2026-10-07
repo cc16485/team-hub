@@ -552,6 +552,14 @@ async function delOnCall(id){
    in op_events with who did it, like the Hub. Founders only (this page). */
 const CC_SETTINGS='https://cc.mo-care.com/#settings';
 const SWITCHES=[
+  ['Families', [
+    { k:'inquiry_ack_live', name:'Inquiry acknowledgment', what:'A family who fills in a website form gets one text and email at once, in Samantha\'s words: a Care Coordinator will call shortly, or after hours "will call you tomorrow after 8 am". The only automatic message a family gets outside lead response hours. Every send goes through the opt-out door.',
+      on:'Turn on the inquiry acknowledgment?\n\nFrom the next website form, the family gets one text and one email right away (in your words, deployed by 487). After lead response hours it says when a coordinator will call. Nothing else automatic goes to a family. Anyone opted out (GoHighLevel Do Not Disturb, the Hub\'s opt-out record, do-not-contact) is skipped and the office is told.',
+      off:'Turn off the inquiry acknowledgment? New website inquiries get no automatic text or email; the office still gets its alert and the 5-minute clock still runs.' },
+    { k:'inquiry_followups_live', name:'Inquiry Day 1 and Day 3 nudges', what:'The two "is there a good time to call?" texts to a family nobody has reached, at 24 and 72 hours, in lead response hours only. Her 2026-10-06 rule: the acknowledgment is the only automatic message after hours, so these stay off unless she decides otherwise.',
+      on:'Turn on the Day 1 and Day 3 nudges?\n\nA family we acknowledged but nobody has reached gets one text at 24 hours and one at 72 hours, in lead response hours only, through the opt-out door. This is a second automatic family message: her 2026-10-06 rule kept it off.',
+      off:'Turn off the Day 1 and Day 3 nudges? Nobody gets them; the acknowledgment and the office alert are unchanged.' },
+  ]],
   ['Hiring', [
     { k:'intake_auto_import_live', name:'Start forms import themselves', what:'A new start form from someone we sent a start link to becomes a Background & References candidate by itself.',
       on:'Turn on start forms importing themselves? From the next check (every 5 minutes), a new start form from someone we sent a start link to becomes a Background & References candidate; everyone else gets a Needs Attention card. Nothing is sent to them or their references.',
@@ -676,6 +684,7 @@ const HUB_SETTINGS=[
     ['profile-enforcement','Profile standard: enforcement','Whether the client and caregiver profile standards block Ready for Staffing, assignment and First Shift. All off now (shadow mode).'],
     ['transcripts','Transcript retention','Whether raw visit transcripts are cleared once the care plan is in AxisCare.'],
     ['after-hours','After-hours escalation protocol','The after-hours steps, kept for reference.'],
+    ['inquiry-messages','Inquiry messages to families','The acknowledgment a website inquiry gets at once, and the Day 1 / Day 3 nudges (off by her rule).'],
     ['lead-hours','Lead response hours','When a new inquiry\'s 5-minute first-call clock runs. Outside these hours the family is acknowledged at once and the clock starts at opening.'],
     ['lead-intake','Lead intake','How website forms reach Leads & Starts (information only).'] ]],
 ];
