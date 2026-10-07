@@ -627,6 +627,12 @@ const SWITCHES=[
       on:'Turn on kind words from shift notes?\n\nFrom the next shift-note run (every two hours), kind words a client or family member said, copied word for word from the caregiver\'s note, wait in the Kind Words jar under "Waiting for a yes". Only owners and coordinators see them. Nothing goes in the jar or on anyone\'s desk until one of you says yes.\n\nNobody is texted or emailed.',
       off:'Turn off kind words from shift notes? Nothing new is suggested. Anything already waiting stays in the jar\'s "Waiting for a yes" until someone answers it.' },
   ]],
+  ['Clients', [
+    /* 2026-10-06: the client journey (Stages 1-3) and the move-over (Desktop 484). Who gets which payer: Hub settings, Client journeys */
+    { k:'client_journey_live', name:'Client journeys', what:'Each new client\'s start of care is one journey on their profile, with the next step on the Care Coordinator\'s My Work. Who gets which payer is in Hub settings, Client journeys. Sends nothing.',
+      on:'Turn on client journeys?\n\nEvery new client\'s start of care runs as one journey on their profile: the next required step, who owns it, and proof on each step. Care Coordinators see their next steps on My Work under Clients in motion. A lead starts its journey once someone has talked to them, and goes to the Care Coordinator for its payer (set in Hub settings, Client journeys). The older Start of Care checklist is no longer offered to anyone new; clients who already have one keep it.\n\nNobody is texted or emailed.',
+      off:'Turn off client journeys? Journeys stop showing to Care Coordinators and nothing new starts by itself. Every step and its history is kept, and comes back when it is turned on again.' },
+  ]],
   ['Calls', [
     { k:'call_pull_live', name:'Calls from GoHighLevel', what:'A new-client call creates the lead and drafts a follow-up for your approval (nothing is sent).', since:'call_pull_live_since',
       on:'Turn on calls from GoHighLevel?\n\nFrom the next run (within 10 minutes), a new-client call creates the lead, drafts a follow-up for your approval (nothing is sent), and tags the GoHighLevel contact "lead", which your AxisCare sync picks up. Calls already read in practice are not redone.',
@@ -663,6 +669,7 @@ const HUB_SETTINGS=[
     ['afternoon-interviews','Afternoon interviews','From what time interviews are marked as one person\'s.'],
     ['cadences','Cadences','How often clients get a check-in, and when supervisory visits show as due soon.'] ]],
   ['New people and records', [
+    ['client-journeys','Client journeys','On or off, and which Care Coordinator gets a new client nobody has picked, by payer.'],
     ['start-forms','Start forms','Whether a new start form becomes a Background & References candidate by itself.'],
     ['caregiver-connect','Caregiver connect','Ties each AxisCare caregiver to their Hub record.'],
     ['staff','Coordinator list','Who the Hub knows as office staff, their shift and notifications.'],

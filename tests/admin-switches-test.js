@@ -38,8 +38,8 @@ const rows = (h) => h.split('<div class="swrow">').slice(1).map((r) => ({
   disabled: /<button[^>]* disabled/.test(r), text: r }));
 (async () => {
   let W = world(); W.X.renderSwitches(); let R = rows(W.box.innerHTML);
-  ck('all the switches are listed, grouped: Hiring, Shifts and visits, Today and the office, Calls, and the three set by a Desktop step', R.length === 25 && /Hiring/.test(W.box.innerHTML) && /Shifts and visits/.test(W.box.innerHTML) && /Today and the office/.test(W.box.innerHTML) && /Calls/.test(W.box.innerHTML) && /Shown here, switched by a Desktop step/.test(W.box.innerHTML), R.map((r) => r.name));
-  ck('22 have a Turn on / Turn off button; the three Desktop ones have none', R.filter((r) => r.btn).length === 22 && R.filter((r) => !r.btn).map((r) => r.name).join() === 'Open-shift texts,Missed clock-ins watched,Client promises', R.filter((r) => !r.btn).map((r) => r.name));
+  ck('all the switches are listed, grouped: Hiring, Shifts and visits, Today and the office, Clients, Calls, and the three set by a Desktop step', R.length === 26 && /Hiring/.test(W.box.innerHTML) && /Shifts and visits/.test(W.box.innerHTML) && /Today and the office/.test(W.box.innerHTML) && /Clients/.test(W.box.innerHTML) && /Calls/.test(W.box.innerHTML) && /Shown here, switched by a Desktop step/.test(W.box.innerHTML), R.map((r) => r.name));
+  ck('23 have a Turn on / Turn off button; the three Desktop ones have none', R.filter((r) => r.btn).length === 23 && R.filter((r) => !r.btn).map((r) => r.name).join() === 'Open-shift texts,Missed clock-ins watched,Client promises', R.filter((r) => !r.btn).map((r) => r.name));
   ck('the state is read from the shared settings: caregiver connect On, start forms Off (practice), running-late calls On by default', R.find((r) => r.name === 'Caregiver connect').on && !R.find((r) => r.name === 'Start forms import themselves').on && /Off · practice/.test(R.find((r) => r.name === 'Start forms import themselves').text) && R.find((r) => r.name === 'Running late: calls').on);
   ck('"More settings" opens the Hub settings tab on this page', (W.box.innerHTML.match(/href="#hubsettings" onclick="adminTab\('hubsettings'\);return false;">More settings</g) || []).length === 3, W.box.innerHTML.slice(0, 300));
 
@@ -74,7 +74,7 @@ const rows = (h) => h.split('<div class="swrow">').slice(1).map((r) => ({
   const hub = path.join(__dirname, '..', '..', 'cc-hub-live', 'index.html');
   if (fs.existsSync(hub)) {
     /* My Desk's switch (kind words from shift notes) lives in desk.js, next to index.html */
-    const H = (fs.readFileSync(hub, 'utf8') + ['desk.js', 'shift-flags.js', 'standup-board.js', 'live-calendar.js'].map((f) => fs.existsSync(path.join(path.dirname(hub), f)) ? fs.readFileSync(path.join(path.dirname(hub), f), 'utf8') : '').join('')).replace(/\\'/g, "'").replace(/\\n/g, '\n');
+    const H = (fs.readFileSync(hub, 'utf8') + ['desk.js', 'shift-flags.js', 'standup-board.js', 'live-calendar.js', 'client-journey.js'].map((f) => fs.existsSync(path.join(path.dirname(hub), f)) ? fs.readFileSync(path.join(path.dirname(hub), f), 'utf8') : '').join('')).replace(/\\'/g, "'").replace(/\\n/g, '\n');
     const W2 = world(); const same = []; const diff = [];
     for (const [, list] of W2.X.SWITCHES) for (const sw of list) { if (sw.readOnly || ['timekeeper_admin_loop_live', 'callin_reminders_live'].includes(sw.k)) continue;
       for (const t of [sw.on, sw.off]) (H.includes(t.replace(' Caregiver replies and admin texts for running late turn off too.', '')) || H.includes(t.replace('only in practice: no card', 'only in practice (listed below): no card')) ? same : diff).push(sw.k) }
