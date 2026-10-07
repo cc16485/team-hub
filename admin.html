@@ -451,12 +451,17 @@ async function renderStaffAccess(){
 function renderStaff(){
   const el=document.getElementById('staffTable');
   if(!STAFF.length){ el.innerHTML='<p class="sub" style="margin:0">Nobody yet. Add your coordinators below.</p>'; fillOnCallWho(); return; }
-  el.innerHTML='<table><thead><tr><th>Name</th><th>Hub sign-in email</th><th>Mobile</th><th>Shift</th><th></th></tr></thead><tbody>'
+  /* Out until (speed to lead, 2026-10-07): while a person is out, their not-yet-yes inquiries go to whoever holds Operations */
+  const today=new Date().toLocaleDateString('en-CA',{ timeZone:'America/Chicago' });
+  el.innerHTML='<table><thead><tr><th>Name</th><th>Hub sign-in email</th><th>Mobile</th><th>Shift</th><th>Out until</th><th></th></tr></thead><tbody>'
    + STAFF.map(s=>'<tr><td>'+esc(s.name||'')+'</td><td>'+esc(s.email||'')+'</td>'
      +'<td>'+(s.phone?esc(s.phone):'<span class="chip bad">none</span>')+'</td>'
      +'<td>'+esc(s.shift||'')+'</td>'
+     +'<td style="white-space:nowrap"><input type="date" value="'+esc(s.out_until&&s.out_until>=today?s.out_until:'')+'" onchange="staffOut(\''+s.id+'\', this.value)" style="width:150px;padding:4px 6px">'
+       +(s.out_until&&s.out_until>=today?' <span class="chip bad">out</span>':'')+'</td>'
      +'<td style="text-align:right"><button class="btn danger" onclick="delStaff(\''+s.id+'\')">Remove</button></td></tr>').join('')
-   + '</tbody></table>';
+   + '</tbody></table>'
+   + '<p class="sub" style="margin:8px 0 0">Out until: through that day their new inquiries move to whoever holds Operations (the Hub\'s speed-to-lead check, when it is on). Clear the date when they are back.</p>';
   fillOnCallWho();
 }
 async function addStaff(){
@@ -470,6 +475,15 @@ async function addStaff(){
   STAFF.push(s);
   ['ns-name','ns-email','ns-phone'].forEach(i=>document.getElementById(i).value='');
   renderStaff(); renderStatus();
+}
+async function staffOut(id, ymd){
+  const s=STAFF.find(x=>x.id===id); if(!s) return;
+  const v=/^\d{4}-\d{2}-\d{2}$/.test(String(ymd||''))?ymd:'';
+  const was=s.out_until||''; s.out_until=v||null; if(!v) delete s.out_until;
+  if(!(await saveItem('coordinator_staff',s))){ s.out_until=was||null; return; }
+  try{ await sb.from('op_events').insert({ actor_email:(ME&&ME.email)||'', actor_name:(ME&&(ME.name||ME.email))||'', verb:'setting_changed', item_id:String(s.id), area:'team',
+    summary:((ME&&(ME.name||ME.email))||'Someone')+(v?' marked '+(s.name||s.email)+' out until '+v:' marked '+(s.name||s.email)+' back') }); }catch(e){}
+  renderStaff();
 }
 async function delStaff(id){
   const s=STAFF.find(x=>x.id===id); if(!s) return;
@@ -556,6 +570,9 @@ const SWITCHES=[
     { k:'inquiry_ack_live', name:'Inquiry acknowledgment', what:'A family who fills in a website form gets one text and email at once, in Samantha\'s words: a Care Coordinator will call shortly, or after hours "will call you tomorrow after 8 am". The only automatic message a family gets outside lead response hours. Every send goes through the opt-out door.',
       on:'Turn on the inquiry acknowledgment?\n\nFrom the next website form, the family gets one text and one email right away (in your words, deployed by 487). After lead response hours it says when a coordinator will call. Nothing else automatic goes to a family. Anyone opted out (GoHighLevel Do Not Disturb, the Hub\'s opt-out record, do-not-contact) is skipped and the office is told.',
       off:'Turn off the inquiry acknowledgment? New website inquiries get no automatic text or email; the office still gets its alert and the 5-minute clock still runs.' },
+    { k:'lead_rungs_live', name:'Speed to lead: 5, 15 and 30 minutes', what:'A new inquiry nobody has called: at 5 minutes the owner gets one text with a link page; at 15 the backup gets it on My Work and one text; at 30 Owner Escalation gets one notice and a miss is counted. Only inside lead response hours, never 8pm to 7am. Inquiries nobody owns go to whoever holds Operations; an owner marked out hands theirs over.',
+      on:'Turn on speed to lead?\n\nFrom the next check (within 2 minutes), for a new inquiry nobody has tried to call:\n· 5 minutes: the owner gets ONE text with a link page (Call, log the call, Take it)\n· 15 minutes: the backup on the Operations duty window (else Owner Escalation) gets it on My Work and ONE text\n· 30 minutes: Owner Escalation gets ONE notice and a miss is counted against the owner\nOne text per step per inquiry, never repeated. Only inside lead response hours, never 8pm to 7am. Also: an inquiry nobody owns goes to whoever holds Operations now; an owner marked out on the Team page hands their inquiries to the Operations holder, and Owner Escalation gets one summary.\n\nNothing is texted to families, clients or caregivers by this.',
+      off:'Turn off speed to lead? It goes back to practice: the check only lists what it would text and assign; the board still goes red at 5 minutes.' },
   ]],
   ['Hiring', [
     { k:'intake_auto_import_live', name:'Start forms import themselves', what:'A new start form from someone we sent a start link to becomes a Background & References candidate by itself.',
@@ -681,7 +698,7 @@ const HUB_SETTINGS=[
     ['profile-enforcement','Profile standard: enforcement','Whether the client and caregiver profile standards block Ready for Staffing, assignment and First Shift. All off now (shadow mode).'],
     ['transcripts','Transcript retention','Whether raw visit transcripts are cleared once the care plan is in AxisCare.'],
     ['after-hours','After-hours escalation protocol','The after-hours steps, kept for reference.'],
-    ['leads','Leads','Response hours (the 5-minute first-call clock), the one inquiry acknowledgment, and where website forms land.'] ]],
+    ['leads','Leads','Response hours (the 5-minute first-call clock), the one inquiry acknowledgment, the speed-to-lead minutes (15 and 30), the script lines, and where website forms land.'] ]],
 ];
 let CC_HUB='https://cc.mo-care.com/';   /* let: a test points it at a local copy */
 let HS_CUR=null;
