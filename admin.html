@@ -654,6 +654,10 @@ const SWITCHES=[
     { k:'client_journey_live', name:'Client journeys', what:'Each new client\'s start of care is one journey on their profile, with the next step on the Care Coordinator\'s My Work. Who gets which payer is in Hub settings, Client journeys. Sends nothing.',
       on:'Turn on client journeys?\n\nEvery new client\'s start of care runs as one journey on their profile: the next required step, who owns it, and proof on each step. Care Coordinators see their next steps on My Work under Clients in motion. A lead starts its journey once someone has talked to them, and goes to the Care Coordinator for its payer (set in Hub settings, Client journeys). The older Start of Care checklist is no longer offered to anyone new; clients who already have one keep it.\n\nNobody is texted or emailed.',
       off:'Turn off client journeys? Journeys stop showing to Care Coordinators and nothing new starts by itself. Every step and its history is kept, and comes back when it is turned on again.' },
+    /* 2026-10-08: Google review suggestions (review-moments). Her five happy moments; the Care Coordinator asks, the Hub never sends */
+    { k:'review_asks_live', name:'Google review suggestions', what:'When a family is clearly happy, their Care Coordinator gets one card suggesting they ask for a Google review, with the message ready to copy. Sends nothing.',
+      on:'Turn on Google review suggestions?\n\nOnce a day, the Hub looks for a happy moment from the last two weeks: kind words a person confirmed, a Care Match call where the family loves their caregiver, a 4 or 5 star check-in, kind words after we solved a problem, or a long-time client whose check-ins stay high. Only for current clients with us two weeks or more, with no open concern, not asked in 90 days. The client\'s Care Coordinator gets ONE card, with the message and your Google review link ready to copy. They send it themselves (or call, or ask in person) and record it; a week later one card asks whether a review was left.\n\nThe Hub never sends a review request itself.',
+      off:'Turn off Google review suggestions? No new cards are made. Anything already suggested or asked stays on the profile, and anyone can still choose to ask from a client\'s profile.' },
   ]],
   ['Calls', [
     { k:'call_pull_live', name:'Calls from GoHighLevel', what:'A new-client call creates the lead and drafts a follow-up for your approval (nothing is sent).', since:'call_pull_live_since',
@@ -692,6 +696,7 @@ const HUB_SETTINGS=[
     ['cadences','Cadences','How often clients get a check-in, and when supervisory visits show as due soon.'] ]],
   ['New people and records', [
     ['client-journeys','Client journeys','On or off, and which Care Coordinator gets a new client nobody has picked, by payer.'],
+    ['google-reviews','Google reviews','On or off, and your Google review link.'],
     ['start-forms','Start forms','Whether a new start form becomes a Background & References candidate by itself.'],
     ['caregiver-connect','Caregiver connect','Ties each AxisCare caregiver to their Hub record.'],
     ['staff','Coordinator list','Who the Hub knows as office staff, their shift and notifications.'],
