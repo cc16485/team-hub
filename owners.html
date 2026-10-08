@@ -228,6 +228,11 @@
     <b style="font-size:.95rem;color:var(--navy)">Audit history</b>
     <div id="aud-history"></div>
   </div>
+  <div class="card">
+    <b style="font-size:.95rem;color:var(--navy)">Grievance log</b>
+    <div class="muted" style="font-size:.78rem;margin:.2rem 0 .4rem">Every grievance a client or their representative brought us, from the CC Hub's client issues: who, what, who owns it, and how it was answered. We must have a way for clients to bring grievances (19 CSR 15-7.021(18)(P)); no retaliation; they can also file with DSDS (HCBS Manual 8.15).</div>
+    <div id="grievance-log"><div class="muted">Loading…</div></div>
+  </div>
 </section>
 
 <!-- ============ FEEDBACK ============ -->
@@ -325,6 +330,25 @@ function renderGheScorecard(){
     +(sc.rows.length?'<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:.8rem;min-width:640px"><thead><tr style="text-align:left;color:#5A6B7E"><th>Nurse</th><th>GHEs due</th><th>Visited</th><th>Missed</th><th>Still open</th><th>Form missing</th><th>In RN review</th><th>Upload late</th><th>Uploaded on time</th><th>Seen in Fusion</th></tr></thead><tbody>'
       +sc.rows.map(r=>tr(r)).join('')+(sc.rows.length>1?tr(sc.total,1):'')+'</tbody></table></div>':'<div class="muted">No GHEs due in '+m+'. GHE months come from the care plans uploaded on each client\'s Payer tab in the CC Hub.</div>')
     +'<div class="muted" style="font-size:.72rem;margin-top:.4rem">Visited = clocked in and out in AxisCare (T1001) or a GHE form dated that month. Upload late = ready for Fusion but past the earlier of 10 working days or the 15th of the next month.</div>';
+}
+/* ---------------- Grievance log (528, 2026-10-08) ----------------
+   Read only: client_issue rows of the Grievance kind. Reported and answered in the CC Hub, never here. */
+async function renderGrievanceLog(){
+  const box=document.getElementById('grievance-log'); if(!box) return;
+  let rows=[];
+  try{ const { data, error } = await sb.from('client_issue').select('id,reported_at,client_name_free_text,reported_by_name,reported_by_role,summary,owner,state,resolved_at,resolution_note,follow_up_due,follow_up_done').eq('category','grievance').order('reported_at',{ ascending:false }).limit(200);
+    if(error) throw error; rows=data||[]; }
+  catch(e){ box.innerHTML='<div class="muted">The grievance log could not be read ('+esc(e.message||e)+').</div>'; return; }
+  if(!rows.length){ box.innerHTML='<div class="muted">No grievances recorded. In the CC Hub, report one as a client issue of the kind "Grievance".</div>'; return; }
+  const d=x=>x?String(x).slice(0,10):'';
+  const open=rows.filter(r=>!r.resolved_at&&r.state!=='closed_no_action');   /* answered = resolved (a follow-up check may still be due) */
+  const days=rows.filter(r=>r.resolved_at).map(r=>Math.max(0,Math.round((Date.parse(r.resolved_at)-Date.parse(r.reported_at))/864e5))).sort((a,b)=>a-b);
+  const med=days.length?days[Math.floor((days.length-1)/2)]:null;
+  const STATE={ reported:'reported', triaged:'triaged', in_progress:'being worked', waiting:'waiting', resolving:'resolving', follow_up:'follow-up check', resolved:'resolved', closed_no_action:'closed, no action' };
+  box.innerHTML='<div class="muted" style="font-size:.78rem;margin-bottom:.3rem"><b'+(open.length?' style="color:#B4402F"':'')+'>'+open.length+' open</b> · '+(rows.length-open.length)+' resolved'+(med!=null?' · typically answered in '+med+' day'+(med===1?'':'s'):'')+'</div>'
+    +'<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:.78rem;min-width:720px"><thead><tr style="text-align:left;color:#5A6B7E"><th>Reported</th><th>Client</th><th>From</th><th>What</th><th>Owner</th><th>Where it stands</th><th>Resolved</th><th>How it was answered</th></tr></thead><tbody>'
+    +rows.map(r=>'<tr style="border-top:1px solid #DCE4EE;vertical-align:top"><td>'+d(r.reported_at)+'</td><td>'+esc(r.client_name_free_text||'')+'</td><td>'+esc([r.reported_by_name,r.reported_by_role].filter(Boolean).join(', '))+'</td><td>'+esc(r.summary||'')+'</td><td>'+esc(r.owner||'')+'</td><td>'+esc(STATE[r.state]||r.state)+(r.follow_up_due&&!r.follow_up_done?' (check '+d(r.follow_up_due)+')':'')+'</td><td>'+d(r.resolved_at)+'</td><td>'+esc(r.resolution_note||'')+'</td></tr>').join('')
+    +'</tbody></table></div>';
 }
 async function loadAll(){
   const { data } = await sb.from('app_data').select('key,data').in('key',['attendance_events','discipline_actions','offboardings','file_audits','settings','leads','ops_settings','referral_orgs','referral_activities','activities','finance_snapshots','owner_settings','budget_lines','budget_actuals','staffing_tasks','feedback','ghe_watch','ghe_forms','nurse_clients']);
@@ -994,7 +1018,7 @@ async function boot(){
   document.getElementById('app').style.display='block';
   await loadAll();
   renderDiscipline(); renderOffboarding(); renderAudits(); renderOwnersFeedback();
-  renderMoney(); renderBudget(); renderFunnel(); renderLeadDesk(); renderRelationships(); renderGheScorecard(); renderOwnerInbox(); loadGrowthPulse(); loadHiringFunnel();
+  renderMoney(); renderBudget(); renderFunnel(); renderLeadDesk(); renderRelationships(); renderGheScorecard(); renderGrievanceLog(); renderOwnerInbox(); loadGrowthPulse(); loadHiringFunnel();
 }
 boot();
 </script>
