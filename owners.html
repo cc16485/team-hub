@@ -7,7 +7,7 @@
 <title>Owners Hub — Caring Companions</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cc.mo-care.com/lead-rules.js?v=15"></script>
-<script src="https://cc.mo-care.com/partner-rules.js?v=1"></script><!-- Referral Partner Desk (2026-10-08): owners, tiers and timing, the same file the CC Hub desk runs --><!-- Leads intake desk Stage 5 (2026-10-07): the same rules file the CC Hub runs; the owners' numbers come from it -->
+<script src="https://cc.mo-care.com/partner-rules.js?v=1"></script><script src="https://cc.mo-care.com/ghe-forms-rules.js?v=1"></script><!-- GHE scorecard (GHE fix slice 4, 2026-10-08): the same rules file the CC Hub's Nurse Scheduling runs --><!-- Referral Partner Desk (2026-10-08): owners, tiers and timing, the same file the CC Hub desk runs --><!-- Leads intake desk Stage 5 (2026-10-07): the same rules file the CC Hub runs; the owners' numbers come from it -->
 <style>
   :root{ --navy:#0D365F; --navy2:#0D365F; --teal:#54BDB8; --gold:#F0A63A; --red:#DC2626; --red-bg:#FEE2E2;
     --amber:#B45309; --amber-bg:#FEF3C7; --green:#16A34A; --green-bg:#DCFCE7;
@@ -113,6 +113,10 @@
   <div class="muted" style="margin-bottom:1rem">The operating pulse, straight from AxisCare and the lead pipeline: the numbers a buyer will ask about first.</div>
   <div id="owner-inbox"></div>
   <div id="growth-pulse"><div class="muted">Loading the pulse…</div></div>
+  <div class="card">
+    <b style="font-size:.95rem;color:var(--navy)">GHE scorecard: by nurse, from the visit to Fusion</b>
+    <div id="ghe-scorecard" style="margin-top:.5rem"><div class="muted">Loading…</div></div>
+  </div>
   <div class="card">
     <b style="font-size:.95rem;color:var(--navy)">Lead funnel: this month vs last</b>
     <div id="growth-funnel" style="margin-top:.5rem"><div class="muted">Loading…</div></div>
@@ -301,8 +305,29 @@ async function resetPw(){
 }
 async function signOut(){ await sb.auth.signOut(); location.reload(); }
 
+/* ---------------- GHE scorecard (GHE fix slice 4, 2026-10-08) ----------------
+   Her independent check: the Medicaid coordinator oversees the GHEs and confirms the Fusion uploads, so this is where she
+   sees, by nurse, what was due, visited, missed, still open, and how far the paperwork got (form, RN review, uploaded on
+   time, seen in Fusion). The numbers come from the CC Hub's own ghe-forms-rules.js; without it, nothing is shown. */
+let GHE_WATCH=[], GHE_FORMS=[], NURSE_CLIENTS=[], GHE_MONTH='';
+function renderGheScorecard(){
+  const box=document.getElementById('ghe-scorecard'); if(!box) return;
+  if(typeof GheFormRules==='undefined'){ box.innerHTML='<div class="muted">The rules file (cc.mo-care.com/ghe-forms-rules.js) did not load, so this is not shown rather than guessed. Reload the page.</div>'; return; }
+  const now=new Date(), ym=d=>d.toLocaleString('sv-SE',{timeZone:'America/Chicago'}).slice(0,7), today=now.toLocaleString('sv-SE',{timeZone:'America/Chicago'}).slice(0,10);
+  const thisM=ym(now), lastD=new Date(now); lastD.setDate(1); lastD.setMonth(lastD.getMonth()-1); const lastM=ym(lastD);
+  const m=GHE_MONTH||thisM, sc=GheFormRules.scorecard(m, GHE_WATCH, GHE_FORMS, NURSE_CLIENTS, today);
+  const btn=(k,l)=>'<button class="'+(m===k?'primary':'ghost')+'" style="padding:.25rem .6rem;font-size:.75rem" onclick="GHE_MONTH=\''+k+'\';renderGheScorecard()">'+l+'</button>';
+  const unchecked=GheFormRules.fusionToCheck(GHE_FORMS).length;
+  const cell=(v,bad)=>'<td style="text-align:center;'+(bad&&v?'color:#B4402F;font-weight:700;':'')+'">'+v+'</td>';
+  const tr=(r,b)=>'<tr'+(b?' style="font-weight:700;border-top:2px solid #DCE4EE"':'')+'><td>'+esc(r.nurse)+'</td>'+cell(r.due)+cell(r.visited)+cell(r.missed,1)+cell(r.open)+cell(r.forms_missing,1)+cell(r.rn_review)+cell(r.ready_overdue,1)+cell(r.uploaded? r.on_time+' of '+r.uploaded : 0)+cell(r.seen)+'</tr>';
+  box.innerHTML='<div style="display:flex;gap:.4rem;align-items:center;flex-wrap:wrap;margin-bottom:.5rem">'+btn(thisM,'This month ('+thisM+')')+btn(lastM,'Last month ('+lastM+')')
+    +'<span class="muted" style="font-size:.78rem">'+(unchecked?'<b style="color:#B4402F">'+unchecked+' upload'+(unchecked===1?'':'s')+' not yet confirmed in Fusion</b> by the Medicaid coordinator':'Every upload has been confirmed in Fusion')+'</span></div>'
+    +(sc.rows.length?'<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:.8rem;min-width:640px"><thead><tr style="text-align:left;color:#5A6B7E"><th>Nurse</th><th>GHEs due</th><th>Visited</th><th>Missed</th><th>Still open</th><th>Form missing</th><th>In RN review</th><th>Upload late</th><th>Uploaded on time</th><th>Seen in Fusion</th></tr></thead><tbody>'
+      +sc.rows.map(r=>tr(r)).join('')+(sc.rows.length>1?tr(sc.total,1):'')+'</tbody></table></div>':'<div class="muted">No GHEs due in '+m+'. GHE months come from the care plans uploaded on each client\'s Payer tab in the CC Hub.</div>')
+    +'<div class="muted" style="font-size:.72rem;margin-top:.4rem">Visited = clocked in and out in AxisCare (T1001) or a GHE form dated that month. Upload late = ready for Fusion but past the earlier of 10 working days or the 15th of the next month.</div>';
+}
 async function loadAll(){
-  const { data } = await sb.from('app_data').select('key,data').in('key',['attendance_events','discipline_actions','offboardings','file_audits','settings','leads','ops_settings','referral_orgs','referral_activities','activities','finance_snapshots','owner_settings','budget_lines','budget_actuals','staffing_tasks','feedback']);
+  const { data } = await sb.from('app_data').select('key,data').in('key',['attendance_events','discipline_actions','offboardings','file_audits','settings','leads','ops_settings','referral_orgs','referral_activities','activities','finance_snapshots','owner_settings','budget_lines','budget_actuals','staffing_tasks','feedback','ghe_watch','ghe_forms','nurse_clients']);
   (data||[]).forEach(r=>{
     if(r.key==='attendance_events')  ATT_EVENTS=r.data||[];
     if(r.key==='discipline_actions') DISC_ACTIONS=r.data||[];
@@ -321,6 +346,9 @@ async function loadAll(){
     if(r.key==='budget_actuals')     BUD_ACT=r.data||[];
     if(r.key==='feedback')           FEEDBACK=r.data||[];
     if(r.key==='owner_settings')     OSET=Object.assign(OSET,(r.data||[]).find(x=>x.id==='main')||{});
+    if(r.key==='ghe_watch')          GHE_WATCH=r.data||[];
+    if(r.key==='ghe_forms')          GHE_FORMS=r.data||[];
+    if(r.key==='nurse_clients')      NURSE_CLIENTS=r.data||[];
   });
 }
 async function save(key,item){
@@ -966,7 +994,7 @@ async function boot(){
   document.getElementById('app').style.display='block';
   await loadAll();
   renderDiscipline(); renderOffboarding(); renderAudits(); renderOwnersFeedback();
-  renderMoney(); renderBudget(); renderFunnel(); renderLeadDesk(); renderRelationships(); renderOwnerInbox(); loadGrowthPulse(); loadHiringFunnel();
+  renderMoney(); renderBudget(); renderFunnel(); renderLeadDesk(); renderRelationships(); renderGheScorecard(); renderOwnerInbox(); loadGrowthPulse(); loadHiringFunnel();
 }
 boot();
 </script>
