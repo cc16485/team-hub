@@ -137,6 +137,16 @@ html.embedded .topbar .brandword{ display:none; }
     </section>
 
 
+    <!-- ONBOARDING WORKFLOW · Slice 0 (Samantha approved 2026-10-08). Settings only: nothing here sends, changes
+         AxisCare or Viventium, activates the new onboarding path or retires anything. Every field is read by later
+         slices once she approves them. Saved field by field with mergeSave (ops_settings), except the two approval
+         lists, which only the onboarding-permissions function writes (per person, with its own audit trail). -->
+    <section id="onbSection">
+      <h2>Onboarding workflow</h2>
+      <p class="sub">The settings the new hiring and onboarding workflow will read once its slices are approved. Nothing on this card is active yet: the switch date stays locked until the approved launch.</p>
+      <div class="card" id="onbCard"><div class="sub" style="margin:0">Loading…</div></div>
+    </section>
+
     <section>
       <h2>Staff</h2>
       <p class="sub">One list, shared by every hub. The email must be the address they sign into the hubs with, and the phone is what escalation texts.</p>
@@ -557,6 +567,177 @@ async function delOnCall(id){
   ONCALL=ONCALL.filter(x=>x.id!==id); renderOnCall(); renderStatus();
 }
 
+/* ── Onboarding workflow (Slice 0, Samantha approved 2026-10-08) ─────────────────────────────────────────────
+   HER RULES built in: approval permissions are per signed-in PERSON, never per job title; the Approve to Work list is
+   Samantha and Zachary and only they can change it (the server refuses anyone else; this page only asks); reminder
+   days and deadlines are editable here; business days skip weekends and the company holidays kept here; the Viventium
+   Step 2 checklist is editable here and VERSIONED (a change makes a new version with who and when; earlier versions
+   stay, so a caregiver already in onboarding keeps the version they started on); the switch date is shown but LOCKED
+   (saving it is refused until the approved launch slice unlocks it). Nothing here sends anything. */
+const ONB_FN='https://zngsgedlsxinbygwmxwn.supabase.co/functions/v1/onboarding-permissions';
+const ONB_DEFAULTS={ offer_days:[2,5], step1_days:[2,4], step2_days:[3,6], due_hour:17,
+  step2_sent_due_days:1, verify_due_days:1, final_approval_due_days:1 };
+const ONB_CHECKLIST_DEFAULT=['Offer letter signed in Viventium','I-9 Section 1','Federal W-4','Missouri W-4','Direct deposit','ID documents uploaded','Family Care Safety Registry (FCSR) registration'];
+let ONB_PERMS=null, ONB_PEOPLE=[];
+const onbDays=(v,def)=>{ const a=Array.isArray(v)?v.map(Number).filter(n=>Number.isInteger(n)&&n>0&&n<=60):[]; return a.length?a:def.slice(); };
+/* The settings as this page reads them: defaults fill any gap, nothing is invented past that. */
+function onbSettings(st){
+  const o=(st&&st.onboarding&&typeof st.onboarding==='object')?st.onboarding:{};
+  const num=(v,def,lo,hi)=>{ const n=Number(v); return Number.isInteger(n)&&n>=lo&&n<=hi?n:def; };
+  return { offer_days:onbDays(o.offer_days,ONB_DEFAULTS.offer_days), step1_days:onbDays(o.step1_days,ONB_DEFAULTS.step1_days), step2_days:onbDays(o.step2_days,ONB_DEFAULTS.step2_days),
+    due_hour:num(o.due_hour,17,6,22), step2_sent_due_days:num(o.step2_sent_due_days,1,1,10), verify_due_days:num(o.verify_due_days,1,1,10), final_approval_due_days:num(o.final_approval_due_days,1,1,10) };
+}
+function onbHolidays(st){ const l=Array.isArray(st&&st.company_holidays)?st.company_holidays:[]; return l.filter(h=>h&&/^\d{4}-\d{2}-\d{2}$/.test(h.date)).map(h=>({date:h.date,name:String(h.name||'').slice(0,80)})).sort((a,b)=>a.date<b.date?-1:1); }
+function onbChecklist(st){ const c=st&&st.viventium_step2_checklist; if(!c||typeof c!=='object'||!Array.isArray(c.items)||!c.items.length) return { version:0, items:ONB_CHECKLIST_DEFAULT.slice(), changed_at:null, changed_by:null, history:[] };
+  return { version:Number(c.version)||0, items:c.items.map(x=>String(x).slice(0,120)).filter(Boolean), changed_at:c.changed_at||null, changed_by:c.changed_by||null, history:Array.isArray(c.history)?c.history:[] }; }
+/* The eleven federal holidays with the federal observance rule (Saturday -> Friday before, Sunday -> Monday after). */
+function onbFederal(y){
+  const pad=n=>String(n).padStart(2,'0'), ymd=(m,d)=>y+'-'+pad(m)+'-'+pad(d);
+  const wd=s=>{ const [a,b,c]=s.split('-').map(Number); return new Date(Date.UTC(a,b-1,c,12)).getUTCDay(); };
+  const add=(s,n)=>{ const [a,b,c]=s.split('-').map(Number); const t=new Date(Date.UTC(a,b-1,c+n,12)); return t.getUTCFullYear()+'-'+pad(t.getUTCMonth()+1)+'-'+pad(t.getUTCDate()); };
+  const nth=(m,w,n)=>{ const f=wd(ymd(m,1)); return ymd(m, 1+((w-f+7)%7)+(n-1)*7); };
+  const last=(m,w)=>{ const ld=new Date(Date.UTC(y,m,0,12)).getUTCDate(); const f=wd(ymd(m,ld)); return ymd(m, ld-((f-w+7)%7)); };
+  const obs=s=>{ const w=wd(s); return w===6?add(s,-1):w===0?add(s,1):s; };
+  return [ {date:obs(ymd(1,1)),name:"New Year's Day"}, {date:nth(1,1,3),name:'Martin Luther King Jr. Day'}, {date:nth(2,1,3),name:"Presidents' Day"},
+    {date:last(5,1),name:'Memorial Day'}, {date:obs(ymd(6,19)),name:'Juneteenth'}, {date:obs(ymd(7,4)),name:'Independence Day'}, {date:nth(9,1,1),name:'Labor Day'},
+    {date:nth(10,1,2),name:'Columbus Day'}, {date:obs(ymd(11,11)),name:'Veterans Day'}, {date:nth(11,4,4),name:'Thanksgiving Day'}, {date:obs(ymd(12,25)),name:'Christmas Day'} ];
+}
+function onbList(kind){
+  const list=ONB_PERMS?(kind==='work'?ONB_PERMS.work:ONB_PERMS.advance):[];
+  const me=ONB_PERMS&&ONB_PERMS.me||{};
+  const can=kind==='work'?!!me.may_change_work:!!me.may_change_advance;
+  const rows=list.length?list.map(m=>'<div class="swrow"><span class="chip ok">'+esc(m.name||m.email||m.person_id)+'</span><div class="grow"><div class="why">'+esc(m.email||'')+(m.added_at?' · added '+esc(String(m.added_at).slice(0,10))+(m.added_by?' by '+esc(m.added_by):''):'')+'</div></div>'
+      +(can?'<button class="btn" onclick="onbPermChange(\''+kind+'\',\'remove\',\''+esc(m.person_id)+'\',this)">Remove</button>':'')+'</div>').join('')
+    : '<div class="sub" style="margin:0">Nobody named yet'+(kind==='advance'?' (the owners can always approve to advance).':'.')+'</div>';
+  const opts=ONB_PEOPLE.filter(p=>p.active!==false&&!list.some(m=>m.person_id===p.person_id)).map(p=>'<option value="'+esc(p.person_id)+'">'+esc(p.full_name||p.email||p.person_id)+(p.email?' · '+esc(p.email):'')+'</option>').join('');
+  const add=can?'<div class="row" style="grid-template-columns:1fr auto;margin-top:10px"><div><label>Add a person</label><select id="onbAdd_'+kind+'">'+(opts||'<option value="">Everyone is already on the list</option>')+'</select></div><div style="display:flex;align-items:flex-end"><button class="btn primary" onclick="onbPermChange(\''+kind+'\',\'add\',document.getElementById(\'onbAdd_'+kind+'\').value,this)">Add</button></div></div>'
+    : '<div class="sub" style="margin-top:8px">'+(kind==='work'?'Only someone already on this list can change it.':'Only an owner can change this list.')+'</div>';
+  return rows+add;
+}
+function renderOnboarding(){
+  const box=document.getElementById('onbCard'); if(!box) return;
+  const st=OPS||{}, o=onbSettings(st), hol=onbHolidays(st), ck=onbChecklist(st);
+  const sw=(typeof st.onboarding_switch_date==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(st.onboarding_switch_date))?st.onboarding_switch_date:'';
+  const days=(id,label,arr,hint)=>'<div><label>'+esc(label)+'</label><input id="'+id+'" value="'+esc(arr.join(', '))+'" placeholder="2, 5"><div class="sub" style="margin:2px 0 0;font-size:11.5px">'+esc(hint)+'</div></div>';
+  const num=(id,label,v,hint)=>'<div><label>'+esc(label)+'</label><input id="'+id+'" type="number" min="1" max="10" value="'+esc(v)+'"><div class="sub" style="margin:2px 0 0;font-size:11.5px">'+esc(hint)+'</div></div>';
+  const y=new Date().getFullYear();
+  box.innerHTML=
+    '<div class="swgroup"><span>Who may approve</span></div>'
+    +'<div class="what">Approve to Advance to Orientation</div><div class="why" style="margin-bottom:6px">The owners, plus the individual Care Coordinators or Staffing Coordinators named here. By person, never by job title.</div>'
+    +'<div id="onbAdvance">'+(ONB_PERMS?onbList('advance'):'<div class="sub" style="margin:0">Loading…</div>')+'</div>'
+    +'<div class="what" style="margin-top:14px">Approve to Work (final clearance)</div><div class="why" style="margin-bottom:6px">Samantha and Zachary only. Changing this list is itself an owner action with an audit trail: only someone already on it can add or remove, and it can never be emptied.</div>'
+    +'<div id="onbWork">'+(ONB_PERMS?onbList('work'):'<div class="sub" style="margin:0">Loading…</div>')+'</div>'
+    +(ONB_PERMS&&ONB_PERMS.history&&ONB_PERMS.history.length?'<details style="margin-top:8px"><summary class="sub" style="cursor:pointer">Change history ('+ONB_PERMS.history.length+')</summary>'+ONB_PERMS.history.slice().reverse().map(h=>'<div class="sub" style="margin:2px 0">'+esc(String(h.at).replace('T',' ').slice(0,16))+' · '+esc(h.by_email||h.by)+' '+esc(h.action==='add'?'added':'removed')+' '+esc(h.name||h.email)+' '+esc(h.action==='add'?'to':'from')+' '+esc(h.kind==='work'?'Approve to Work':'Approve to Advance')+'</div>').join('')+'</details>':'')
+    +'<div class="swgroup" style="margin-top:18px"><span>Reminder days and deadlines</span></div>'
+    +'<div class="why" style="margin-bottom:8px">Days after the step was sent, for the automatic reminders. Deadlines are business days (Monday to Friday, skipping the company holidays below) and fall due at the hour below, Central time. Reminders stop on their own when the step is completed.</div>'
+    +'<div class="row" style="grid-template-columns:1fr 1fr 1fr">'+days('onb_offer','Offer reminders (days)',o.offer_days,'Approved: 2 and 5')+days('onb_step1','Step 1 reminders (days)',o.step1_days,'Approved: 2 and 4')+days('onb_step2','Step 2 reminders (days)',o.step2_days,'Approved: 3 and 6')+'</div>'
+    +'<div class="row" style="grid-template-columns:1fr 1fr 1fr 1fr;margin-top:8px">'+num('onb_sentdue','Record Step 2 Sent: due in (business days)',o.step2_sent_due_days,'after Approve to Advance')+num('onb_verifydue','Verify Step 2: due in (business days)',o.verify_due_days,'after the caregiver reports DONE')+num('onb_finaldue','Final approval: due in (business days)',o.final_approval_due_days,'after every requirement is met')
+    +'<div><label>Due at (hour, Central)</label><input id="onb_hour" type="number" min="6" max="22" value="'+esc(o.due_hour)+'"><div class="sub" style="margin:2px 0 0;font-size:11.5px">17 = 5pm</div></div></div>'
+    +'<div style="margin-top:8px"><button class="btn primary" onclick="onbSaveTiming(this)">Save reminder days and deadlines</button></div>'
+    +'<div class="swgroup" style="margin-top:18px"><span>Company holidays</span></div>'
+    +'<div class="why" style="margin-bottom:8px">Not business days: a deadline that would fall on one moves to the next business day. Add the federal holidays with one tap, then remove any the office does not observe.</div>'
+    +(hol.length?hol.map(h=>'<div class="swrow"><span class="chip">'+esc(h.date)+'</span><div class="grow"><div class="what">'+esc(h.name||'Holiday')+'</div></div><button class="btn" onclick="onbHolidayRemove(\''+esc(h.date)+'\',this)">Remove</button></div>').join(''):'<div class="sub" style="margin:0">No holidays yet. Weekends are always skipped.</div>')
+    +'<div class="row" style="grid-template-columns:1fr 1.4fr auto;margin-top:10px"><div><label>Date</label><input id="onb_hdate" type="date"></div><div><label>Name</label><input id="onb_hname" placeholder="Office closed"></div>'
+    +'<div style="display:flex;align-items:flex-end"><button class="btn primary" onclick="onbHolidayAdd(this)">Add</button></div></div>'
+    +'<div style="margin-top:8px"><button class="btn" onclick="onbHolidaysFederal('+y+',this)">Add the '+y+' federal holidays</button></div>'
+    +'<div class="swgroup" style="margin-top:18px"><span>Viventium Step 2 checklist</span></div>'
+    +'<div class="why" style="margin-bottom:8px">What the office ticks when it verifies Step 2 in Viventium, one item per line. It is a verification aid, never a substitute for looking in Viventium. Saving makes a new version (who, when); earlier versions stay, so a caregiver already in onboarding keeps the version they started on.</div>'
+    +'<div class="sub" style="margin:0 0 4px">Version '+ck.version+(ck.changed_at?' · changed '+esc(String(ck.changed_at).slice(0,10))+(ck.changed_by?' by '+esc(ck.changed_by):''):' (the starting list)')+'</div>'
+    +'<textarea id="onb_checklist" rows="'+Math.max(4,ck.items.length+1)+'" style="width:100%;box-sizing:border-box">'+esc(ck.items.join('\n'))+'</textarea>'
+    +'<div style="margin-top:8px"><button class="btn primary" onclick="onbSaveChecklist(this)">Save as a new version</button></div>'
+    +'<div class="swgroup" style="margin-top:18px"><span>Switch date</span></div>'
+    +'<div class="swrow"><span class="chip warn">'+(sw?esc(sw):'Not set')+'</span><div class="grow"><div class="what">New onboarding path from</div><div class="why">Locked. Offers sent on or after this date will follow the new path; every offer before it stays on the current process. It is set only in the approved launch slice, on Samantha\'s word, and never by this card.</div></div></div>';
+}
+async function onbLoadPerms(){
+  ONB_PERMS=null;
+  try{
+    const { data:{ session } } = await sb.auth.getSession();
+    const r=await fetch(ONB_FN,{ method:'POST', headers:{ 'Content-Type':'application/json', 'apikey':SUPA_ANON, 'Authorization':'Bearer '+(session?session.access_token:'') }, body:JSON.stringify({ action:'get' }) });
+    const j=await r.json().catch(()=>({}));
+    if(r.ok&&j&&j.ok) ONB_PERMS=j; else ONB_PERMS={ ok:false, error:(j&&j.error)||('could not load ('+r.status+')'), advance:[], work:[], history:[], me:{} };
+  }catch(e){ ONB_PERMS={ ok:false, error:'could not reach the permissions function', advance:[], work:[], history:[], me:{} }; }
+  try{ const { data } = await sb.rpc('staff_access_overview'); ONB_PEOPLE=(data||[]).map(r=>({ person_id:r.person_id, full_name:r.full_name, email:r.email, active:r.active })); }catch(e){ ONB_PEOPLE=[]; }
+  renderOnboarding();
+  if(ONB_PERMS&&ONB_PERMS.ok===false){ const a=document.getElementById('onbAdvance'); if(a) a.innerHTML='<div class="sub" style="margin:0;color:#b91c1c">'+esc(ONB_PERMS.error)+'</div>'; const w=document.getElementById('onbWork'); if(w) w.innerHTML=''; }
+}
+async function onbPermChange(kind, action, person_id, btn){
+  if(!person_id) return;
+  const who=(ONB_PEOPLE.find(p=>p.person_id===person_id)||{}).full_name||(((kind==='work'?ONB_PERMS.work:ONB_PERMS.advance)||[]).find(m=>m.person_id===person_id)||{}).name||'this person';
+  const label=kind==='work'?'Approve to Work (final clearance)':'Approve to Advance to Orientation';
+  if(!confirm((action==='add'?'Add ':'Remove ')+who+(action==='add'?' to ':' from ')+'the '+label+' list? This is recorded with your name and the time.')) return;
+  if(btn) btn.disabled=true; say('Saving…');
+  try{
+    const { data:{ session } } = await sb.auth.getSession();
+    const r=await fetch(ONB_FN,{ method:'POST', headers:{ 'Content-Type':'application/json', 'apikey':SUPA_ANON, 'Authorization':'Bearer '+(session?session.access_token:'') }, body:JSON.stringify({ action, kind, person_id }) });
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok||!j.ok){ say('Not saved'); alert('Not changed: '+((j&&j.error)||('error '+r.status))); }
+    else { say('Saved'); ONB_PERMS=j; }
+  }catch(e){ say('Not saved'); alert('Not changed: could not reach the permissions function.'); }
+  if(btn) btn.disabled=false;
+  renderOnboarding();
+}
+function onbParseDays(id){ const t=(document.getElementById(id)||{}).value||''; const a=t.split(/[,\s]+/).map(Number).filter(n=>Number.isInteger(n)&&n>0&&n<=60); return a.length?[...new Set(a)].sort((x,y)=>x-y):null; }
+async function onbLogged(summary, data){
+  try{ await sb.from('op_events').insert({ actor_email:ME.email, actor_name:ME.email.split('@')[0], verb:'setting_changed', item_id:'ops_settings', area:'admin', summary:ME.email.split('@')[0]+' '+summary, data:data||{} }); }catch(e){ console.warn('[op_events] not recorded:', e&&e.message); }
+}
+async function onbSaveTiming(btn){
+  const offer=onbParseDays('onb_offer'), s1=onbParseDays('onb_step1'), s2=onbParseDays('onb_step2');
+  const n=(id,lo,hi)=>{ const v=Number((document.getElementById(id)||{}).value); return Number.isInteger(v)&&v>=lo&&v<=hi?v:null; };
+  const hour=n('onb_hour',6,22), sd=n('onb_sentdue',1,10), vd=n('onb_verifydue',1,10), fd=n('onb_finaldue',1,10);
+  if(!offer||!s1||!s2||hour===null||sd===null||vd===null||fd===null){ alert('Each reminder box needs whole days (for example 2, 5); deadlines are 1 to 10 business days; the hour is 6 to 22.'); return; }
+  if(btn) btn.disabled=true;
+  const out=await mergeSave('ops_settings',(m,base)=>{
+    const cur=onbSettings(base), next={ offer_days:offer, step1_days:s1, step2_days:s2, due_hour:hour, step2_sent_due_days:sd, verify_due_days:vd, final_approval_due_days:fd };
+    const ch=[]; for(const k of Object.keys(next)) if(JSON.stringify(cur[k])!==JSON.stringify(next[k])) ch.push(k+': '+JSON.stringify(cur[k])+' → '+JSON.stringify(next[k]));
+    if(ch.length) m.onboarding=Object.assign({}, (base.onboarding&&typeof base.onboarding==='object')?base.onboarding:{}, next, { changed_at:new Date().toISOString(), changed_by:ME.email });
+    return ch;
+  });
+  if(btn) btn.disabled=false;
+  if(out.ok){ if(out.data) OPS=out.data; if(out.changed&&out.changed.length) onbLogged('changed onboarding reminder days or deadlines: '+out.changed.join('; '), { changed:out.changed }); }
+  renderOnboarding();
+}
+async function onbHolidaysApply(apply, what){
+  const out=await mergeSave('ops_settings',(m,base)=>{ const cur=onbHolidays(base); const next=apply(cur.slice()); if(!next) return [];
+    const a=JSON.stringify(cur), b=JSON.stringify(next); if(a===b) return []; m.company_holidays=next; return [what]; });
+  if(out.ok){ if(out.data) OPS=out.data; if(out.changed&&out.changed.length) onbLogged('changed the company holidays: '+out.changed.join('; '), { changed:out.changed }); }
+  renderOnboarding();
+}
+async function onbHolidayAdd(btn){
+  const d=(document.getElementById('onb_hdate')||{}).value||'', name=((document.getElementById('onb_hname')||{}).value||'').trim().slice(0,80);
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(d)){ alert('Pick a date first.'); return; }
+  if(btn) btn.disabled=true;
+  await onbHolidaysApply(cur=>{ if(cur.some(h=>h.date===d)) return null; cur.push({ date:d, name:name||'Office closed' }); return cur.sort((a,b)=>a.date<b.date?-1:1); }, 'added '+d+(name?' '+name:''));
+  if(btn) btn.disabled=false;
+}
+async function onbHolidayRemove(d, btn){
+  if(!confirm('Remove '+d+' from the company holidays?')) return;
+  if(btn) btn.disabled=true;
+  await onbHolidaysApply(cur=>cur.filter(h=>h.date!==d), 'removed '+d);
+  if(btn) btn.disabled=false;
+}
+async function onbHolidaysFederal(y, btn){
+  if(!confirm('Add the '+y+' federal holidays (eleven dates, with the federal observed days)? You can remove any the office does not observe.')) return;
+  if(btn) btn.disabled=true;
+  await onbHolidaysApply(cur=>{ let added=0; for(const h of onbFederal(y)) if(!cur.some(x=>x.date===h.date)){ cur.push(h); added++; } return added?cur.sort((a,b)=>a.date<b.date?-1:1):null; }, 'added the '+y+' federal holidays');
+  if(btn) btn.disabled=false;
+}
+async function onbSaveChecklist(btn){
+  const items=((document.getElementById('onb_checklist')||{}).value||'').split('\n').map(s=>s.trim().slice(0,120)).filter(Boolean);
+  if(!items.length){ alert('The checklist needs at least one item.'); return; }
+  if(btn) btn.disabled=true;
+  const out=await mergeSave('ops_settings',(m,base)=>{
+    const cur=onbChecklist(base); if(JSON.stringify(cur.items)===JSON.stringify(items)) return [];
+    const now=new Date().toISOString();
+    const history=(cur.history||[]).concat(cur.version?[{ version:cur.version, items:cur.items, changed_at:cur.changed_at, changed_by:cur.changed_by }]:[]).slice(-50);
+    m.viventium_step2_checklist={ version:cur.version+1, items, changed_at:now, changed_by:ME.email, history };
+    return ['Viventium Step 2 checklist version '+(cur.version+1)+' ('+items.length+' items)'];
+  });
+  if(btn) btn.disabled=false;
+  if(out.ok){ if(out.data) OPS=out.data; if(out.changed&&out.changed.length) onbLogged('saved '+out.changed[0], { changed:out.changed }); }
+  renderOnboarding();
+}
+window.onbPermChange=onbPermChange; window.onbSaveTiming=onbSaveTiming; window.onbHolidayAdd=onbHolidayAdd; window.onbHolidayRemove=onbHolidayRemove; window.onbHolidaysFederal=onbHolidaysFederal; window.onbSaveChecklist=onbSaveChecklist;
+
 /* ── boot ───────────────────────────────────────────────────────────────── */
 /* ── Switches (2026-10-04, Samantha "yes to all": https://claude.ai/artifact/QDoebXX7ZaD4dgbzZe3Kor) ─────────────
    Every Hub on/off switch on this page. They are the SAME ops_settings switches the Care Coordinator Hub's Settings
@@ -816,6 +997,7 @@ async function boot(){
   OPSITEMS=(await readKey('ops_items'))||[];
 
   renderStaff(); renderOnCall(); fillOps(); renderStatus(); renderSwitches(); renderHubSettings();
+  renderOnboarding(); onbLoadPerms();   // Slice 0: the onboarding workflow settings (not awaited: a slow function must not hold the page)
   { const m=/^#hubsettings(?:\/([a-z-]*))?$/.exec(location.hash||''); if(m){ if(m[1]!==undefined) HS_CUR=m[1]; adminTab('hubsettings'); } }
   // Read-only, and deliberately not awaited: a slow or missing RPC must not
   // hold up the rest of this page.
