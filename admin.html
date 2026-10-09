@@ -765,6 +765,11 @@ const SWITCHES=[
     { k:'offer_send_live', name:'Offer letter link goes out (new path)', what:'On the new onboarding path, Send Offer texts and emails the applicant their private offer-and-sign link. Off: practice, the Hub records what it would have sent and sends nothing.',
       on:'Turn on the offer letter link? From the next Send Offer on the NEW onboarding path, the applicant is texted (8am to 6pm, yes-to-texts, opt-outs) and emailed their private offer-and-sign link. Offers on the current path are not affected. Nobody is on the new path before the switch date.',
       off:'Turn off the offer letter link? Send Offer on the new path goes back to practice: it records what it would have sent and sends nothing.' },
+    /* SLICE 1d (2026-10-09): Step 1 sends itself the moment both documents are signed on the new path. Off = practice: the
+       send is recorded on the audit trail and nothing goes out. The signing page tells the caregiver which it is. */
+    { k:'step1_auto_live', name:'Step 1 sends itself after the signature (new path)', what:'The moment an applicant signs both documents on the new onboarding path, the Hub texts and emails their Step 1 link, retries a failed channel up to three times, then raises a Needs Attention item. Off: practice, recorded and nothing sent.',
+      on:'Turn on Step 1 sending itself? From the next signature on the NEW onboarding path, the Step 1 link is texted (8am to 6pm, yes-to-texts, opt-outs) and emailed with no coordinator action. Nobody is on the new path before the switch date.',
+      off:'Turn off Step 1 sending itself? It goes back to practice: the Hub records what it would have sent and sends nothing; the office sends Step 1 by hand.' },
     { k:'intake_auto_import_live', name:'Start forms import themselves', what:'A new start form from someone we sent a start link to becomes a Background & References candidate by itself.',
       on:'Turn on start forms importing themselves? From the next check (every 5 minutes), a new start form from someone we sent a start link to becomes a Background & References candidate; everyone else gets a Needs Attention card. Nothing is sent to them or their references.',
       off:'Turn off start forms importing themselves? It goes back to practice: it only lists what it would do, and Import works by hand as before.' },
