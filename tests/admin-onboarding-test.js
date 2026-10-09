@@ -77,6 +77,10 @@ function world(opt = {}) {
     ck('the change is logged in op_events with what changed', w.events.length === 1 && /offer_days/.test(w.events[0].summary) && /verify_due_days/.test(w.events[0].summary), w.events);
     w.el('onb_offer').value = 'soon'; await w.ctx.onbSaveTiming(null);
     ck('bad input is refused with a message and saves nothing', w.alerts.length === 1 && w.db.ops_settings.version === 6, w.alerts); }
+  { const w = world(); w.ctx.renderOnboarding(); w.el('onb_offer').value = '2, 5'; w.el('onb_step1').value = '2, 4'; w.el('onb_step2').value = '3, 6'; w.el('onb_hour').value = '17'; w.el('onb_sentdue').value = '1'; w.el('onb_verifydue').value = '1'; w.el('onb_finaldue').value = '1';
+    await w.ctx.onbSaveTiming(null); const d = w.db.ops_settings.data;
+    ck('the first save with the approved defaults still writes the record, with who and when, and is logged', d.onboarding && JSON.stringify(d.onboarding.offer_days) === '[2,5]' && d.onboarding.changed_by === 'samantha@mo-care.com' && w.events.length === 1 && /approved defaults/.test(w.events[0].summary), d.onboarding);
+    await w.ctx.onbSaveTiming(null); ck('a second save of the same values writes nothing more', w.db.ops_settings.version === 6 && w.events.length === 1); }
   { const w = world({ serverChange: { late_watch_live: false } }); w.ctx.renderOnboarding(); w.el('onb_offer').value = '2, 5'; w.el('onb_step1').value = '1, 3'; w.el('onb_step2').value = '3, 6'; w.el('onb_hour').value = '17'; w.el('onb_sentdue').value = '1'; w.el('onb_verifydue').value = '1'; w.el('onb_finaldue').value = '1';
     await w.ctx.onbSaveTiming(null); const d = w.db.ops_settings.data;
     ck('a switch someone else flipped meanwhile is kept (merge-save, not a whole save)', d.late_watch_live === false && JSON.stringify(d.onboarding.step1_days) === '[1,3]', d); }
