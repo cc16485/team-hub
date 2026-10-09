@@ -770,6 +770,12 @@ const SWITCHES=[
     { k:'step1_auto_live', name:'Step 1 sends itself after the signature (new path)', what:'The moment an applicant signs both documents on the new onboarding path, the Hub texts and emails their Step 1 link, retries a failed channel up to three times, then raises a Needs Attention item. Off: practice, recorded and nothing sent.',
       on:'Turn on Step 1 sending itself? From the next signature on the NEW onboarding path, the Step 1 link is texted (8am to 6pm, yes-to-texts, opt-outs) and emailed with no coordinator action. Nobody is on the new path before the switch date.',
       off:'Turn off Step 1 sending itself? It goes back to practice: the Hub records what it would have sent and sends nothing; the office sends Step 1 by hand.' },
+    /* SLICE 1e (2026-10-09): the offer reminders on the new path (days from "Reminder days and deadlines" below, approved 2
+       and 5), Monday to Saturday 9am to 6pm, stopped by a signature, decline or withdrawal; day 7 unsigned raises a card
+       either way. Off = practice: each reminder is recorded on the audit trail and nothing goes out. */
+    { k:'offer_reminders_live', name:'Offer reminders go out (new path)', what:'On the new onboarding path an unsigned offer gets one text and email on each reminder day (approved: day 2 and day 5), Monday to Saturday 9am to 6pm Central. Off: practice, recorded and nothing sent. The day 7 Needs Attention card is raised either way.',
+      on:'Turn on offer reminders? From the next scheduled run, an unsigned offer on the NEW onboarding path is texted (yes-to-texts, opt-outs) and emailed on each reminder day. Signed, declined or withdrawn offers get nothing. Nobody is on the new path before the switch date.',
+      off:'Turn off offer reminders? They go back to practice: recorded on the audit trail, nothing sent.' },
     { k:'intake_auto_import_live', name:'Start forms import themselves', what:'A new start form from someone we sent a start link to becomes a Background & References candidate by itself.',
       on:'Turn on start forms importing themselves? From the next check (every 5 minutes), a new start form from someone we sent a start link to becomes a Background & References candidate; everyone else gets a Needs Attention card. Nothing is sent to them or their references.',
       off:'Turn off start forms importing themselves? It goes back to practice: it only lists what it would do, and Import works by hand as before.' },
