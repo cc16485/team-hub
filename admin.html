@@ -689,6 +689,9 @@ async function onbSaveTiming(btn){
   const out=await mergeSave('ops_settings',(m,base)=>{
     const cur=onbSettings(base), next={ offer_days:offer, step1_days:s1, step2_days:s2, due_hour:hour, step2_sent_due_days:sd, verify_due_days:vd, final_approval_due_days:fd };
     const ch=[]; for(const k of Object.keys(next)) if(JSON.stringify(cur[k])!==JSON.stringify(next[k])) ch.push(k+': '+JSON.stringify(cur[k])+' → '+JSON.stringify(next[k]));
+    /* the first save writes the record even when every box still holds the approved default, so the settings exist
+       explicitly (with who and when) instead of living only as this page's fallbacks */
+    if(!ch.length && !(base.onboarding&&typeof base.onboarding==='object')) ch.push('saved the approved defaults');
     if(ch.length) m.onboarding=Object.assign({}, (base.onboarding&&typeof base.onboarding==='object')?base.onboarding:{}, next, { changed_at:new Date().toISOString(), changed_by:ME.email });
     return ch;
   });
