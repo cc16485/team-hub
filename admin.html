@@ -491,8 +491,8 @@ async function staffOut(id, ymd){
   const v=/^\d{4}-\d{2}-\d{2}$/.test(String(ymd||''))?ymd:'';
   const was=s.out_until||''; s.out_until=v||null; if(!v) delete s.out_until;
   if(!(await saveItem('coordinator_staff',s))){ s.out_until=was||null; return; }
-  try{ await sb.from('op_events').insert({ actor_email:(ME&&ME.email)||'', actor_name:(ME&&(ME.name||ME.email))||'', verb:'setting_changed', item_id:String(s.id), area:'team',
-    summary:((ME&&(ME.name||ME.email))||'Someone')+(v?' marked '+(s.name||s.email)+' out until '+v:' marked '+(s.name||s.email)+' back') }); }catch(e){}
+  try{ await sb.rpc('record_event', { p_verb:'setting_changed', p_item_id:String(s.id), p_area:'team', p_via:'admin',
+    p_summary:((ME&&(ME.name||ME.email))||'Someone')+(v?' marked '+(s.name||s.email)+' out until '+v:' marked '+(s.name||s.email)+' back') }); }catch(e){}
   renderStaff();
 }
 async function delStaff(id){
@@ -685,7 +685,7 @@ async function onbPermChange(kind, action, person_id, btn){
 }
 function onbParseDays(id){ const t=(document.getElementById(id)||{}).value||''; const a=t.split(/[,\s]+/).map(Number).filter(n=>Number.isInteger(n)&&n>0&&n<=60); return a.length?[...new Set(a)].sort((x,y)=>x-y):null; }
 async function onbLogged(summary, data){
-  try{ await sb.from('op_events').insert({ actor_email:ME.email, actor_name:ME.email.split('@')[0], verb:'setting_changed', item_id:'ops_settings', area:'admin', summary:ME.email.split('@')[0]+' '+summary, data:data||{} }); }catch(e){ console.warn('[op_events] not recorded:', e&&e.message); }
+  try{ await sb.rpc('record_event', { p_verb:'setting_changed', p_item_id:'ops_settings', p_area:'admin', p_via:'admin', p_summary:ME.email.split('@')[0]+' '+summary, p_data:data||{} }); }catch(e){ console.warn('[op_events] not recorded:', e&&e.message); }
 }
 async function onbSaveTiming(btn){
   const offer=onbParseDays('onb_offer'), s1=onbParseDays('onb_step1'), s2=onbParseDays('onb_step2');
@@ -1018,8 +1018,8 @@ async function swToggle(k, btn){
   if(out.ok){
     if(out.data) OPS=out.data;
     if(out.changed && out.changed.length){
-      sb.from('op_events').insert({ actor_email:ME.email, actor_name:ME.email.split('@')[0], verb:'setting_changed', item_id:'ops_settings', area:'admin',
-        summary:ME.email.split('@')[0]+' changed switches on the Admin page: '+out.changed.join(', '), data:{ changed:out.changed } })
+      sb.rpc('record_event', { p_verb:'setting_changed', p_item_id:'ops_settings', p_area:'admin', p_via:'admin',
+        p_summary:ME.email.split('@')[0]+' changed switches on the Admin page: '+out.changed.join(', '), p_data:{ changed:out.changed } })
         .then(r=>{ if(r&&r.error) console.warn('[op_events] not recorded:', r.error.message); }, e=>console.warn('[op_events] not recorded:', e));
     }
   }
