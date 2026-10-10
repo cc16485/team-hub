@@ -888,6 +888,10 @@ const SWITCHES=[
   ]],
   ['Shown here, switched by a Desktop step', [
     { k:'coverage_send_live', name:'Open-shift texts', what:'The coverage engine texts caregivers about open shifts.', readOnly:true },
+    /* 2026-10-10 (Samantha, on the "Dad" new-client ask): the "we haven't met the client yet" auto-reply is off unless this is on (coverage-reply, Desktop 575) */
+    { k:'coverage_ack_interest_live', name:'Auto-reply to a new-client ask', what:'When a caregiver answers YES to a "New client, ask the team" text, the Hub texts back "Thank you! Nothing is set yet. We\'re meeting the client first and we\'ll follow up with you about the hours." Off: the yes is still collected on the case; nothing is texted back.',
+      on:'Turn on the auto-reply to a new-client ask?\n\nFrom now, a caregiver who answers YES to a "New client, ask the team" text gets one text back: "Thank you! Nothing is set yet. We\'re meeting the client first and we\'ll follow up with you about the hours." (the wording is editable in Hub settings, coverage_msg_ack_interest). The yes is collected on the case either way.',
+      off:'Turn off the auto-reply? Every yes is still collected on the case and the office picks from them; nobody is texted back.' },
     { k:'timekeeper_watch_live', name:'Missed clock-ins watched', what:'Missed clock-ins are found and alerted.', readOnly:true },
     { k:'promises_live', name:'Client promises', what:'The promise engine tracks what we owe each new client.', readOnly:true },
   ]],
