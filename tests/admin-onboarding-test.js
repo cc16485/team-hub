@@ -22,7 +22,7 @@ function world(opt = {}) {
     fetch: async (url, o) => { const body = JSON.parse(o.body); fetches.push(body);
       if (opt.fnRefuse) return { ok: false, status: 403, json: async () => ({ error: opt.fnRefuse }) };
       if (body.action === 'get') return { ok: true, status: 200, json: async () => perms };
-      const list = body.kind === 'work' ? perms.work : perms.advance;
+      const list = body.kind === 'work' ? perms.work : body.kind === 'screening' ? (perms.screening ||= []) : perms.advance;
       if (body.action === 'add') list.push({ person_id: body.person_id, email: body.person_id + '@x', name: body.person_id, added_at: '2026-10-09T00:00:00Z', added_by: 'samantha@mo-care.com' });
       if (body.action === 'remove') { const i = list.findIndex(m => m.person_id === body.person_id); if (i >= 0) list.splice(i, 1); }
       perms.history.push({ at: '2026-10-09T00:00:00Z', by_email: 'samantha@mo-care.com', action: body.action, kind: body.kind, name: body.person_id });
@@ -104,5 +104,13 @@ function world(opt = {}) {
   // the switch date can never be saved from this page
   { const src = cut('/* ── Onboarding workflow', '/* ── boot');
     ck('no code on the card writes onboarding_switch_date', !/m\.onboarding_switch_date|onboarding_switch_date\s*=[^=]/.test(src)); }
+  
+  /* SLICE 2a: the screening staff list */
+  { const w = world({ perms: { ok: true, version: 1, advance: [], work: [{ person_id: 'p-sam', email: 'samantha@mo-care.com', name: 'Samantha', added_at: '2026-10-08' }], screening: [], history: [], me: { person_id: 'p-sam', email: 'samantha@mo-care.com', may_change_advance: true, may_change_work: true, may_change_screening: true, may_reveal_identity: false } } });
+    await w.ctx.onbLoadPerms(); const h = w.el('onbCard').innerHTML;
+    ck('the Admin page shows the third list, Screening staff, with its plain explanation and its own add picker', /Screening staff \(may reveal identity details for a check order\)/.test(h) && /Every reveal is logged with who, when and why/.test(h) && /<select id="onbAdd_screening">/.test(h));
+    await w.ctx.onbPermChange('screening', 'add', 'p-kry', null);
+    ck('adding to the screening list asks the function with kind screening after a confirm', w.fetches.some((f) => f.kind === 'screening' && f.action === 'add' && f.person_id === 'p-kry'), w.fetches); }
+
   console.log(`${pass} passed, ${fail} failed`); process.exit(fail ? 1 : 0);
 })();
