@@ -603,9 +603,9 @@ function onbFederal(y){
     {date:nth(10,1,2),name:'Columbus Day'}, {date:obs(ymd(11,11)),name:'Veterans Day'}, {date:nth(11,4,4),name:'Thanksgiving Day'}, {date:obs(ymd(12,25)),name:'Christmas Day'} ];
 }
 function onbList(kind){
-  const list=ONB_PERMS?(kind==='work'?ONB_PERMS.work:ONB_PERMS.advance):[];
+  const list=ONB_PERMS?(kind==='work'?ONB_PERMS.work:kind==='screening'?(ONB_PERMS.screening||[]):ONB_PERMS.advance):[];
   const me=ONB_PERMS&&ONB_PERMS.me||{};
-  const can=kind==='work'?!!me.may_change_work:!!me.may_change_advance;
+  const can=kind==='work'?!!me.may_change_work:kind==='screening'?!!me.may_change_screening:!!me.may_change_advance;
   const rows=list.length?list.map(m=>'<div class="swrow"><span class="chip ok">'+esc(m.name||m.email||m.person_id)+'</span><div class="grow"><div class="why">'+esc(m.email||'')+(m.added_at?' · added '+esc(String(m.added_at).slice(0,10))+(m.added_by?' by '+esc(m.added_by):''):'')+'</div></div>'
       +(can?'<button class="btn" onclick="onbPermChange(\''+kind+'\',\'remove\',\''+esc(m.person_id)+'\',this)">Remove</button>':'')+'</div>').join('')
     : '<div class="sub" style="margin:0">Nobody named yet'+(kind==='advance'?' (the owners can always approve to advance).':'.')+'</div>';
@@ -627,6 +627,10 @@ function renderOnboarding(){
     +'<div id="onbAdvance">'+(ONB_PERMS?onbList('advance'):'<div class="sub" style="margin:0">Loading…</div>')+'</div>'
     +'<div class="what" style="margin-top:14px">Approve to Work (final clearance)</div><div class="why" style="margin-bottom:6px">Samantha and Zachary only. Changing this list is itself an owner action with an audit trail: only someone already on it can add or remove, and it can never be emptied.</div>'
     +'<div id="onbWork">'+(ONB_PERMS?onbList('work'):'<div class="sub" style="margin:0">Loading…</div>')+'</div>'
+    /* SLICE 2a (Samantha, 2026-10-09, identity security): who may reveal a caregiver's Social Security number, date of birth or
+       license number for a check order. Named people only, never a role; owners change the list; every reveal is logged. */
+    +'<div class="what" style="margin-top:14px">Screening staff (may reveal identity details for a check order)</div><div class="why" style="margin-bottom:6px">Only the people named here can open a caregiver\'s Social Security number, date of birth or license number, for five minutes, to order their background checks. Not all office users, and not owners by title. Every reveal is logged with who, when and why.</div>'
+    +'<div id="onbScreening">'+(ONB_PERMS?onbList('screening'):'<div class="sub" style="margin:0">Loading…</div>')+'</div>'
     +(ONB_PERMS&&ONB_PERMS.history&&ONB_PERMS.history.length?'<details style="margin-top:8px"><summary class="sub" style="cursor:pointer">Change history ('+ONB_PERMS.history.length+')</summary>'+ONB_PERMS.history.slice().reverse().map(h=>'<div class="sub" style="margin:2px 0">'+esc(String(h.at).replace('T',' ').slice(0,16))+' · '+esc(h.by_email||h.by)+' '+esc(h.action==='add'?'added':'removed')+' '+esc(h.name||h.email)+' '+esc(h.action==='add'?'to':'from')+' '+esc(h.kind==='work'?'Approve to Work':'Approve to Advance')+'</div>').join('')+'</details>':'')
     +'<div class="swgroup" style="margin-top:18px"><span>Reminder days and deadlines</span></div>'
     +'<div class="why" style="margin-bottom:8px">Days after the step was sent, for the automatic reminders. Deadlines are business days (Monday to Friday, skipping the company holidays below) and fall due at the hour below, Central time. Reminders stop on their own when the step is completed.</div>'
@@ -662,8 +666,8 @@ async function onbLoadPerms(){
 }
 async function onbPermChange(kind, action, person_id, btn){
   if(!person_id) return;
-  const who=(ONB_PEOPLE.find(p=>p.person_id===person_id)||{}).full_name||(((kind==='work'?ONB_PERMS.work:ONB_PERMS.advance)||[]).find(m=>m.person_id===person_id)||{}).name||'this person';
-  const label=kind==='work'?'Approve to Work (final clearance)':'Approve to Advance to Orientation';
+  const who=(ONB_PEOPLE.find(p=>p.person_id===person_id)||{}).full_name||(((kind==='work'?ONB_PERMS.work:kind==='screening'?(ONB_PERMS.screening||[]):ONB_PERMS.advance)||[]).find(m=>m.person_id===person_id)||{}).name||'this person';
+  const label=kind==='work'?'Approve to Work (final clearance)':kind==='screening'?'Screening staff (identity reveals)':'Approve to Advance to Orientation';
   if(!confirm((action==='add'?'Add ':'Remove ')+who+(action==='add'?' to ':' from ')+'the '+label+' list? This is recorded with your name and the time.')) return;
   if(btn) btn.disabled=true; say('Saving…');
   try{
