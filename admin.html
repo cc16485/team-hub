@@ -603,12 +603,12 @@ function onbFederal(y){
     {date:nth(10,1,2),name:'Columbus Day'}, {date:obs(ymd(11,11)),name:'Veterans Day'}, {date:nth(11,4,4),name:'Thanksgiving Day'}, {date:obs(ymd(12,25)),name:'Christmas Day'} ];
 }
 function onbList(kind){
-  const list=ONB_PERMS?(kind==='work'?ONB_PERMS.work:kind==='screening'?(ONB_PERMS.screening||[]):ONB_PERMS.advance):[];
+  const list=ONB_PERMS?(kind==='work'?ONB_PERMS.work:kind==='screening'?(ONB_PERMS.screening||[]):kind==='audit_export'?(ONB_PERMS.audit_export||[]):ONB_PERMS.advance):[];
   const me=ONB_PERMS&&ONB_PERMS.me||{};
-  const can=kind==='work'?!!me.may_change_work:kind==='screening'?!!me.may_change_screening:!!me.may_change_advance;
+  const can=kind==='work'?!!me.may_change_work:kind==='screening'?!!me.may_change_screening:kind==='audit_export'?!!me.may_change_export:!!me.may_change_advance;
   const rows=list.length?list.map(m=>'<div class="swrow"><span class="chip ok">'+esc(m.name||m.email||m.person_id)+'</span><div class="grow"><div class="why">'+esc(m.email||'')+(m.added_at?' · added '+esc(String(m.added_at).slice(0,10))+(m.added_by?' by '+esc(m.added_by):''):'')+'</div></div>'
       +(can?'<button class="btn" onclick="onbPermChange(\''+kind+'\',\'remove\',\''+esc(m.person_id)+'\',this)">Remove</button>':'')+'</div>').join('')
-    : '<div class="sub" style="margin:0">Nobody named yet'+(kind==='advance'?' (the owners can always approve to advance).':'.')+'</div>';
+    : '<div class="sub" style="margin:0">Nobody named yet'+(kind==='advance'?' (the owners can always approve to advance).':kind==='audit_export'?' (the owners can always export).':'.')+'</div>';
   const opts=ONB_PEOPLE.filter(p=>p.active!==false&&!list.some(m=>m.person_id===p.person_id)).map(p=>'<option value="'+esc(p.person_id)+'">'+esc(p.full_name||p.email||p.person_id)+(p.email?' · '+esc(p.email):'')+'</option>').join('');
   const add=can?'<div class="row" style="grid-template-columns:1fr auto;margin-top:10px"><div><label>Add a person</label><select id="onbAdd_'+kind+'">'+(opts||'<option value="">Everyone is already on the list</option>')+'</select></div><div style="display:flex;align-items:flex-end"><button class="btn primary" onclick="onbPermChange(\''+kind+'\',\'add\',document.getElementById(\'onbAdd_'+kind+'\').value,this)">Add</button></div></div>'
     : '<div class="sub" style="margin-top:8px">'+(kind==='work'?'Only someone already on this list can change it.':'Only an owner can change this list.')+'</div>';
@@ -631,6 +631,9 @@ function renderOnboarding(){
        license number for a check order. Named people only, never a role; owners change the list; every reveal is logged. */
     +'<div class="what" style="margin-top:14px">Screening staff (may reveal identity details for a check order)</div><div class="why" style="margin-bottom:6px">Only the people named here can open a caregiver\'s Social Security number, date of birth or license number, for five minutes, to order their background checks. Not all office users, and not owners by title. Every reveal is logged with who, when and why.</div>'
     +'<div id="onbScreening">'+(ONB_PERMS?onbList('screening'):'<div class="sub" style="margin:0">Loading…</div>')+'</div>'
+    /* SLICE 6 (2026-10-10, decision 10): who may run the read-only personnel-file export; the owners always may; every export is logged. */
+    +'<div class="what" style="margin-top:14px">Audit export (personnel files)</div><div class="why" style="margin-bottom:6px">The owners, plus the people named here, may export a caregiver\'s personnel file as a read-only PDF with five-minute links to the proofs. Every export and every proof open is written to the access log.</div>'
+    +'<div id="onbExport">'+(ONB_PERMS?onbList('audit_export'):'<div class="sub" style="margin:0">Loading…</div>')+'</div>'
     +(ONB_PERMS&&ONB_PERMS.history&&ONB_PERMS.history.length?'<details style="margin-top:8px"><summary class="sub" style="cursor:pointer">Change history ('+ONB_PERMS.history.length+')</summary>'+ONB_PERMS.history.slice().reverse().map(h=>'<div class="sub" style="margin:2px 0">'+esc(String(h.at).replace('T',' ').slice(0,16))+' · '+esc(h.by_email||h.by)+' '+esc(h.action==='add'?'added':'removed')+' '+esc(h.name||h.email)+' '+esc(h.action==='add'?'to':'from')+' '+esc(h.kind==='work'?'Approve to Work':'Approve to Advance')+'</div>').join('')+'</details>':'')
     +'<div class="swgroup" style="margin-top:18px"><span>Reminder days and deadlines</span></div>'
     +'<div class="why" style="margin-bottom:8px">Days after the step was sent, for the automatic reminders. Deadlines are business days (Monday to Friday, skipping the company holidays below) and fall due at the hour below, Central time. Reminders stop on their own when the step is completed.</div>'
@@ -666,8 +669,8 @@ async function onbLoadPerms(){
 }
 async function onbPermChange(kind, action, person_id, btn){
   if(!person_id) return;
-  const who=(ONB_PEOPLE.find(p=>p.person_id===person_id)||{}).full_name||(((kind==='work'?ONB_PERMS.work:kind==='screening'?(ONB_PERMS.screening||[]):ONB_PERMS.advance)||[]).find(m=>m.person_id===person_id)||{}).name||'this person';
-  const label=kind==='work'?'Approve to Work (final clearance)':kind==='screening'?'Screening staff (identity reveals)':'Approve to Advance to Orientation';
+  const who=(ONB_PEOPLE.find(p=>p.person_id===person_id)||{}).full_name||(((kind==='work'?ONB_PERMS.work:kind==='screening'?(ONB_PERMS.screening||[]):kind==='audit_export'?(ONB_PERMS.audit_export||[]):ONB_PERMS.advance)||[]).find(m=>m.person_id===person_id)||{}).name||'this person';
+  const label=kind==='work'?'Approve to Work (final clearance)':kind==='screening'?'Screening staff (identity reveals)':kind==='audit_export'?'Audit export (personnel files)':'Approve to Advance to Orientation';
   if(!confirm((action==='add'?'Add ':'Remove ')+who+(action==='add'?' to ':' from ')+'the '+label+' list? This is recorded with your name and the time.')) return;
   if(btn) btn.disabled=true; say('Saving…');
   try{
@@ -789,6 +792,17 @@ const SWITCHES=[
     { k:'approve_work_text_live', name:'Cleared text after Approve to Work (new path)', what:'After AxisCare reads back Active, the new hire gets one text in Samantha\'s words: we were notified they completed their Dementia course, watch for our open-shift texts and the Open Shifts section of the AxisCare app. 8am to 6pm Central, yes-to-texts, opt-outs. Off: practice, the words are recorded on the card and nothing is sent.',
       on:'Turn on the cleared text? From the next Approve to Work with AxisCare read back Active on the NEW path, the caregiver is texted once (8am to 6pm, yes-to-texts, opt-outs); after hours it goes with the next check in hours. Nobody is on the new path before the switch date.',
       off:'Turn off the cleared text? It goes back to practice: recorded on the readiness card, nothing sent.' },
+    /* SLICE 6 (2026-10-10, "yes to all"): the nightly caregiver audit. Three switches, all off = practice: the run counts what
+       it would do in the automation log and writes nothing. */
+    { k:'training_sync_live', name:'Training Platform to Hub, nightly', what:'Each night the server reads the Training Platform and writes orientation, dementia, the OJT online part, annual in-service dates and hours onto roster records, matched by AxisCare number, with the certificate as the proof. Fills blanks and newer facts only; never a typed date with an older one. Off: practice, counted and nothing written.',
+      on:'Turn on the nightly Training sync? From tonight, roster records matched by AxisCare number take their training dates, hours and certificate references from the Training Platform. The Sync button keeps working by hand.',
+      off:'Turn off the nightly Training sync? It goes back to practice: counted in the automation log, nothing written.' },
+    { k:'oig_monthly_live', name:'OIG monthly re-check (LEIE)', what:'Each night the server runs the HHS-OIG exclusion check for every active caregiver whose last check is 30 days old. A clear result writes the date with the evidence and the result file. A match never clears anything: it raises an urgent review for the screening staff. Off: practice, counted and nothing written.',
+      on:'Turn on the monthly OIG re-check? From tonight, caregivers due a check are checked against the LEIE; clear results are recorded with evidence; a possible match becomes an urgent review and blocks the readiness card until a person decides.',
+      off:'Turn off the monthly OIG re-check? It goes back to practice: counted, nothing written; the office checks by hand.' },
+    { k:'audit_sweep_live', name:'Nightly audit tasks', what:'Each night every open and approved readiness card is re-checked; a requirement past its expiry (OIG and EDL monthly, FCSR and annual training yearly, a recorded credential expiry) gets a permanent expired event either way, and with this on, an owned task with a due date (the training compliance owner, else the Staffing Coordinator). Off: the events are written, no task.',
+      on:'Turn on the nightly audit tasks? From tonight, an expired requirement on a readiness card becomes a task on My Work with an owner and a due date; it closes itself when the requirement is current again. Nobody is texted.',
+      off:'Turn off the nightly audit tasks? Expired events are still written on the cards; no task is raised.' },
     { k:'intake_auto_import_live', name:'Start forms import themselves', what:'A new start form from someone we sent a start link to becomes a Background & References candidate by itself.',
       on:'Turn on start forms importing themselves? From the next check (every 5 minutes), a new start form from someone we sent a start link to becomes a Background & References candidate; everyone else gets a Needs Attention card. Nothing is sent to them or their references.',
       off:'Turn off start forms importing themselves? It goes back to practice: it only lists what it would do, and Import works by hand as before.' },
