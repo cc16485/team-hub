@@ -1046,8 +1046,39 @@ function renderSwitches(){
       const btn=sw.readOnly?'':'<button class="btn'+(on?'':' primary')+'" data-sw="'+esc(sw.k)+'"'+(blocked?' disabled title="'+esc('Can\'t turn on yet: '+sw.needsWhy+'.')+'" style="opacity:.55"':'')+' onclick="swToggle(\''+esc(sw.k)+'\',this)">'+(on?'Turn off':'Turn on')+'</button>';
       return '<div class="swrow">'+chip+'<div class="grow"><div class="what">'+esc(sw.name)+'</div><div class="why">'+esc(sw.what)
         +(blocked?' <b>Can\'t turn on yet: '+esc(sw.needsWhy)+'.</b>':'')+'</div></div>'+btn+'</div>';
-    }).join('')).join('');
+    }).join('')).join('')
+    + tpHtml(st);
 }
+/* TEST PEOPLE (Samantha 2026-10-11, the practice run: "Pat Practice should have my phone number and email so I can see what
+   happens"; "send everything to me"). A short list of OUR OWN phones and emails. A person reachable only at addresses on it gets
+   the onboarding texts and emails even while the switches above are off; nobody else does. Never AxisCare. Every change is
+   recorded with who changed it. */
+function tpLists(st){ const t=(st&&st.test_people&&typeof st.test_people==='object')?st.test_people:{};
+  return { phones:(Array.isArray(t.phones)?t.phones:[]).map(String), emails:(Array.isArray(t.emails)?t.emails:[]).map(String) }; }
+function tpHtml(st){
+  const t=tpLists(st), fmt=p=>{ const d=String(p).replace(/\D/g,'').slice(-10); return d.length===10?'('+d.slice(0,3)+') '+d.slice(3,6)+'-'+d.slice(6):p; };
+  return '<div class="swgroup"><span>Test people</span></div><div class="swrow tp"><span class="chip '+(t.phones.length||t.emails.length?'ok':'warn')+'">'+(t.phones.length+t.emails.length)+'</span>'
+    +'<div class="grow"><div class="what">Our own phones and emails for trying the hire journey</div><div class="why">Someone reachable only at these gets every onboarding text and email even while the switches above are off. Use only our own numbers and emails, never an applicant\'s.'
+    +(t.phones.length||t.emails.length?' <b>Now: '+esc(t.phones.map(fmt).concat(t.emails).join(', '))+'</b>':' <b>Nobody on it.</b>')+'</div></div>'
+    +'<button class="btn" onclick="tpEdit(this)">Change</button></div>';
+}
+async function tpEdit(btn){
+  const cur=tpLists(OPS||{});
+  const ph=prompt('Test phone numbers (ours only), separated by commas. Leave empty for none:', cur.phones.join(', ')); if(ph===null) return;
+  const em=prompt('Test emails (ours only), separated by commas. Leave empty for none:', cur.emails.join(', ')); if(em===null) return;
+  const phones=[...new Set(ph.split(',').map(x=>x.replace(/\D/g,'').slice(-10)).filter(x=>x.length===10))];
+  const emails=[...new Set(em.split(',').map(x=>x.trim().toLowerCase()).filter(x=>/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(x)))];
+  if(!confirm('Save the test list?\n\nPhones: '+(phones.join(', ')||'none')+'\nEmails: '+(emails.join(', ')||'none')+'\n\nAnyone reachable only at these gets the onboarding texts and emails even with the switches off.')) return;
+  if(btn) btn.disabled=true;
+  const out=await mergeSave('ops_settings',(m,base)=>{ m.test_people={ phones, emails, set_by:ME.email, set_at:new Date().toISOString() }; return ['Test people: '+(phones.length+emails.length)+' address(es)']; });
+  if(btn) btn.disabled=false;
+  if(out.ok){ if(out.data) OPS=out.data;
+    recordEvent({ verb:'setting_changed', item_id:'ops_settings', area:'admin', summary:ME.email.split('@')[0]+' changed the test people list: '+(phones.concat(emails).join(', ')||'none'), data:{ test_people:{ phones, emails } } })
+      .then(r=>{ if(r&&r.error) console.warn('[op_events] not recorded:', r.error.message); }, e=>console.warn('[op_events] not recorded:', e)); }
+  else alert('Not saved. Try again.');
+  renderSwitches();
+}
+window.tpEdit=tpEdit;
 function swFind(k){ for(const [,list] of SWITCHES){ const sw=list.find(x=>x.k===k); if(sw) return sw; } return null; }
 async function swToggle(k, btn){
   const sw=swFind(k); if(!sw || sw.readOnly) return;
