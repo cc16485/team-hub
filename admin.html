@@ -684,16 +684,12 @@ async function onbPermChange(kind, action, person_id, btn){
   renderOnboarding();
 }
 function onbParseDays(id){ const t=(document.getElementById(id)||{}).value||''; const a=t.split(/[,\s]+/).map(Number).filter(n=>Number.isInteger(n)&&n>0&&n<=60); return a.length?[...new Set(a)].sort((x,y)=>x-y):null; }
-/* 578: the event record is written through its door, record_event (the server stamps who from the sign-in). Until the
-   Desktop step creates the door, fall back to the old direct insert so nothing is lost in either order. */
+/* 578: the event record is written through its door, record_event (the server stamps who from the sign-in). Step 578
+   made the door live and the database refuses a direct insert from a page, so there is no fallback. */
 async function recordEvent(row){
   try{
     const r=await sb.rpc('record_event',{ p_verb:row.verb, p_item_id:row.item_id||'', p_area:row.area||'admin', p_via:'admin', p_summary:row.summary||'', p_data:row.data||{} });
-    if(r&&r.error){
-      if(/record_event|PGRST202|42883/.test(String(r.error.message||r.error.code||''))){
-        await sb.from('op_events').insert({ actor_email:(ME&&ME.email)||'', actor_name:(ME&&(ME.name||ME.email))||'', verb:row.verb, item_id:row.item_id||'', area:row.area||'admin', summary:row.summary||'', data:row.data||{} });
-      } else console.warn('[op_events] not recorded:', r.error.message);
-    }
+    if(r&&r.error) console.warn('[op_events] not recorded:', r.error.message);
   }catch(e){ console.warn('[op_events] not recorded:', e); }
 }
 async function onbLogged(summary, data){
