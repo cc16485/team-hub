@@ -491,8 +491,8 @@ async function staffOut(id, ymd){
   const v=/^\d{4}-\d{2}-\d{2}$/.test(String(ymd||''))?ymd:'';
   const was=s.out_until||''; s.out_until=v||null; if(!v) delete s.out_until;
   if(!(await saveItem('coordinator_staff',s))){ s.out_until=was||null; return; }
-  try{ await sb.from('op_events').insert({ actor_email:(ME&&ME.email)||'', actor_name:(ME&&(ME.name||ME.email))||'', verb:'setting_changed', item_id:String(s.id), area:'team',
-    summary:((ME&&(ME.name||ME.email))||'Someone')+(v?' marked '+(s.name||s.email)+' out until '+v:' marked '+(s.name||s.email)+' back') }); }catch(e){}
+  await recordEvent({ verb:'setting_changed', item_id:String(s.id), area:'team',
+    summary:((ME&&(ME.name||ME.email))||'Someone')+(v?' marked '+(s.name||s.email)+' out until '+v:' marked '+(s.name||s.email)+' back') });
   renderStaff();
 }
 async function delStaff(id){
@@ -684,8 +684,20 @@ async function onbPermChange(kind, action, person_id, btn){
   renderOnboarding();
 }
 function onbParseDays(id){ const t=(document.getElementById(id)||{}).value||''; const a=t.split(/[,\s]+/).map(Number).filter(n=>Number.isInteger(n)&&n>0&&n<=60); return a.length?[...new Set(a)].sort((x,y)=>x-y):null; }
+/* 578: the event record is written through its door, record_event (the server stamps who from the sign-in). Until the
+   Desktop step creates the door, fall back to the old direct insert so nothing is lost in either order. */
+async function recordEvent(row){
+  try{
+    const r=await sb.rpc('record_event',{ p_verb:row.verb, p_item_id:row.item_id||'', p_area:row.area||'admin', p_via:'admin', p_summary:row.summary||'', p_data:row.data||{} });
+    if(r&&r.error){
+      if(/record_event|PGRST202|42883/.test(String(r.error.message||r.error.code||''))){
+        await sb.from('op_events').insert({ actor_email:(ME&&ME.email)||'', actor_name:(ME&&(ME.name||ME.email))||'', verb:row.verb, item_id:row.item_id||'', area:row.area||'admin', summary:row.summary||'', data:row.data||{} });
+      } else console.warn('[op_events] not recorded:', r.error.message);
+    }
+  }catch(e){ console.warn('[op_events] not recorded:', e); }
+}
 async function onbLogged(summary, data){
-  try{ await sb.from('op_events').insert({ actor_email:ME.email, actor_name:ME.email.split('@')[0], verb:'setting_changed', item_id:'ops_settings', area:'admin', summary:ME.email.split('@')[0]+' '+summary, data:data||{} }); }catch(e){ console.warn('[op_events] not recorded:', e&&e.message); }
+  try{ await recordEvent({ verb:'setting_changed', item_id:'ops_settings', area:'admin', summary:ME.email.split('@')[0]+' '+summary, data:data||{} }); }catch(e){ console.warn('[op_events] not recorded:', e&&e.message); }
 }
 async function onbSaveTiming(btn){
   const offer=onbParseDays('onb_offer'), s1=onbParseDays('onb_step1'), s2=onbParseDays('onb_step2');
@@ -1028,7 +1040,7 @@ async function swToggle(k, btn){
   if(out.ok){
     if(out.data) OPS=out.data;
     if(out.changed && out.changed.length){
-      sb.from('op_events').insert({ actor_email:ME.email, actor_name:ME.email.split('@')[0], verb:'setting_changed', item_id:'ops_settings', area:'admin',
+      recordEvent({ verb:'setting_changed', item_id:'ops_settings', area:'admin',
         summary:ME.email.split('@')[0]+' changed switches on the Admin page: '+out.changed.join(', '), data:{ changed:out.changed } })
         .then(r=>{ if(r&&r.error) console.warn('[op_events] not recorded:', r.error.message); }, e=>console.warn('[op_events] not recorded:', e));
     }
