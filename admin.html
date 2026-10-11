@@ -857,6 +857,16 @@ const SWITCHES=[
     { k:'prn_reconfirm_live', name:'PRN check-in texts', what:'PRN CNAs whose availability is 60+ days old get one check-in text with their one-tap link.',
       on:'Turn on the PRN check-in texts? From the next weekday run, PRN CNAs whose availability is 60+ days old get one text with their one-tap link.',
       off:'Turn off the PRN check-in texts? They go back to practice: worked out, nothing sent.' },
+    /* 587 (2026-10-11, Samantha): the warmer applicant messages. Off = everything works as before (the older wording and
+       timing). On = the new wording and timing, "finish your application" texts, confirmation emails at any hour, the
+       2-days-before note, YES / NO on the day-before text (a NO frees the time), the entrance photo on the hour-before
+       text, cancel-reason wording. Krystal's name is its own switch: off = "the Caring Companions Team". */
+    { k:'applicant_msgs_v2_live', name:'New applicant messages', what:'The warmer applicant texts and emails: first invite 10 minutes after finishing, "finish your application" texts, confirmation email at any hour, the 2-days-before note, YES / NO on the day-before text (a clear NO frees the interview time), the entrance photo an hour before. Off: the older messages, exactly as before.',
+      on:'Turn on the new applicant messages?\n\nFrom the next 15-minute run, applicants get the new wording and timing. Texts still only go 8am to 6pm to people who said yes to texts; opt-outs are still checked. A clear NO to the day-before text cancels that interview and frees the time.',
+      off:'Turn off the new applicant messages? From the next run, applicants get the older messages again. Nothing already sent is affected.' },
+    { k:'applicant_msgs_krystal_named', name:"Krystal's name in applicant messages", what:'On: follow-ups say "it\'s Krystal at Caring Companions" and confirmations name Krystal when she is the interviewer. Off: "the Caring Companions Team", and "our team" for her interviews. Only turn on once Krystal has agreed.',
+      on:'Turn on Krystal\'s name? Only if Krystal has agreed. From the next run, follow-ups are signed by Krystal and her interviews name her.',
+      off:'Turn off Krystal\'s name? From the next run, messages say "the Caring Companions Team" and her interviews say "our team".' },
   ]],
   ['Shifts and visits', [
     { k:'timekeeper_text_live', name:'Missed clock-ins: caregiver text', what:'A caregiver who has not clocked in gets one short text asking them to clock in.', needs:'timekeeper_watch_live', needsWhy:'missed clock-ins are not being watched yet',
