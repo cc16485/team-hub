@@ -147,6 +147,15 @@ html.embedded .topbar .brandword{ display:none; }
       <div class="card" id="onbCard"><div class="sub" style="margin:0">Loading…</div></div>
     </section>
 
+    <!-- WHO MAY DO WHAT · Phase 1 Slice 3 (Samantha approved 2026-10-11, decision 1: view only for now). Reads the authority
+         table the door checks on every call, and its change log. Nothing here can change it: a change goes only through
+         the owner-only authority_set database function, which logs it. Editing arrives with the first AI employee. -->
+    <section id="authSection">
+      <h2>Who may do what</h2>
+      <p class="sub">Every action behind the door, and who may do it. The door checks this on every call. View only: a change is made only by an owner, and every change is kept below.</p>
+      <div class="card" id="authCard"><div class="sub" style="margin:0">Loading…</div></div>
+    </section>
+
     <section>
       <h2>Staff</h2>
       <p class="sub">One list, shared by every hub. The email must be the address they sign into the hubs with, and the phone is what escalation texts.</p>
@@ -1078,7 +1087,43 @@ async function boot(){
   // Read-only, and deliberately not awaited: a slow or missing RPC must not
   // hold up the rest of this page.
   renderStaffAccess();
+  renderAuthority();   // Slice 3, read only, not awaited
   await loadHubCfg();
+}
+
+/* ── Who may do what (Slice 3, view only) ───────────────────────────────────── */
+const AUTH_KIND={ person:'People', job:'Scheduled jobs', employee:'AI employees' };
+const AUTH_ROLE={ owner_admin:'owners', care_coordinator:'care coordinators', staffing_coordinator:'staffing coordinators' };
+const AUTH_LEVEL={ never:'Never', allowed:'Yes', read:'Read only', recommend:'Suggest only', approve:'With a person\'s approval', autonomous:'On its own' };
+function authLevel(r){
+  const lv=AUTH_LEVEL[r.level]||r.level;
+  return r.actor_kind==='person'&&r.level==='allowed'&&(r.roles||[]).length ? lv+': '+r.roles.map(x=>AUTH_ROLE[x]||x).join(', ') : lv;
+}
+async function renderAuthority(){
+  const el=document.getElementById('authCard'); if(!el) return;
+  try{
+    const [reg, au, lg]=await Promise.all([
+      sb.from('action_registry').select('action, label, area, audience, mutating').order('action'),
+      sb.from('action_authority').select('action, actor_kind, actor_id, level, roles, set_by, set_at'),
+      sb.from('action_authority_log').select('at, action, actor_kind, actor_id, old_level, new_level, new_roles, note, set_by').order('at',{ ascending:false }).limit(50)]);
+    if(reg.error||au.error){ el.innerHTML='<div class="sub" style="margin:0">'+(/does not exist|relation|schema cache/i.test(String((reg.error||au.error).message))?'This appears once Desktop step 582 has run.':'Could not read it: '+esc((reg.error||au.error).message))+'</div>'; return; }
+    const by={}; for(const r of au.data||[]) (by[r.action]=by[r.action]||{})[r.actor_kind+(r.actor_id?':'+r.actor_id:'')]=r;
+    const kinds=['person','job','employee'];
+    let h='<table><thead><tr><th>Action</th><th>Reaches</th>'+kinds.map(k=>'<th>'+AUTH_KIND[k]+'</th>').join('')+'</tr></thead><tbody>';
+    for(const a of reg.data||[]){
+      const row=by[a.action]||{};
+      h+='<tr><td><b>'+esc(a.label)+'</b><div class="sub" style="margin:0">'+esc(a.action)+(a.mutating?'':' · a read')+'</div></td><td>'+esc(a.audience==='none'?'nobody':a.audience)+'</td>'
+        +kinds.map(k=>{ const r=row[k]; return '<td>'+(r?esc(authLevel(r)):'<span class="sub" style="margin:0">no row (refused)</span>')+'</td>'; }).join('')+'</tr>';
+    }
+    h+='</tbody></table>';
+    const changes=(lg.data||[]).filter(x=>x.set_by!=='582 installer');
+    h+='<h3 style="margin:14px 0 4px;font-size:.9rem">Changes</h3>'+(changes.length
+      ? '<table><thead><tr><th>When</th><th>Action</th><th>Who for</th><th>From</th><th>To</th><th>By</th><th>Why</th></tr></thead><tbody>'
+        +changes.map(x=>'<tr><td>'+esc(new Date(x.at).toLocaleString())+'</td><td>'+esc(x.action)+'</td><td>'+esc(AUTH_KIND[x.actor_kind]||x.actor_kind)+(x.actor_id?' ('+esc(x.actor_id)+')':'')+'</td><td>'
+          +esc(AUTH_LEVEL[x.old_level]||x.old_level||'no row')+'</td><td>'+esc(AUTH_LEVEL[x.new_level]||x.new_level)+'</td><td>'+esc(x.set_by)+'</td><td>'+esc(x.note)+'</td></tr>').join('')+'</tbody></table>'
+      : '<div class="sub" style="margin:0">None since it was set up'+((lg.data||[]).length?' on '+esc(new Date((lg.data||[]).at(-1).at).toLocaleDateString()):'')+'. Everyone has exactly the rights they had before.</div>');
+    el.innerHTML=h;
+  }catch(e){ el.innerHTML='<div class="sub" style="margin:0">Could not read it: '+esc(e&&e.message||e)+'</div>'; }
 }
 
 /* ── Care hub settings ──────────────────────────────────────────────────────
