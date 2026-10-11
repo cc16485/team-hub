@@ -280,7 +280,7 @@ html.embedded .topbar .brandword{ display:none; }
           <dt>Clients, schedules, EVV</dt><dd>AxisCare.</dd>
           <dt>Interviews</dt><dd>Care Coordinator Hub, Recruit (in person at the office; applicants book on the Hub's own interview calendar).</dd>
           <dt>Offers, onboarding paperwork, payroll</dt><dd>Viventium.</dd>
-          <dt>Orientation sessions and booking</dt><dd>Care Coordinator Hub, Orientations (the online welcome call first; the in-person office orientation is the backup).</dd>
+          <dt>Orientation sessions and booking</dt><dd>Care Coordinator Hub, Orientations (the online Orientation Video Call first; the in-person office orientation is the backup).</dd>
           <dt>Financials, discipline, sale plan</dt><dd>Owners Hub, founders only.</dd>
           <dt>API keys and webhooks</dt><dd>Supabase edge function secrets. Not editable from any hub on purpose.</dd>
         </dl>
@@ -827,9 +827,9 @@ const SWITCHES=[
     { k:'step2_reminders_live', name:'Step 2 reminders, day 3 and day 6 (new path)', what:'A new-path person at Step 2 Sent with no DONE gets one text and email on each reminder day set below (approved 3 and 6). Off: practice, recorded, nothing sent. The day 8 card is raised either way.',
       on:'Turn on the Step 2 reminders? From the next 15-minute check, a new-path person at Step 2 Sent with no DONE is texted (yes-to-texts, opt-outs) and emailed on each reminder day.',
       off:'Turn off the Step 2 reminders? They go back to practice: recorded, nothing sent.' },
-    { k:'wc_auto_invite_live', name:'Welcome-call invitation at Step 2 Verified (new path)', what:'When the office presses Verify Viventium Step 2 Complete for a new-path person, the Hub sends the welcome-call invitation itself, in today\'s words, through the welcome-call function. Off: the office presses Invite to welcome call as today.',
-      on:'Turn on the automatic welcome-call invitation? From the next Verify on the NEW path, the invitation text and email go right away (8am to 6pm for the text, yes-to-texts, opt-outs). Old-path people keep the button.',
-      off:'Turn off the automatic invitation? The office presses Invite to welcome call itself, as today.' },
+    { k:'wc_auto_invite_live', name:'Orientation Video Call invitation at Step 2 Verified (new path)', what:'When the office presses Verify Viventium Step 2 Complete for a new-path person, the Hub sends the Orientation Video Call invitation itself, in today\'s words, through the welcome-call function. Off: the office presses Invite to Orientation Video Call as today.',
+      on:'Turn on the automatic Orientation Video Call invitation? From the next Verify on the NEW path, the invitation text and email go right away (8am to 6pm for the text, yes-to-texts, opt-outs). Old-path people keep the button.',
+      off:'Turn off the automatic invitation? The office presses Invite to Orientation Video Call itself, as today.' },
     /* SLICE 7 (2026-10-10, "yes to all"): AxisCare preparation. Two switches, both off = practice (the change log records it). */
     { k:'axiscare_hire_date_live', name:'Hire date to AxisCare at Approve to Work (new path)', what:'After AxisCare reads back Active, the Hub writes the employment start date (orientation completion, her decision 7) to the caregiver\'s AxisCare hire date when the two differ, reads it back and logs it. Off: practice, the change log records what would have been written and nothing changes in AxisCare.',
       on:'Turn on the hire date write? From the next Approve to Work on the NEW path, a hire date that differs from the orientation completion date is set in AxisCare, by the caregiver\'s own record, and read back. Nobody is on the new path before the switch date.',
