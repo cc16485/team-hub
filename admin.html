@@ -869,6 +869,10 @@ const SWITCHES=[
       off:'Turn off Krystal\'s name? From the next run, messages say "the Caring Companions Team" and her interviews say "our team".' },
   ]],
   ['Shifts and visits', [
+    /* 2026-10-12 (Samantha "go", Track 3d): the match rule's dark report; Desktop 617 installs it and runs it once */
+    { k:'match_dark_live', name:'Matching dark report (nightly)', what:'Each night at about 6:50am Central, the shared match rule checks every visit in the next 14 days against the assigned caregiver, and replays the last 60 days of call-offs. A report only, read in the Hub (Live Schedule, Matching, in the dark): no visit, schedule, caregiver or client changes, and nothing is sent. Off: the report stays as it was last run.',
+      on:'Turn on the nightly matching dark report?\n\nEach night the shared match rule writes a fresh report (Live Schedule, Matching, in the dark). It changes nothing on the schedule and sends nothing.',
+      off:'Turn off the nightly matching dark report? The last report stays readable; nothing else changes.' },
     { k:'timekeeper_text_live', name:'Missed clock-ins: caregiver text', what:'A caregiver who has not clocked in gets one short text asking them to clock in.', needs:'timekeeper_watch_live', needsWhy:'missed clock-ins are not being watched yet',
       on:'Turn on caregiver texts? From the next missed clock-in, the caregiver gets one short text asking her to clock in (no EVV form).',
       off:'Turn off caregiver texts? Missed clock-ins are still found and the admins still alerted; caregivers get no text.' },
