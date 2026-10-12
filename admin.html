@@ -959,6 +959,12 @@ const SWITCHES=[
     { k:'call_pull_live', name:'Calls from GoHighLevel', what:'A new-client call creates the lead and drafts a follow-up for your approval (nothing is sent).', since:'call_pull_live_since',
       on:'Turn on calls from GoHighLevel?\n\nFrom the next run (within 10 minutes), a new-client call creates the lead, drafts a follow-up for your approval (nothing is sent), and tags the GoHighLevel contact "lead", which your AxisCare sync picks up. Calls already read in practice are not redone.',
       off:'Switch back to practice? Calls are still read and listed, but nothing is created.' },
+    /* 583 (2026-10-12, Samantha: "yes to all four"): the AI employee reads every answered call for follow-up work and shows
+       the cards it WOULD make on My Work, "Call follow-ups (practice)", beside the cards people made. Practice only: no card
+       reaches anyone's work until slice C (her authority grant and a separate switch). */
+    { k:'call_tasks_practice', name:'Call follow-ups: practice reading', what:'The AI employee reads every answered call (Claude Sonnet 5.5) and lists the follow-up cards it would have made on My Work, "Call follow-ups (practice)", beside the cards people made. Nothing goes into anyone\'s work and nothing is sent.',
+      on:'Turn on practice reading of calls?\n\nEvery 10 minutes the AI employee reads the answered calls and lists, on My Work, "Call follow-ups (practice)", the cards it would have made, beside the cards people made for the same person. Nothing goes into anyone\'s work, nothing is sent, and no transcript is kept. Each call costs a few cents.',
+      off:'Turn off practice reading? No new calls are read; the list keeps what it already read.' },
   ]],
   ['Shown here, switched by a Desktop step', [
     { k:'coverage_send_live', name:'Open-shift texts', what:'The coverage engine texts caregivers about open shifts.', readOnly:true },
