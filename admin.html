@@ -935,6 +935,10 @@ const SWITCHES=[
   ]],
   ['Clients', [
     /* 2026-10-12 (Samantha "build step 2"): the Caregiver packet card's Send / Remind / Send update texts (care-packet, Desktop 661) */
+    /* 2026-10-12 (Samantha "build step 3"): the twice-daily check for caregivers coming up who haven't confirmed (care-packet-watch, Desktop 662) */
+    { k:'care_packet_watch_live', name:'Caregiver packet check before shifts', what:'Twice a day, for each client with a ready caregiver packet, anyone on their AxisCare schedule in the next 3 days who has not confirmed the packet goes on one Needs Attention card for Client Care. It texts nobody.',
+      on:'Turn on the caregiver packet check before shifts?\n\nFrom the next check (7:30am and 1:30pm), each client whose packet is ready gets one Needs Attention card when someone on their schedule in the next 3 days has not tapped "I watched it and understand". The card says who, when, and where they stand, opens the client\'s Care tab, and closes itself once everyone has confirmed. Nobody is texted by it.',
+      off:'Turn off the caregiver packet check before shifts? No new cards are raised; cards already open stay until someone closes them. The check still records what it would have raised.' },
     { k:'care_packet_send_live', name:'Caregiver packet texts', what:'On a client\'s Care tab, the Caregiver packet card can text a caregiver their own link to the packet (first text, reminder, or updated packet) from the office number, after a person reads the exact text and presses Send. The text never carries health details.',
       on:'Turn on caregiver packet texts?\n\nOn a client\'s Care tab, Text the packet, Remind and Send update open the exact text; a person reads it and presses Send, and it goes from the office number after the same opt-out checks as every caregiver text. Nothing is ever sent on its own, and a text that does not go through shows on Needs Attention.',
       off:'Turn off caregiver packet texts? The card still makes each caregiver\'s link to copy and text yourself; nothing can be sent from it.' },
