@@ -919,6 +919,11 @@ const SWITCHES=[
       off:'Turn off changing visits from the Live Schedule? The calendar still shows everything; changes are made in AxisCare.' },
   ]],
   ['Today and the office', [
+    /* 2026-10-12 (Samantha "build 6-8", item 7): CC Office phone notifications (push-notify, Desktop 630). The notification
+       carries no names or details; quiet hours hold all but missed clock-ins and call-ins until morning. */
+    { k:'phone_notify_live', name:'Phone notifications', what:'People who turned on notifications in CC Office (More tab) get one when something lands in Act Now for them, or with nobody\'s name on it: missed clock-ins, urgent and escalated items. It only says "Something needs you", never who or what. Overnight only missed clock-ins and call-ins, the same as texts. Off: nothing is sent.',
+      on:'Turn on phone notifications?\n\nWithin 5 minutes, anyone who turned them on in CC Office gets one when something lands in Act Now for them. It only says something needs them, never who or what. Overnight only missed clock-ins and call-ins.',
+      off:'Turn off phone notifications? From the next 5-minute check, no phone gets one. People\'s phones stay signed up for when it is turned back on.' },
     /* My Desk 6b (2026-10-06): the shift-note reader suggests kind words; a person's yes puts them in the jar. No texts. */
     /* 2026-10-06: To talk about tags and threads email the people on the thread (talk-notify, Desktop 473) */
     { k:'talk_email_live', name:'To talk about emails', what:'When someone tags a person or replies on To talk about, everyone on that thread except the writer gets one email with the whole card. Office staff only.',
