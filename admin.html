@@ -1005,6 +1005,10 @@ const SWITCHES=[
     { k:'call_tasks_practice', name:'Call follow-ups: practice reading', what:'The AI employee reads every answered call (Claude Sonnet 5.5) and lists the follow-up cards it would have made on My Work, "Call follow-ups (practice)", beside the cards people made. Nothing goes into anyone\'s work and nothing is sent.',
       on:'Turn on practice reading of calls?\n\nEvery 10 minutes the AI employee reads the answered calls and lists, on My Work, "Call follow-ups (practice)", the cards it would have made, beside the cards people made for the same person. Nothing goes into anyone\'s work, nothing is sent, and no transcript is kept. Each call costs a few cents.',
       off:'Turn off practice reading? No new calls are read; the list keeps what it already read.' },
+    /* 2026-10-13 (Samantha: "Let's stop practicing and go for it!"): the follow-ups become real cards in My Work */
+    { k:'call_tasks_live', name:'Call follow-ups: cards in My Work', what:'The AI employee reads every answered call and new texts and puts each follow-up it finds in My Work as a "Call follow-up" card, owned by whoever owns that part of the office (the Staffing seat for scheduling). Drafted texts sit on the card; nothing is sent.', since:'call_tasks_live_since',
+      on:'Turn on call follow-up cards?\n\nFrom the next run (within 10 minutes), each follow-up the AI finds in a call or text becomes a "Call follow-up" card in My Work, owned by whoever owns that part of the office. A card a later call takes care of closes itself with a note. Drafted texts sit on the card for a person to send; nothing is sent. A card someone closes never comes back.',
+      off:'Turn off call follow-up cards? Calls are still read (if practice reading is on) but no new cards are made. Cards already made stay.' },
   ]],
   ['Shown here, switched by a Desktop step', [
     { k:'coverage_send_live', name:'Open-shift texts', what:'The coverage engine texts caregivers about open shifts.', readOnly:true },
