@@ -587,7 +587,7 @@ const ONB_FN='https://zngsgedlsxinbygwmxwn.supabase.co/functions/v1/onboarding-p
 const ONB_DEFAULTS={ offer_days:[2,5], step1_days:[2,4], step2_days:[3,6], due_hour:17,
   step2_sent_due_days:1, verify_due_days:1, final_approval_due_days:1 };
 const ONB_CHECKLIST_DEFAULT=['Offer letter signed in Viventium','I-9 Section 1','Federal W-4','Missouri W-4','Direct deposit','ID documents uploaded','Family Care Safety Registry (FCSR) registration'];
-let ONB_PERMS=null, ONB_PEOPLE=[];
+let ONB_PERMS=null, ONB_PEOPLE=[], ONB_REFUSED=null;   /* ONB_REFUSED: the server's last refusal for a list, shown under that list */
 const onbDays=(v,def)=>{ const a=Array.isArray(v)?v.map(Number).filter(n=>Number.isInteger(n)&&n>0&&n<=60):[]; return a.length?a:def.slice(); };
 /* The settings as this page reads them: defaults fill any gap, nothing is invented past that. */
 function onbSettings(st){
@@ -612,16 +612,19 @@ function onbFederal(y){
     {date:nth(10,1,2),name:'Columbus Day'}, {date:obs(ymd(11,11)),name:'Veterans Day'}, {date:nth(11,4,4),name:'Thanksgiving Day'}, {date:obs(ymd(12,25)),name:'Christmas Day'} ];
 }
 function onbList(kind){
-  const list=ONB_PERMS?(kind==='work'?ONB_PERMS.work:kind==='screening'?(ONB_PERMS.screening||[]):kind==='audit_export'?(ONB_PERMS.audit_export||[]):ONB_PERMS.advance):[];
+  const list=ONB_PERMS?(kind==='work'?ONB_PERMS.work:kind==='screening'?(ONB_PERMS.screening||[]):kind==='audit_export'?(ONB_PERMS.audit_export||[]):kind==='driver'?(ONB_PERMS.driver||[]):ONB_PERMS.advance):[];
   const me=ONB_PERMS&&ONB_PERMS.me||{};
-  const can=kind==='work'?!!me.may_change_work:kind==='screening'?!!me.may_change_screening:kind==='audit_export'?!!me.may_change_export:!!me.may_change_advance;
+  /* driver (2026-10-13): owners change it; until the server names may_change_driver, an owner (may_change_advance) still sees
+     Add, so a server that does not know the list yet answers with its own refusal instead of the button quietly missing */
+  const can=kind==='work'?!!me.may_change_work:kind==='screening'?!!me.may_change_screening:kind==='audit_export'?!!me.may_change_export:kind==='driver'?(me.may_change_driver!==undefined?!!me.may_change_driver:!!me.may_change_advance):!!me.may_change_advance;
   const rows=list.length?list.map(m=>'<div class="swrow"><span class="chip ok">'+esc(m.name||m.email||m.person_id)+'</span><div class="grow"><div class="why">'+esc(m.email||'')+(m.added_at?' · added '+esc(String(m.added_at).slice(0,10))+(m.added_by?' by '+esc(m.added_by):''):'')+'</div></div>'
       +(can?'<button class="btn" onclick="onbPermChange(\''+kind+'\',\'remove\',\''+esc(m.person_id)+'\',this)">Remove</button>':'')+'</div>').join('')
-    : '<div class="sub" style="margin:0">Nobody named yet'+(kind==='advance'?' (the owners can always approve to advance).':kind==='audit_export'?' (the owners can always export).':'.')+'</div>';
+    : '<div class="sub" style="margin:0">Nobody named yet'+(kind==='advance'?' (the owners can always approve to advance).':kind==='audit_export'?' (the owners can always export).':kind==='driver'?' (the owners can always approve drivers).':'.')+'</div>';
   const opts=ONB_PEOPLE.filter(p=>p.active!==false&&!list.some(m=>m.person_id===p.person_id)).map(p=>'<option value="'+esc(p.person_id)+'">'+esc(p.full_name||p.email||p.person_id)+(p.email?' · '+esc(p.email):'')+'</option>').join('');
   const add=can?'<div class="row" style="grid-template-columns:1fr auto;margin-top:10px"><div><label>Add a person</label><select id="onbAdd_'+kind+'">'+(opts||'<option value="">Everyone is already on the list</option>')+'</select></div><div style="display:flex;align-items:flex-end"><button class="btn primary" onclick="onbPermChange(\''+kind+'\',\'add\',document.getElementById(\'onbAdd_'+kind+'\').value,this)">Add</button></div></div>'
     : '<div class="sub" style="margin-top:8px">'+(kind==='work'?'Only someone already on this list can change it.':'Only an owner can change this list.')+'</div>';
-  return rows+add;
+  const refused=ONB_REFUSED&&ONB_REFUSED.kind===kind?'<div class="sub" style="margin:6px 0 0;color:#b91c1c">Not changed: '+esc(ONB_REFUSED.error)+'</div>':'';
+  return rows+add+refused;
 }
 function renderOnboarding(){
   const box=document.getElementById('onbCard'); if(!box) return;
@@ -643,6 +646,9 @@ function renderOnboarding(){
     /* SLICE 6 (2026-10-10, decision 10): who may run the read-only personnel-file export; the owners always may; every export is logged. */
     +'<div class="what" style="margin-top:14px">Audit export (personnel files)</div><div class="why" style="margin-bottom:6px">The owners, plus the people named here, may export a caregiver\'s personnel file as a read-only PDF with five-minute links to the proofs. Every export and every proof open is written to the access log.</div>'
     +'<div id="onbExport">'+(ONB_PERMS?onbList('audit_export'):'<div class="sub" style="margin:0">Loading…</div>')+'</div>'
+    /* DRIVER COMPLIANCE (2026-10-13): who may approve a caregiver to drive clients. Named people, never a role; owners always may. */
+    +'<div class="what" style="margin-top:14px">Approve drivers</div><div class="why" style="margin-bottom:6px">Owners, plus the office staff named here, may approve a caregiver to drive clients. By person, never by job title.</div>'
+    +'<div id="onbDriver">'+(ONB_PERMS?onbList('driver'):'<div class="sub" style="margin:0">Loading…</div>')+'</div>'
     +(ONB_PERMS&&ONB_PERMS.history&&ONB_PERMS.history.length?'<details style="margin-top:8px"><summary class="sub" style="cursor:pointer">Change history ('+ONB_PERMS.history.length+')</summary>'+ONB_PERMS.history.slice().reverse().map(h=>'<div class="sub" style="margin:2px 0">'+esc(String(h.at).replace('T',' ').slice(0,16))+' · '+esc(h.by_email||h.by)+' '+esc(h.action==='add'?'added':'removed')+' '+esc(h.name||h.email)+' '+esc(h.action==='add'?'to':'from')+' '+esc(h.kind==='work'?'Approve to Work':'Approve to Advance')+'</div>').join('')+'</details>':'')
     +'<div class="swgroup" style="margin-top:18px"><span>Reminder days and deadlines</span></div>'
     +'<div class="why" style="margin-bottom:8px">Days after the step was sent, for the automatic reminders. Deadlines are business days (Monday to Friday, skipping the company holidays below) and fall due at the hour below, Central time. Reminders stop on their own when the step is completed.</div>'
@@ -678,17 +684,17 @@ async function onbLoadPerms(){
 }
 async function onbPermChange(kind, action, person_id, btn){
   if(!person_id) return;
-  const who=(ONB_PEOPLE.find(p=>p.person_id===person_id)||{}).full_name||(((kind==='work'?ONB_PERMS.work:kind==='screening'?(ONB_PERMS.screening||[]):kind==='audit_export'?(ONB_PERMS.audit_export||[]):ONB_PERMS.advance)||[]).find(m=>m.person_id===person_id)||{}).name||'this person';
-  const label=kind==='work'?'Approve to Work (final clearance)':kind==='screening'?'Screening staff (identity reveals)':kind==='audit_export'?'Audit export (personnel files)':'Approve to Advance to Orientation';
+  const who=(ONB_PEOPLE.find(p=>p.person_id===person_id)||{}).full_name||(((kind==='work'?ONB_PERMS.work:kind==='screening'?(ONB_PERMS.screening||[]):kind==='audit_export'?(ONB_PERMS.audit_export||[]):kind==='driver'?(ONB_PERMS.driver||[]):ONB_PERMS.advance)||[]).find(m=>m.person_id===person_id)||{}).name||'this person';
+  const label=kind==='work'?'Approve to Work (final clearance)':kind==='screening'?'Screening staff (identity reveals)':kind==='audit_export'?'Audit export (personnel files)':kind==='driver'?'Approve drivers':'Approve to Advance to Orientation';
   if(!confirm((action==='add'?'Add ':'Remove ')+who+(action==='add'?' to ':' from ')+'the '+label+' list? This is recorded with your name and the time.')) return;
   if(btn) btn.disabled=true; say('Saving…');
   try{
     const { data:{ session } } = await sb.auth.getSession();
     const r=await fetch(ONB_FN,{ method:'POST', headers:{ 'Content-Type':'application/json', 'apikey':SUPA_ANON, 'Authorization':'Bearer '+(session?session.access_token:'') }, body:JSON.stringify({ action, kind, person_id }) });
     const j=await r.json().catch(()=>({}));
-    if(!r.ok||!j.ok){ say('Not saved'); alert('Not changed: '+((j&&j.error)||('error '+r.status))); }
-    else { say('Saved'); ONB_PERMS=j; }
-  }catch(e){ say('Not saved'); alert('Not changed: could not reach the permissions function.'); }
+    if(!r.ok||!j.ok){ say('Not saved'); ONB_REFUSED={ kind, error:(j&&j.error)||('error '+r.status) }; alert('Not changed: '+ONB_REFUSED.error); }
+    else { say('Saved'); ONB_PERMS=j; ONB_REFUSED=null; }
+  }catch(e){ say('Not saved'); ONB_REFUSED={ kind, error:'could not reach the permissions function.' }; alert('Not changed: could not reach the permissions function.'); }
   if(btn) btn.disabled=false;
   renderOnboarding();
 }
@@ -872,6 +878,12 @@ const SWITCHES=[
     { k:'applicant_msgs_krystal_named', name:"Krystal's name in applicant messages", what:'On: follow-ups say "it\'s Krystal at Caring Companions" and confirmations name Krystal when she is the interviewer. Off: "the Caring Companions Team", and "our team" for her interviews. Only turn on once Krystal has agreed.',
       on:'Turn on Krystal\'s name? Only if Krystal has agreed. From the next run, follow-ups are signed by Krystal and her interviews name her.',
       off:'Turn off Krystal\'s name? From the next run, messages say "the Caring Companions Team" and her interviews say "our team".' },
+    /* DRIVER COMPLIANCE (2026-10-13): the renewal reminders (30 and 14 days before a license or insurance expiry the caregiver
+       gets their secure upload link; at 7 days again and their coordinator gets a card). Off = practice: recorded, not sent.
+       The automatic suspension on expiry is not a send and does not wait for this switch. */
+    { k:'driver_reminders_live', name:'Driver license and insurance renewal reminders (texts and emails to caregivers)', what:'30 and 14 days before a driver\'s license or auto insurance expires, the caregiver gets one text and email with their secure upload link; at 7 days they get it again and their coordinator gets a card. Monday to Saturday, 9am to 6pm Central, yes-to-texts and opt-outs respected. Off: practice, recorded and nothing sent.',
+      on:'Turn on driver renewal reminders?\n\nFrom the next run (every 30 minutes), caregivers whose license or insurance expires in 30, 14 or 7 days get one text and one email with their secure upload link (Monday to Saturday, 9am to 6pm Central, yes-to-texts, opt-outs). At 7 days their coordinator also gets a card. Each reminder goes once.',
+      off:'Turn off driver renewal reminders? They go back to practice: recorded, nothing sent. Expired documents still pause driving.' },
   ]],
   ['Shifts and visits', [
     /* 2026-10-12 (Samantha "go", Track 3d): the match rule's dark report; Desktop 617 installs it and runs it once */
