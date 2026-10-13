@@ -21,8 +21,9 @@ function world(opt = {}) {
     document: { getElementById: id => el(id) }, window: {},
     fetch: async (url, o) => { const body = JSON.parse(o.body); fetches.push(body);
       if (opt.fnRefuse) return { ok: false, status: 403, json: async () => ({ error: opt.fnRefuse }) };
+      if (opt.unknownKind && body.kind === opt.unknownKind && body.action !== 'get') return { ok: false, status: 400, json: async () => ({ error: "kind must be 'advance', 'work', 'screening' or 'audit_export'" }) };
       if (body.action === 'get') return { ok: true, status: 200, json: async () => perms };
-      const list = body.kind === 'work' ? perms.work : body.kind === 'screening' ? (perms.screening ||= []) : perms.advance;
+      const list = body.kind === 'work' ? perms.work : body.kind === 'screening' ? (perms.screening ||= []) : body.kind === 'driver' ? (perms.driver ||= []) : perms.advance;
       if (body.action === 'add') list.push({ person_id: body.person_id, email: body.person_id + '@x', name: body.person_id, added_at: '2026-10-09T00:00:00Z', added_by: 'samantha@mo-care.com' });
       if (body.action === 'remove') { const i = list.findIndex(m => m.person_id === body.person_id); if (i >= 0) list.splice(i, 1); }
       perms.history.push({ at: '2026-10-09T00:00:00Z', by_email: 'samantha@mo-care.com', action: body.action, kind: body.kind, name: body.person_id });
@@ -111,6 +112,23 @@ function world(opt = {}) {
     ck('the Admin page shows the third list, Screening staff, with its plain explanation and its own add picker', /Screening staff \(may reveal identity details for a check order\)/.test(h) && /Every reveal is logged with who, when and why/.test(h) && /<select id="onbAdd_screening">/.test(h));
     await w.ctx.onbPermChange('screening', 'add', 'p-kry', null);
     ck('adding to the screening list asks the function with kind screening after a confirm', w.fetches.some((f) => f.kind === 'screening' && f.action === 'add' && f.person_id === 'p-kry'), w.fetches); }
+
+  /* DRIVER COMPLIANCE (2026-10-13): Approve drivers, the fifth list */
+  { const P = () => ({ ok: true, version: 1, advance: [], work: [{ person_id: 'p-sam', email: 'samantha@mo-care.com', name: 'Samantha', added_at: '2026-10-08' }], screening: [], driver: [{ person_id: 'p-kry', email: 'krystal@mo-care.com', name: 'Krystal', added_at: '2026-10-13', added_by: 'samantha@mo-care.com' }], history: [], me: { person_id: 'p-sam', email: 'samantha@mo-care.com', may_change_advance: true, may_change_work: true, may_approve_driver: true, may_change_driver: true } });   /* the real get (onboarding-permissions, 2026-10-13): driver, may_approve_driver, may_change_driver */
+    const w = world({ perms: P() }); await w.ctx.onbLoadPerms(); const h = w.el('onbCard').innerHTML;
+    ck('2026-10-13 the Admin page shows "Approve drivers" with her why, the named person and its own add picker', /<div class="what"[^>]*>Approve drivers<\/div>/.test(h) && h.includes('Owners, plus the office staff named here, may approve a caregiver to drive clients. By person, never by job title.') && /<div id="onbDriver">[\s\S]*Krystal/.test(h) && /<select id="onbAdd_driver">/.test(h), h.slice(h.indexOf('Approve drivers') - 50, h.indexOf('Approve drivers') + 900));
+    await w.ctx.onbPermChange('driver', 'add', 'p-sam', null);
+    ck('...adding asks the same permissions function with kind driver, after a confirm naming the Approve drivers list', w.fetches.some((f) => f.kind === 'driver' && f.action === 'add' && f.person_id === 'p-sam') && /the Approve drivers list/.test(w.confirms[w.confirms.length - 1]), w.fetches);
+    await w.ctx.onbPermChange('driver', 'remove', 'p-kry', null);
+    ck('...and removing works the same way', w.fetches.some((f) => f.kind === 'driver' && f.action === 'remove' && f.person_id === 'p-kry') && !w.perms().driver.some((m) => m.person_id === 'p-kry'));
+    const pz = P(); delete pz.driver; delete pz.me.may_change_driver;
+    const w2 = world({ perms: pz, unknownKind: 'driver' }); await w2.ctx.onbLoadPerms(); const h2 = w2.el('onbCard').innerHTML;
+    ck('an older server that does not know the list: "Nobody named yet (the owners can always approve drivers)", and an owner still sees Add', /Nobody named yet \(the owners can always approve drivers\)/.test(h2) && /<select id="onbAdd_driver">/.test(h2));
+    await w2.ctx.onbPermChange('driver', 'add', 'p-kry', null);
+    const h3 = w2.el('onbCard').innerHTML;
+    ck('...and its refusal is shown: an alert and the server\'s own words under the list', /Not changed: kind must be/.test(w2.alerts.join(' ')) && /<div id="onbDriver">[\s\S]*Not changed: kind must be &#39;advance&#39;/.test(h3), h3.slice(h3.indexOf('onbDriver'), h3.indexOf('onbDriver') + 900));
+    const w3 = world({ perms: Object.assign(P(), { me: { person_id: 'p-x', may_change_advance: false, may_change_driver: false } }) }); await w3.ctx.onbLoadPerms(); const h4 = w3.el('onbCard').innerHTML;
+    ck('someone who is not an owner sees the list but no Add for it', !/<select id="onbAdd_driver">/.test(h4) && /<div id="onbDriver">[\s\S]*Only an owner can change this list/.test(h4)); }
 
   console.log(`${pass} passed, ${fail} failed`); process.exit(fail ? 1 : 0);
 })();
