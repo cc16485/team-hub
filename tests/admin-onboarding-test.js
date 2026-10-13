@@ -114,7 +114,7 @@ function world(opt = {}) {
     ck('adding to the screening list asks the function with kind screening after a confirm', w.fetches.some((f) => f.kind === 'screening' && f.action === 'add' && f.person_id === 'p-kry'), w.fetches); }
 
   /* DRIVER COMPLIANCE (2026-10-13): Approve drivers, the fifth list */
-  { const P = () => ({ ok: true, version: 1, advance: [], work: [{ person_id: 'p-sam', email: 'samantha@mo-care.com', name: 'Samantha', added_at: '2026-10-08' }], screening: [], driver: [{ person_id: 'p-kry', email: 'krystal@mo-care.com', name: 'Krystal', added_at: '2026-10-13', added_by: 'samantha@mo-care.com' }], history: [], me: { person_id: 'p-sam', email: 'samantha@mo-care.com', may_change_advance: true, may_change_work: true, may_change_driver: true } });
+  { const P = () => ({ ok: true, version: 1, advance: [], work: [{ person_id: 'p-sam', email: 'samantha@mo-care.com', name: 'Samantha', added_at: '2026-10-08' }], screening: [], driver: [{ person_id: 'p-kry', email: 'krystal@mo-care.com', name: 'Krystal', added_at: '2026-10-13', added_by: 'samantha@mo-care.com' }], history: [], me: { person_id: 'p-sam', email: 'samantha@mo-care.com', may_change_advance: true, may_change_work: true, may_approve_driver: true, may_change_driver: true } });   /* the real get (onboarding-permissions, 2026-10-13): driver, may_approve_driver, may_change_driver */
     const w = world({ perms: P() }); await w.ctx.onbLoadPerms(); const h = w.el('onbCard').innerHTML;
     ck('2026-10-13 the Admin page shows "Approve drivers" with her why, the named person and its own add picker', /<div class="what"[^>]*>Approve drivers<\/div>/.test(h) && h.includes('Owners, plus the office staff named here, may approve a caregiver to drive clients. By person, never by job title.') && /<div id="onbDriver">[\s\S]*Krystal/.test(h) && /<select id="onbAdd_driver">/.test(h), h.slice(h.indexOf('Approve drivers') - 50, h.indexOf('Approve drivers') + 900));
     await w.ctx.onbPermChange('driver', 'add', 'p-sam', null);
@@ -123,7 +123,7 @@ function world(opt = {}) {
     ck('...and removing works the same way', w.fetches.some((f) => f.kind === 'driver' && f.action === 'remove' && f.person_id === 'p-kry') && !w.perms().driver.some((m) => m.person_id === 'p-kry'));
     const pz = P(); delete pz.driver; delete pz.me.may_change_driver;
     const w2 = world({ perms: pz, unknownKind: 'driver' }); await w2.ctx.onbLoadPerms(); const h2 = w2.el('onbCard').innerHTML;
-    ck('a server that does not know the list yet: "Nobody named yet (the owners can always approve drivers)", and an owner still sees Add', /Nobody named yet \(the owners can always approve drivers\)/.test(h2) && /<select id="onbAdd_driver">/.test(h2));
+    ck('an older server that does not know the list: "Nobody named yet (the owners can always approve drivers)", and an owner still sees Add', /Nobody named yet \(the owners can always approve drivers\)/.test(h2) && /<select id="onbAdd_driver">/.test(h2));
     await w2.ctx.onbPermChange('driver', 'add', 'p-kry', null);
     const h3 = w2.el('onbCard').innerHTML;
     ck('...and its refusal is shown: an alert and the server\'s own words under the list', /Not changed: kind must be/.test(w2.alerts.join(' ')) && /<div id="onbDriver">[\s\S]*Not changed: kind must be &#39;advance&#39;/.test(h3), h3.slice(h3.indexOf('onbDriver'), h3.indexOf('onbDriver') + 900));
