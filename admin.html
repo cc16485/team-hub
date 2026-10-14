@@ -192,6 +192,22 @@ html.embedded .topbar .brandword{ display:none; }
         <a class="btn" style="text-decoration:none" href="https://cc.mo-care.com/#myteam" target="_blank" rel="noopener">Open the whole team</a>
       </div>
       <div class="card"><div id="staffAccessTable"><div class="sub">Loading…</div></div></div>
+      <!-- 2026-10-14 RN review (Desktop 706): the supervising RN's sign-in sees ONLY her review page. hub-access gives the slug
+           rn_review alone (never with another hub, never to an owner); no app_data key is mapped to it, so the database shows that
+           account nothing in app_data, and the rn-review function answers it. -->
+      <div class="card" id="rnAccessCard">
+        <div style="font-weight:800;color:var(--navy)">RN review only (Natasha's review page)</div>
+        <p class="sub" style="margin:4px 0 10px">For the supervising RN: her sign-in opens only cc.mo-care.com/rn.html and sees nothing else in the Hub.
+          It cannot be combined with any other hub, so give it to an email that has no other Hub access (remove that first in Hub access).
+          Use the same email that is on her nurse record in Nurse Scheduling.</p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <input id="rnaEmail" type="email" placeholder="natasha@mo-care.com" style="flex:1 1 220px;min-width:0">
+          <button class="btn" id="rnaCheck" onclick="rnaRun('status')">Check</button>
+          <button class="btn primary" id="rnaGive" onclick="rnaRun('give')">Give RN review only</button>
+          <button class="btn" id="rnaRemove" onclick="rnaRun('revoke')">Remove</button>
+        </div>
+        <div class="sub" id="rnaMsg" style="margin-top:8px"></div>
+      </div>
     </section>
 
     <section>
@@ -1293,5 +1309,6 @@ async function saveHubCfg(btn){
 }
 boot();
 </script>
+<script src="rn-access.js?v=1"></script><!-- 2026-10-14 RN review only access (Team card) -->
 </body>
 </html>
