@@ -832,7 +832,7 @@ async function nsvcLoad(){
 function renderNurseServices(){
   const el=document.getElementById('nsvcCard'); if(!el) return;
   const saved=!!(OPS&&Array.isArray(OPS.nurse_services)&&OPS.nurse_services.length);
-  if(!NSVC||(!NSVC.length&&!saved)){ el.innerHTML='<div class="sub" style="margin:0">'+(NSVC_DEFAULTS?'No services.':'The built-in list appears once Desktop step 707 has run.')+'</div>'; return; }
+  if(!NSVC||(!NSVC.length&&!saved)){ el.innerHTML='<div class="sub" style="margin:0">'+(NSVC_DEFAULTS?'No services.':'The built-in list appears once Desktop step 710 has run.')+'</div>'; return; }
   el.innerHTML='<div class="sub" style="margin:0 0 8px">'+(saved?'Using the list saved here'+(OPS.nurse_services_by?' (last saved by '+esc(OPS.nurse_services_by)+')':'')+'.':'Using the built-in list. Nothing is saved until you press Save.')+' A visit matches when its AxisCare service name or code contains one of the words, as whole words. The named services are tried first, the catch-all last.</div>'
     +NSVC.map((x,i)=>'<div class="swrow" style="flex-wrap:wrap"><div class="grow" style="min-width:240px">'
       +'<label class="sub" style="margin:0">Name<br><input data-ns="'+i+'" data-f="name" value="'+esc(x.name||'')+'" oninput="nsvcSet('+i+',\'name\',this.value)" style="width:100%"></label>'

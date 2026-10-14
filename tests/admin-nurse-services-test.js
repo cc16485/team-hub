@@ -60,7 +60,7 @@ function world(opt = {}) {
   W = world({ start: { nurse_services: [{ key: 'only', name: 'Only one', axis: ['T1001'], active: true }], nurse_services_by: 'krystal@mo-care.com' } }); await W.X.nsvcLoad();
   ck('a saved list is what is shown, with who saved it', W.X.NSVC.length === 1 && /Using the list saved here \(last saved by krystal@mo-care\.com\)/.test(W.card.innerHTML));
   W = world({ noServer: true }); await W.X.nsvcLoad();
-  ck('before Desktop 707 has run (no server, nothing saved): says so', /appears once Desktop step 707 has run/.test(W.card.innerHTML));
+  ck('before Desktop 710 has run (no server, nothing saved): says so', /appears once Desktop step 710 has run/.test(W.card.innerHTML));
   const added = cut('/* ── Nurse services', '/* ── Switches') + cut('<section id="nsvcSection">', '</section>');
   ck('no em dash and never "plain language" in anything new', !/—/.test(added) && !/plain (language|english)/i.test(added));
   ck('the page loads it at sign-in, not awaited', /\n  nsvcLoad\(\);   \/\/ 2026-10-14 nurse services \(not awaited\)\n/.test(html));
