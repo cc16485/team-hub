@@ -102,13 +102,31 @@ const rows = (h) => h.split('<div class="swrow">').slice(1).map((r) => ({
   await W.X.swToggle('ref_land_live');
   ck('671: turning it off saves false, and says the Hub button still works', W.db.ops_settings.data.ref_land_live === false && /Sync reference answers/.test(W.confirms[1]));
 
+  /* 2026-10-14: the LPN nurse visit plan's three switches (Desktop 707) */
+  W = world({ start: { cg_connect_live: false } }); W.X.renderSwitches(); R = rows(W.box.innerHTML);
+  { const c = R.find((r) => r.btn === 'nurse_visit_check_live'), h = R.find((r) => r.btn === 'nurse_bill_hold_live'), l = R.find((r) => r.btn === 'nurse_license_reminders_live');
+    ck('nurse: three switches with her labels under Clients, right after GHE oversight and RN review, all off (practice)', !!c && !!h && !!l && c.name === 'Nurse visit checks (ready to bill)' && h.name === 'Nurse visits: do-not-bill hold in AxisCare' && l.name === 'Nurse license reminders (texts and emails to nurses)'
+      && R.indexOf(c) === R.findIndex((r) => r.btn === 'nurse_review_live') + 1 && R.findIndex((r) => r.btn === 'nurse_review_live') === R.findIndex((r) => r.btn === 'ghe_watch_live') + 1 && R.indexOf(h) === R.indexOf(c) + 1 && R.indexOf(l) === R.indexOf(c) + 2 && [c, h, l].every((x) => !x.on && /Off · practice/.test(x.text)), [c, h, l].map((x) => x && x.name))
+    ck('...the hold can\'t be turned on before the checks, and its words say AxisCare billing must confirm first', h.disabled && /Can't turn on yet: nurse visit checks are not on yet/.test(h.text) && /AxisCare Medicaid Billing/.test(h.text) && /confirms in writing that they skip visits marked do-not-bill/.test(h.text))
+    ck('...the reminders say when and to whom; nothing uses an em dash', /30, 14 and 7 days/.test(l.text) && /8am to 6pm Central/.test(l.text) && ![c, h, l].some((x) => /—/.test(x.text))) }
+  await W.X.swToggle('nurse_bill_hold_live');
+  ck('...pressing the hold first changes nothing', W.db.ops_settings.data.nurse_bill_hold_live !== true && /Can't turn this on yet: nurse visit checks are not on yet/.test(W.alerts.at(-1)))
+  await W.X.swToggle('nurse_visit_check_live');
+  ck('...nurse visit checks on: asks first, saves only that switch', /^Turn on nurse visit checks\?/.test(W.confirms.at(-1)) && W.db.ops_settings.data.nurse_visit_check_live === true && Object.keys(W.db.ops_settings.data).join() === 'cg_connect_live,nurse_visit_check_live', W.db.ops_settings.data)
+  await W.X.swToggle('nurse_bill_hold_live');
+  ck('...then the hold: asks whether AxisCare billing confirmed in writing, and saves it', /AxisCare Medicaid Billing\) confirmed in writing/.test(W.confirms.at(-1)) && W.db.ops_settings.data.nurse_bill_hold_live === true)
+  await W.X.swToggle('nurse_visit_check_live');
+  ck('...turning the checks off turns the hold off too', W.db.ops_settings.data.nurse_visit_check_live === false && W.db.ops_settings.data.nurse_bill_hold_live === false && /Nurse visits: do-not-bill hold in AxisCare OFF/.test(W.events.at(-1).summary), W.events.at(-1))
+  await W.X.swToggle('nurse_license_reminders_live');
+  ck('...license reminders on: asks first, saves only that switch', /^Turn on nurse license reminders\?/.test(W.confirms.at(-1)) && W.db.ops_settings.data.nurse_license_reminders_live === true)
+
   /* the same questions as the Hub */
   const hub = path.join(__dirname, '..', '..', 'cc-hub-live', 'index.html');
   if (fs.existsSync(hub)) {
     /* My Desk's switch (kind words from shift notes) lives in desk.js, next to index.html */
     const H = (fs.readFileSync(hub, 'utf8') + ['desk.js', 'shift-flags.js', 'standup-board.js', 'live-calendar.js', 'client-journey.js', 'review-ask.js'].map((f) => fs.existsSync(path.join(path.dirname(hub), f)) ? fs.readFileSync(path.join(path.dirname(hub), f), 'utf8') : '').join('')).replace(/\\'/g, "'").replace(/\\n/g, '\n');
     const W2 = world(); const same = []; const diff = [];
-    for (const [, list] of W2.X.SWITCHES) for (const sw of list) { if (sw.readOnly || ['timekeeper_admin_loop_live', 'callin_reminders_live', 'ref_land_live'].includes(sw.k)) continue;   /* 671: ref_land_live lives only on this page */
+    for (const [, list] of W2.X.SWITCHES) for (const sw of list) { if (sw.readOnly || ['timekeeper_admin_loop_live', 'callin_reminders_live', 'ref_land_live', 'nurse_visit_check_live', 'nurse_bill_hold_live', 'nurse_license_reminders_live'].includes(sw.k)) continue;   /* 671: ref_land_live lives only on this page; so do the 2026-10-14 nurse switches */
       for (const t of [sw.on, sw.off]) (H.includes(t.replace(' Caregiver replies and admin texts for running late turn off too.', '')) || H.includes(t.replace('only in practice: no card', 'only in practice (listed below): no card')) ? same : diff).push(sw.k) }
     ck('every question matches the Care Coordinator Hub word for word (the two whose Hub wording counts minutes say where to find them)', diff.length === 0, diff);
   } else console.log('SKIP  the Care Coordinator Hub copy is not next to this folder, so the wording was not compared');
