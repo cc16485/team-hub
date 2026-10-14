@@ -868,6 +868,9 @@ const SWITCHES=[
     { k:'prn_reconfirm_live', name:'PRN check-in texts', what:'PRN CNAs whose availability is 60+ days old get one check-in text with their one-tap link.',
       on:'Turn on the PRN check-in texts? From the next weekday run, PRN CNAs whose availability is 60+ days old get one text with their one-tap link.',
       off:'Turn off the PRN check-in texts? They go back to practice: worked out, nothing sent.' },
+    { k:'avail_checkin_live', name:'30-day availability texts', what:'Every active caregiver (not nurses, not the PRN Team) whose availability is 30+ days old or not on file gets one text with their own link: keep it the same or update it, and choose whether to get texts about shifts outside their times.',
+      on:'Turn on the 30-day availability texts? From the next weekday run (noon Central), up to 25 caregivers a day whose availability is 30+ days old or not on file get one text with their own link. Nobody gets it twice in 30 days, and anyone the office already sent the availability link to in the last 30 days is skipped.',
+      off:'Turn off the 30-day availability texts? They go back to practice: worked out, nothing sent.' },
     /* 587 (2026-10-11, Samantha): the warmer applicant messages. Off = everything works as before (the older wording and
        timing). On = the new wording and timing, "finish your application" texts, confirmation emails at any hour, the
        2-days-before note, YES / NO on the day-before text (a NO frees the time), the entrance photo on the hour-before
