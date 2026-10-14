@@ -192,6 +192,22 @@ html.embedded .topbar .brandword{ display:none; }
         <a class="btn" style="text-decoration:none" href="https://cc.mo-care.com/#myteam" target="_blank" rel="noopener">Open the whole team</a>
       </div>
       <div class="card"><div id="staffAccessTable"><div class="sub">Loading…</div></div></div>
+      <!-- 2026-10-14 RN review (Desktop 706): the supervising RN's sign-in sees ONLY her review page. hub-access gives the slug
+           rn_review alone (never with another hub, never to an owner); no app_data key is mapped to it, so the database shows that
+           account nothing in app_data, and the rn-review function answers it. -->
+      <div class="card" id="rnAccessCard">
+        <div style="font-weight:800;color:var(--navy)">RN review only (Natasha's review page)</div>
+        <p class="sub" style="margin:4px 0 10px">For the supervising RN: her sign-in opens only cc.mo-care.com/rn.html and sees nothing else in the Hub.
+          It cannot be combined with any other hub, so give it to an email that has no other Hub access (remove that first in Hub access).
+          Use the same email that is on her nurse record in Nurse Scheduling.</p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <input id="rnaEmail" type="email" placeholder="natasha@mo-care.com" style="flex:1 1 220px;min-width:0">
+          <button class="btn" id="rnaCheck" onclick="rnaRun('status')">Check</button>
+          <button class="btn primary" id="rnaGive" onclick="rnaRun('give')">Give RN review only</button>
+          <button class="btn" id="rnaRemove" onclick="rnaRun('revoke')">Remove</button>
+        </div>
+        <div class="sub" id="rnaMsg" style="margin-top:8px"></div>
+      </div>
     </section>
 
     <section>
@@ -1000,6 +1016,12 @@ const SWITCHES=[
     { k:'ghe_watch_live', name:'GHE oversight', what:'Every weekday the Hub reads AxisCare for each GHE month (service T1001). Not booked by the 10th: the nurse and the Medicaid coordinator get an email. By the 20th: a card for the coordinator. Last week: you hear. Month over with no visit: a Missed GHE card. Office only.',
       on:'Turn on GHE oversight?\n\nEvery weekday the Hub reads AxisCare for each client\'s GHE month (a T1001 visit). Not booked by the 10th: one email to the nurse and the Medicaid coordinator (the owner of Payer Programs). Still not booked by the 20th: a Needs Attention card for the coordinator, which closes itself once it is booked. The last week of the month, still not booked: one email to you. The month over with no visit clocked and no GHE form: a Missed GHE card that only clears with what happened and the next step. Nurses and office staff only; no client or family is contacted.',
       off:'Turn off GHE oversight? AxisCare is still read and Nurse Scheduling still shows what is booked, but no emails or cards are made. Anything already open stays open.' },
+    /* 2026-10-14 (Samantha "approve nursing plan"): RN review, Desktop 706. Natasha's review page (cc.mo-care.com/rn.html: sign an LPN's GHE,
+       send it back, review what her LPNs marked) and the LPNs' "Mark for Natasha" on the Nurse Portal. Off = practice: her page shows her
+       queue, but only practice forms can be signed or sent back, a real "Mark for Natasha" is refused (call her instead), no card. */
+    { k:'nurse_review_live', name:'RN review: Natasha signs LPN GHEs and reviews what LPNs mark for her', what:'On: Natasha signs each GHE an LPN completes on her own review page (cc.mo-care.com/rn.html), or sends it back with a note; LPNs can press Mark for Natasha on the Nurse Portal and see her answer. Natasha gets a card when something waits on her more than 2 working days, and the Payer Programs owner gets one when a signed GHE is not uploaded to Fusion on time. Sends no texts or emails. Off: practice; her page shows her work, but only practice forms can be signed.',
+      on:'Turn on RN review?\n\nFrom now on Natasha can sign the GHEs her LPNs complete (it moves each one to Ready for Fusion) or send them back with a note, and LPNs can press Mark for Natasha on the Nurse Portal. Natasha gets a card when something waits on her more than 2 working days; the Payer Programs owner gets a card when a signed GHE is not uploaded to Fusion on time. Nothing is texted or emailed.\n\nMake sure Natasha can sign in to cc.mo-care.com/rn.html first.',
+      off:'Turn off RN review? Natasha\'s page goes back to practice: she can still see her work, but real forms cannot be signed or sent back, LPNs are asked to call her instead of marking, and no new cards are made. Everything already signed or marked stays.' },
   ]],
   ['Calls', [
     { k:'call_pull_live', name:'Calls from GoHighLevel', what:'A new-client call creates the lead and drafts a follow-up for your approval (nothing is sent).', since:'call_pull_live_since',
@@ -1293,5 +1315,6 @@ async function saveHubCfg(btn){
 }
 boot();
 </script>
+<script src="rn-access.js?v=1"></script><!-- 2026-10-14 RN review only access (Team card) -->
 </body>
 </html>
