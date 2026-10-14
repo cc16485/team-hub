@@ -752,11 +752,36 @@ function renderBudget(keepFocus){
 
 /* ---------------- Discipline Center ---------------- */
 function attCfg(){ return Object.assign({notice_hours:4,callin_count:3,callin_window:90,tardy_count:3,tardy_window:90,lookback_months:12}, STAFF_SETTINGS.attendance||{}); }
-function ladder(cg){
+/* One row per person (step 4, 2026-10-14). A record with the AxisCare caregiver id groups by that id ('ax:'+id);
+   one without an id groups by its typed name ('nm:'+name), as before. A name-only group joins an id group only when
+   exactly one id group carries that same name, so a record with an id never lands on a different person by name.
+   Write-ups keep the id in axiscare_caregiver_id or, from older AxisCare pushes, ax_caregiver_id. */
+function attCgId(r){ const v=(r&&r.axiscare_caregiver_id!=null&&String(r.axiscare_caregiver_id).trim()!=='')?r.axiscare_caregiver_id:(r?r.ax_caregiver_id:null); return v==null?'':String(v).trim(); }
+function attNorm(s){ return String(s||'').toLowerCase().replace(/[^a-z0-9]/g,''); }
+function attGroups(){
+  const namesById={};
+  ATT_EVENTS.concat(DISC_ACTIONS).forEach(r=>{ const id=attCgId(r), nm=String((r&&r.caregiver)||'').trim(); if(!id||!nm) return;
+    const m=namesById[id]||(namesById[id]={}); m[nm]=(m[nm]||0)+1; });
+  const nameById={}, idsByName={};
+  Object.keys(namesById).forEach(id=>{ const nm=Object.entries(namesById[id]).sort((a,b)=>b[1]-a[1])[0][0]; nameById[id]=nm;
+    (idsByName[attNorm(nm)]=idsByName[attNorm(nm)]||[]).push(id); });
+  const keyOf=r=>{ const id=attCgId(r); if(id) return 'ax:'+id;
+    const nm=r?r.caregiver:undefined, one=idsByName[attNorm(nm)];
+    if(one&&one.length===1&&attNorm(nm)) return 'ax:'+one[0];
+    return typeof nm==='string'?'nm:'+nm:'nx:'+String(nm); };   /* nx: a record with no name at all, kept apart as before */
+  const labelOf=k=>k.slice(0,3)==='ax:'?(nameById[k.slice(3)]||('Caregiver '+k.slice(3))):k.slice(0,3)==='nx:'?'':k.slice(3);
+  /* same order as before: by name, a record with no name last */
+  const sortCmp=(a,b)=>{ const ua=a==='nx:undefined', ub=b==='nx:undefined'; if(ua!==ub) return ua?1:-1;
+    const x=a.slice(0,3)==='nx:'?a.slice(3):labelOf(a), y=b.slice(0,3)==='nx:'?b.slice(3):labelOf(b);
+    return x<y?-1:x>y?1:(a<b?-1:a>b?1:0); };
+  return {keyOf,labelOf,sortCmp};
+}
+function ladder(key,G){
+  G=G||attGroups();
   const cfg=attCfg(), now=Date.now();
-  const evs=ATT_EVENTS.filter(e=>e.caregiver===cg);
+  const evs=ATT_EVENTS.filter(e=>G.keyOf(e)===key);
   const inWin=(e,d)=>now-new Date(e.shift_date+'T00:00').getTime()<=d*86400000;
-  const issued=DISC_ACTIONS.filter(a=>a.caregiver===cg&&a.status==='issued'&&now-new Date(a.issued_at).getTime()<=cfg.lookback_months*30.4*86400000);
+  const issued=DISC_ACTIONS.filter(a=>G.keyOf(a)===key&&a.status==='issued'&&now-new Date(a.issued_at).getTime()<=cfg.lookback_months*30.4*86400000);
   return { callins:evs.filter(e=>e.type==='callin'&&inWin(e,cfg.callin_window)).length,
     tardies:evs.filter(e=>e.type==='tardy'&&inWin(e,cfg.tardy_window)).length,
     ncns:evs.filter(e=>e.type==='ncns').length, issued,
@@ -780,11 +805,12 @@ function renderDiscipline(){
         +'<details style="margin-top:.35rem"><summary style="cursor:pointer;font-size:.75rem;color:var(--muted)">Read the full notice</summary><pre class="notice">'+esc(a.body||'')+'</pre></details>'
         +'</div>';}).join('')+'</div>'
     : '<div class="card" style="border-color:#BBF7D0;background:#F0FDF4;font-size:.85rem;color:#166534">✅ Nothing waiting for approval.</div>';
-  const cgs=[...new Set(ATT_EVENTS.map(e=>e.caregiver))].sort();
-  document.getElementById('disc-board').innerHTML = cgs.length ? cgs.map(cg=>{
-    const l=ladder(cg);
+  const G=attGroups();
+  const cgs=[...new Set(ATT_EVENTS.map(e=>G.keyOf(e)))].sort(G.sortCmp);
+  document.getElementById('disc-board').innerHTML = cgs.length ? cgs.map(key=>{
+    const l=ladder(key,G);
     return '<div style="display:flex;align-items:center;gap:.7rem;padding:.45rem 0;border-bottom:1px solid var(--border);font-size:.85rem;flex-wrap:wrap">'
-      +'<b style="min-width:150px">'+esc(cg)+'</b>'
+      +'<b style="min-width:150px">'+esc(G.labelOf(key))+'</b>'
       +'<span class="muted">'+l.callins+' call-ins · '+l.tardies+' tardies'+(l.ncns?' · <b style="color:var(--red)">'+l.ncns+' NCNS</b>':'')+'</span>'
       +'<span style="flex:1"></span>'
       +(l.issued.length?'<span class="chip" style="background:var(--amber-bg);color:var(--amber)">'+l.issued.length+' warning'+(l.issued.length===1?'':'s')+' on file</span>':'')
