@@ -438,12 +438,11 @@ async function renderStaffAccess(){
         const acct = !r.has_account       ? chip('none','bad')
                    : !r.account_confirmed ? chip('unconfirmed','warn')
                    :                        chip('yes','ok');
-        // An absent hub_access array still grants every hub, because the
-        // fallback allows when the field is missing. Saying "all (default)"
-        // rather than "none" keeps that visible instead of reassuring.
+        // 760b (2026-10-15): no hub list means no hub. Shown as a warning so
+        // an account that can open nothing is easy to spot.
         const access=(r.hub_access&&r.hub_access.length)
           ? r.hub_access.map(h=>chip(h)).join(' ')
-          : chip('all (default)','warn');
+          : chip('no hub yet','warn');
         const roles=(r.roles&&r.roles.length)
           ? r.roles.map(x=>chip(x, x==='owner_admin'?'ok':'')).join(' ')
           : '<span class="sub">none</span>';
