@@ -136,6 +136,14 @@ html.embedded .topbar .brandword{ display:none; }
       <div class="card" id="swBox"><div class="sub" style="margin:0">Loading…</div></div>
     </section>
 
+    <!-- NURSE SERVICES · 2026-10-14 (LPN nurse visit plan, Desktop 707). The list the nurse visit check reads
+         (ops_settings.nurse_services). Saved with mergeSave like every other setting on this page. -->
+    <section id="nsvcSection">
+      <h2>Nurse services</h2>
+      <p class="sub">Which AxisCare visits are nurse visits, and what each one needs before it is billed. A new authorized service is added here; nothing is rebuilt. The nurse visit check reads this list on its next run.</p>
+      <div class="card" id="nsvcCard"><div class="sub" style="margin:0">Loading…</div></div>
+    </section>
+
 
     <!-- ONBOARDING WORKFLOW · Slice 0 (Samantha approved 2026-10-08). Settings only: nothing here sends, changes
          AxisCare or Viventium, activates the new onboarding path or retires anything. Every field is read by later
@@ -192,6 +200,22 @@ html.embedded .topbar .brandword{ display:none; }
         <a class="btn" style="text-decoration:none" href="https://cc.mo-care.com/#myteam" target="_blank" rel="noopener">Open the whole team</a>
       </div>
       <div class="card"><div id="staffAccessTable"><div class="sub">Loading…</div></div></div>
+      <!-- 2026-10-14 RN review (Desktop 706): the supervising RN's sign-in sees ONLY her review page. hub-access gives the slug
+           rn_review alone (never with another hub, never to an owner); no app_data key is mapped to it, so the database shows that
+           account nothing in app_data, and the rn-review function answers it. -->
+      <div class="card" id="rnAccessCard">
+        <div style="font-weight:800;color:var(--navy)">RN review only (Natasha's review page)</div>
+        <p class="sub" style="margin:4px 0 10px">For the supervising RN: her sign-in opens only cc.mo-care.com/rn.html and sees nothing else in the Hub.
+          It cannot be combined with any other hub, so give it to an email that has no other Hub access (remove that first in Hub access).
+          Use the same email that is on her nurse record in Nurse Scheduling.</p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <input id="rnaEmail" type="email" placeholder="natasha@mo-care.com" style="flex:1 1 220px;min-width:0">
+          <button class="btn" id="rnaCheck" onclick="rnaRun('status')">Check</button>
+          <button class="btn primary" id="rnaGive" onclick="rnaRun('give')">Give RN review only</button>
+          <button class="btn" id="rnaRemove" onclick="rnaRun('revoke')">Remove</button>
+        </div>
+        <div class="sub" id="rnaMsg" style="margin-top:8px"></div>
+      </div>
     </section>
 
     <section>
@@ -771,6 +795,73 @@ async function onbSaveChecklist(btn){
 window.onbPermChange=onbPermChange; window.onbSaveTiming=onbSaveTiming; window.onbHolidayAdd=onbHolidayAdd; window.onbHolidayRemove=onbHolidayRemove; window.onbHolidaysFederal=onbHolidaysFederal; window.onbSaveChecklist=onbSaveChecklist;
 
 /* ── boot ───────────────────────────────────────────────────────────────── */
+/* ── Nurse services (2026-10-14, the LPN nurse visit plan; Desktop 707) ─────────────────────────────────────────────
+   The nurse visit check (nurse-visit-check) matches each AxisCare visit to a service by its AxisCare service name or code,
+   then checks what that service needs. This edits ops_settings.nurse_services: add a service, rename it, change its
+   AxisCare match and its flags. While nothing is saved the built-in list (from the server) is used. Saved with mergeSave
+   (only this setting changes) and recorded with who did it. */
+const NSVC_FLAGS=[['lpn','An LPN may do it'],['auth','Needs the care plan authorization'],['note','Needs the AxisCare visit note'],['rn_sign_if_lpn','RN signs when an LPN did it'],['rn_sign','RN signs every one'],['generic','Catch-all (any other T1001 visit)'],['active','In use']];
+let NSVC=null, NSVC_DEFAULTS=null, NSVC_MSG='';
+const nsvcSlug=v=>String(v||'').trim().toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'').slice(0,40);
+const nsvcWords=v=>(Array.isArray(v)?v:String(v||'').split(',')).map(x=>String(x).trim()).filter(Boolean).slice(0,12);
+/** the list ready to save, or why not */
+function nsvcClean(list){
+  const out=[], seen={};
+  for(const [i,x] of (list||[]).entries()){
+    const name=String(x.name||'').trim(), axis=nsvcWords(x.axis), key=x.key||nsvcSlug(name);
+    if(!name) return { ok:false, why:'Service '+(i+1)+' needs a name.' };
+    if(!axis.length) return { ok:false, why:'"'+name+'" needs at least one AxisCare service name or code to match.' };
+    if(!key || seen[key] || seen['n:'+name.toLowerCase()]) return { ok:false, why:'Two services have the same name. Give "'+name+'" a different name.' };
+    if(/assessment/i.test(name)) return { ok:false, why:'An LPN does skin monitoring, not an assessment. Call it "monitoring".' };
+    seen[key]=1; seen['n:'+name.toLowerCase()]=1;
+    const row={ key, name, axis, tasks:nsvcWords(x.tasks) };
+    for(const [f] of NSVC_FLAGS) row[f]=f==='active' ? x[f]!==false : x[f]===true;
+    if(x.priority===true) row.priority=true;
+    out.push(row);
+  }
+  if(!out.some(r=>r.active)) return { ok:false, why:'At least one service must be in use.' };
+  return { ok:true, list:out };
+}
+async function nsvcLoad(){
+  try{ const r=await sb.functions.invoke('nurse-visit-check',{ body:{ action:'services' } }); if(r && r.data && r.data.ok) NSVC_DEFAULTS=r.data.defaults; }catch(_){}
+  const cur=(OPS&&Array.isArray(OPS.nurse_services)&&OPS.nurse_services.length)?OPS.nurse_services:null;
+  NSVC=JSON.parse(JSON.stringify(cur||NSVC_DEFAULTS||[]));
+  renderNurseServices();
+}
+function renderNurseServices(){
+  const el=document.getElementById('nsvcCard'); if(!el) return;
+  const saved=!!(OPS&&Array.isArray(OPS.nurse_services)&&OPS.nurse_services.length);
+  if(!NSVC||(!NSVC.length&&!saved)){ el.innerHTML='<div class="sub" style="margin:0">'+(NSVC_DEFAULTS?'No services.':'The built-in list appears once Desktop step 710 has run.')+'</div>'; return; }
+  el.innerHTML='<div class="sub" style="margin:0 0 8px">'+(saved?'Using the list saved here'+(OPS.nurse_services_by?' (last saved by '+esc(OPS.nurse_services_by)+')':'')+'.':'Using the built-in list. Nothing is saved until you press Save.')+' A visit matches when its AxisCare service name or code contains one of the words, as whole words. The named services are tried first, the catch-all last.</div>'
+    +NSVC.map((x,i)=>'<div class="swrow" style="flex-wrap:wrap"><div class="grow" style="min-width:240px">'
+      +'<label class="sub" style="margin:0">Name<br><input data-ns="'+i+'" data-f="name" value="'+esc(x.name||'')+'" oninput="nsvcSet('+i+',\'name\',this.value)" style="width:100%"></label>'
+      +'<label class="sub" style="margin:4px 0 0;display:block">AxisCare service names or codes, separated by commas<br><input data-ns="'+i+'" data-f="axis" value="'+esc(nsvcWords(x.axis).join(', '))+'" oninput="nsvcSet('+i+',\'axis\',this.value)" style="width:100%"></label>'
+      +'<label class="sub" style="margin:4px 0 0;display:block">AxisCare care tasks that must be marked done (optional)<br><input data-ns="'+i+'" data-f="tasks" value="'+esc(nsvcWords(x.tasks).join(', '))+'" oninput="nsvcSet('+i+',\'tasks\',this.value)" style="width:100%"></label>'
+      +'<div class="why" style="margin-top:4px">'+(x.key?'Key: '+esc(x.key):'New')+'</div></div>'
+      +'<div style="min-width:220px">'+NSVC_FLAGS.map(([f,l])=>'<label class="sub" style="margin:0;display:block"><input type="checkbox" data-ns="'+i+'" data-f="'+f+'"'+((f==='active'?x[f]!==false:x[f]===true)?' checked':'')+' onchange="nsvcSet('+i+',\''+f+'\',this.checked)"> '+esc(l)+'</label>').join('')+'</div></div>').join('')
+    +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;align-items:center"><button class="btn" onclick="nsvcAdd()">Add a service</button><button class="btn primary" onclick="nsvcSave(this)">Save for everyone</button><span class="sub" style="margin:0" id="nsvcMsg">'+esc(NSVC_MSG)+'</span></div>';
+}
+function nsvcSet(i,f,v){ if(!NSVC||!NSVC[i]) return; NSVC[i][f]=v; NSVC_MSG=''; }
+function nsvcAdd(){ (NSVC=NSVC||[]).push({ key:'', name:'', axis:[], tasks:[], lpn:true, auth:true, note:true, rn_sign:false, rn_sign_if_lpn:false, generic:false, active:true }); renderNurseServices(); }
+async function nsvcSave(btn){
+  const c=nsvcClean(NSVC);
+  if(!c.ok){ NSVC_MSG=c.why; renderNurseServices(); return; }
+  if(!confirm('Save the nurse services for everyone?\n\n'+c.list.filter(x=>x.active).map(x=>'· '+x.name+': '+x.axis.join(', ')).join('\n')+'\n\nThe nurse visit check uses this list from its next run.')) return;
+  if(btn) btn.disabled=true;
+  const out=await mergeSave('ops_settings',(m,base)=>{
+    if(JSON.stringify(base.nurse_services||null)===JSON.stringify(c.list)) return [];
+    m.nurse_services=c.list; m.nurse_services_by=ME.email; m.nurse_services_at=new Date().toISOString();
+    return ['Nurse services ('+c.list.length+')'];
+  });
+  if(btn) btn.disabled=false;
+  if(out.ok){ if(out.data) OPS=out.data; NSVC=JSON.parse(JSON.stringify(c.list)); NSVC_MSG=out.changed&&out.changed.length?'Saved.':'Nothing changed.';
+    if(out.changed&&out.changed.length) recordEvent({ verb:'setting_changed', item_id:'ops_settings', area:'admin', summary:ME.email.split('@')[0]+' saved the nurse services: '+c.list.map(x=>x.name).join(', '), data:{ nurse_services:c.list } })
+      .then(r=>{ if(r&&r.error) console.warn('[op_events] not recorded:', r.error.message); }, e=>console.warn('[op_events] not recorded:', e)); }
+  else NSVC_MSG='Not saved. Try again.';
+  renderNurseServices();
+}
+window.nsvcSet=nsvcSet; window.nsvcAdd=nsvcAdd; window.nsvcSave=nsvcSave;
+
 /* ── Switches (2026-10-04, Samantha "yes to all": https://claude.ai/artifact/QDoebXX7ZaD4dgbzZe3Kor) ─────────────
    Every Hub on/off switch on this page. They are the SAME ops_settings switches the Care Coordinator Hub's Settings
    flips, with the same questions and the same rules: a caregiver missed clock-in text needs missed clock-ins to be
@@ -847,6 +938,10 @@ const SWITCHES=[
     { k:'axiscare_level_live', name:'Level of Care class to AxisCare at Approve to Work (new path)', what:'After AxisCare reads back Active, the Hub sets the caregiver\'s level class in AxisCare to the approved Level of Care (Level 1 unless recorded higher), keeping every other class, reads it back and logs it. Team Builder and coverage read levels from these classes. Off: practice, recorded, nothing written.',
       on:'Turn on the level class write? From the next Approve to Work on the NEW path, the approved level class is set in AxisCare by the caregiver\'s own record and read back; every other class is kept.',
       off:'Turn off the level class write? It goes back to practice: recorded in the change log, nothing written.' },
+    /* LPN HIRING (Samantha approved the LPN nurse visit plan, 2026-10-14): what Approve to Work does for an LPN or RN hire only */
+    { k:'nurse_hire_live', name:'Nurse hiring setup at Approve to Work (LPN and RN only)', what:'When an owner approves an LPN or RN to work, the Hub adds them to the nurse list (LPN or RN, our employee, the license ending and its verified expiration, Natasha Early as supervising RN for an LPN), adds the LPN or RN class to their AxisCare caregiver record and reads it back, records the training waiver for the On-the-Job Skills Training only (19 CSR 15-7.021(22)(A)4; the 2-hour orientation and dementia training stay), and gives the office a card to enter the license in AxisCare\'s Compliance tab. Never for a caregiver. Off: practice, shown on their readiness card, nothing written.',
+      on:'Turn on the nurse hiring setup? From the next Approve to Work for an LPN or RN, the Hub writes the nurse list record, the AxisCare LPN or RN class and the On-the-Job Skills Training waiver, and raises the Compliance tab card. Caregivers are never touched. Press Run nurse setup on anyone approved while it was off.',
+      off:'Turn off the nurse hiring setup? It goes back to practice: shown on the readiness card, nothing written.' },
     /* SLICE 8 (2026-10-11, "GO" / "YES TO ALL"): the nightly client audit. Off = practice: counted in the automation log, no card. */
     { k:'client_audit_live', name:'Nightly client audit tasks', what:'Each night the server checks every client with a Medicaid care plan: the IHS 10-day start clock, the plan ending within 60 days, an authorization past its end while AxisCare still has the client Active, a change request stalled at a step, and a plan nobody checked against Fusion or whose PDF is not kept. Each becomes a task for the Payer Programs owner, closed when it is settled. Nothing is sent and nothing changes in Fusion or AxisCare. Off: practice, counted and no task.',
       on:'Turn on the nightly client audit tasks? From tonight, each finding becomes a task on My Work for the owner of Payer Programs (Admin, domains), with a due date; it closes itself when the record shows it is settled. Nobody is texted.',
@@ -999,6 +1094,26 @@ const SWITCHES=[
     { k:'ghe_watch_live', name:'GHE oversight', what:'Every weekday the Hub reads AxisCare for each GHE month (service T1001). Not booked by the 10th: the nurse and the Medicaid coordinator get an email. By the 20th: a card for the coordinator. Last week: you hear. Month over with no visit: a Missed GHE card. Office only.',
       on:'Turn on GHE oversight?\n\nEvery weekday the Hub reads AxisCare for each client\'s GHE month (a T1001 visit). Not booked by the 10th: one email to the nurse and the Medicaid coordinator (the owner of Payer Programs). Still not booked by the 20th: a Needs Attention card for the coordinator, which closes itself once it is booked. The last week of the month, still not booked: one email to you. The month over with no visit clocked and no GHE form: a Missed GHE card that only clears with what happened and the next step. Nurses and office staff only; no client or family is contacted.',
       off:'Turn off GHE oversight? AxisCare is still read and Nurse Scheduling still shows what is booked, but no emails or cards are made. Anything already open stays open.' },
+    /* 2026-10-14 (Samantha "approve nursing plan"): RN review, Desktop 706. Natasha's review page (cc.mo-care.com/rn.html: sign an LPN's GHE,
+       send it back, review what her LPNs marked) and the LPNs' "Mark for Natasha" on the Nurse Portal. Off = practice: her page shows her
+       queue, but only practice forms can be signed or sent back, a real "Mark for Natasha" is refused (call her instead), no card. */
+    { k:'nurse_review_live', name:'RN review: Natasha signs LPN GHEs and reviews what LPNs mark for her', what:'On: Natasha signs each GHE an LPN completes on her own review page (cc.mo-care.com/rn.html), or sends it back with a note; LPNs can press Mark for Natasha on the Nurse Portal and see her answer. Natasha gets a card when something waits on her more than 2 working days, and the Payer Programs owner gets one when a signed GHE is not uploaded to Fusion on time. Sends no texts or emails. Off: practice; her page shows her work, but only practice forms can be signed.',
+      on:'Turn on RN review?\n\nFrom now on Natasha can sign the GHEs her LPNs complete (it moves each one to Ready for Fusion) or send them back with a note, and LPNs can press Mark for Natasha on the Nurse Portal. Natasha gets a card when something waits on her more than 2 working days; the Payer Programs owner gets a card when a signed GHE is not uploaded to Fusion on time. Nothing is texted or emailed.\n\nMake sure Natasha can sign in to cc.mo-care.com/rn.html first.',
+      off:'Turn off RN review? Natasha\'s page goes back to practice: she can still see her work, but real forms cannot be signed or sent back, LPNs are asked to call her instead of marking, and no new cards are made. Everything already signed or marked stays.' },
+    /* 2026-10-14: the LPN nurse visit plan (Desktop 707, nurse-visit-check). AxisCare stays where nurse visits are billed;
+       claims are made by AxisCare's managed Medicaid Billing team, so the hold needs their written yes first. */
+    { k:'nurse_visit_check_live', name:'Nurse visit checks (ready to bill)', offAlso:['nurse_bill_hold_live'],
+      what:'Every 30 minutes the Hub reads AxisCare\'s completed nurse visits and checks each one: authorized on the state care plan, one a day, at most 26 in six months, documented, and an LPN\'s GHE signed by the RN. A visit that is not ready gets a card for the Medicaid coordinator, which closes itself once it is fixed. Off: practice, the list shows on Nurse Scheduling with no cards. Office only.',
+      on:'Turn on nurse visit checks?\n\nEvery 30 minutes the Hub reads AxisCare\'s completed nurse visits (the last 120 days) and checks each one against the state care plan uploaded on Nurse Scheduling: authorized, one a day, at most 26 in six months, a visit note, and for a GHE done by an LPN, the RN\'s signature. Each visit that is not ready gets ONE card for the Medicaid coordinator (the owner of Payer Programs) saying why; it closes itself once the visit is fixed. Nurse Scheduling has the list, with a button to copy it for the AxisCare billing team.\n\nNothing is written to AxisCare (that is the do-not-bill hold, a separate switch). Nobody outside the office is contacted.',
+      off:'Turn off nurse visit checks? It goes back to practice: the list still shows on Nurse Scheduling, but no new cards are made. The do-not-bill hold turns off with it. Anything already open stays open.' },
+    { k:'nurse_bill_hold_live', name:'Nurse visits: do-not-bill hold in AxisCare', needs:'nurse_visit_check_live', needsWhy:'nurse visit checks are not on yet',
+      what:'With nurse visit checks on, the Hub marks a nurse visit that is not ready do-not-bill in AxisCare, and takes off only its own mark once the visit is ready. It never touches a do-not-bill the office set. Our claims are made by AxisCare Medicaid Billing, so turn this on only after their billing team confirms in writing that they skip visits marked do-not-bill. Off: nothing is written to AxisCare.',
+      on:'Turn on the do-not-bill hold?\n\nHas AxisCare\'s billing team (AxisCare Medicaid Billing) confirmed in writing that they do not bill a visit marked do-not-bill? If not, press Cancel: the hold would not stop a claim.\n\nFrom the next check, each nurse visit that is not ready to bill is marked do-not-bill in AxisCare. Once it is fixed, the Hub takes off its own mark so it can be billed. A do-not-bill the office set is never touched, and a Hub mark the office takes off by hand is never put back. If AxisCare refuses a change, a card says so.',
+      off:'Turn off the do-not-bill hold? Nothing more is written to AxisCare. Visits the Hub already marked stay marked until the office takes the mark off in AxisCare (Nurse Scheduling lists them), or the hold is turned on again.' },
+    { k:'nurse_license_reminders_live', name:'Nurse license reminders (texts and emails to nurses)',
+      what:'30, 14 and 7 days before a nurse\'s Missouri license on file expires (the nurse list on Nurse Scheduling), the nurse gets one text and email and the Medicaid coordinator gets a card. On expiry, an urgent card. 8am to 6pm Central, yes-to-texts and opt-outs respected. Off: practice, recorded and nothing sent.',
+      on:'Turn on nurse license reminders?\n\n30, 14 and 7 days before a nurse\'s license on file expires, the nurse gets ONE text and ONE email asking them to tell the office their new expiration date when they renew, and the Medicaid coordinator gets a card. On the day after it expires, an urgent card (the Hub already stops giving that nurse clients). Only 8am to 6pm Central (held, never dropped), never twice, yes-to-texts and opt-outs respected. Nurses and office only.',
+      off:'Turn off nurse license reminders? They go back to practice: recorded, nothing sent, no cards.' },
   ]],
   ['Calls', [
     { k:'call_pull_live', name:'Calls from GoHighLevel', what:'A new-client call creates the lead and drafts a follow-up for your approval (nothing is sent).', since:'call_pull_live_since',
@@ -1204,6 +1319,7 @@ async function boot(){
   OPSITEMS=(await readKey('ops_items'))||[];
 
   renderStaff(); renderOnCall(); fillOps(); renderStatus(); renderSwitches(); renderHubSettings();
+  nsvcLoad();   // 2026-10-14 nurse services (not awaited)
   renderOnboarding(); onbLoadPerms();   // Slice 0: the onboarding workflow settings (not awaited: a slow function must not hold the page)
   { const m=/^#hubsettings(?:\/([a-z-]*))?$/.exec(location.hash||''); if(m){ if(m[1]!==undefined) HS_CUR=m[1]; adminTab('hubsettings'); } }
   // Read-only, and deliberately not awaited: a slow or missing RPC must not
@@ -1292,5 +1408,6 @@ async function saveHubCfg(btn){
 }
 boot();
 </script>
+<script src="rn-access.js?v=1"></script><!-- 2026-10-14 RN review only access (Team card) -->
 </body>
 </html>
