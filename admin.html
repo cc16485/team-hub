@@ -1014,6 +1014,11 @@ const SWITCHES=[
     { k:'call_tasks_live', name:'Call follow-ups: cards in My Work', what:'The AI employee reads every answered call and new texts and puts each follow-up it finds in My Work as a "Call follow-up" card, owned by whoever owns that part of the office (the Staffing seat for scheduling). Drafted texts sit on the card; nothing is sent.', since:'call_tasks_live_since',
       on:'Turn on call follow-up cards?\n\nFrom the next run (within 10 minutes), each follow-up the AI finds in a call or text becomes a "Call follow-up" card in My Work, owned by whoever owns that part of the office. A card a later call takes care of closes itself with a note. Drafted texts sit on the card for a person to send; nothing is sent. A card someone closes never comes back.',
       off:'Turn off call follow-up cards? Calls are still read (if practice reading is on) but no new cards are made. Cards already made stay.' },
+    /* 769 (2026-10-15, Samantha: "we shouldnt have to manually log a call or text follow up"): every call and text with a lead
+       goes on the lead by itself. Practice until this is on: the Leads tab lists what it would record. */
+    { k:'lead_record_live', name:'Calls and texts record themselves', what:'Every 5 minutes, each call and text on the office line with a lead goes on that family\'s record the way Log a call writes it: who, how long, tries counted, New becomes Talking on the first real conversation. Automatic texts are marked automatic. A number two families share is listed on Leads for a person to pick. Off: practice, the Leads tab lists what it would record and no lead changes.', since:'lead_record_live_since',
+      on:'Turn on calls and texts recording themselves?\n\nFrom the next run (within 5 minutes), every call and text with a lead since the start date goes on that family\'s record, including the practice days, so last week catches up. Calls and texts someone already logged by hand are not recorded twice. Nothing is sent to anyone.',
+      off:'Switch back to practice? Nothing more is written on any lead; the Leads tab lists what it would record. What was already recorded stays (it is what happened).' },
   ]],
   ['Shown here, switched by a Desktop step', [
     { k:'coverage_send_live', name:'Open-shift texts', what:'The coverage engine texts caregivers about open shifts.', readOnly:true },
