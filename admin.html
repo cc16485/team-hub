@@ -303,6 +303,36 @@ html.embedded .topbar .brandword{ display:none; }
 </div>
 
 <script>
+/* Pop-ups inside GoHighLevel (her report 2026-10-16: "still cant click to turn on"): the Admin page opens inside GoHighLevel's
+   embedded page, which blocks the browser's own pop-ups (confirm / alert / prompt), so a click silently did nothing.
+   Embedded, every question, message and text box is asked IN the page instead; in its own tab the browser's pop-ups work as before. */
+const CC_FRAMED = (()=>{ try{ return typeof window!=='undefined' && window.top!==window.self; }catch(_){ return true; } })();
+function ccModal(text, opt){
+  opt=opt||{};
+  return new Promise(res=>{
+    const wrap=document.createElement('div');
+    wrap.setAttribute('role','dialog'); wrap.setAttribute('aria-modal','true'); wrap.className='cc-ask';
+    wrap.style.cssText='position:fixed;inset:0;background:rgba(14,56,96,.35);display:flex;align-items:center;justify-content:center;z-index:99999;padding:16px;';
+    const box=document.createElement('div');
+    box.style.cssText='background:#fff;border-radius:12px;max-width:520px;width:100%;padding:18px 18px 14px;box-shadow:0 10px 30px rgba(0,0,0,.2);font:15px/1.45 inherit;color:#1f2a36;';
+    const msg=document.createElement('div'); msg.style.whiteSpace='pre-wrap'; msg.textContent=String(text==null?'':text); box.appendChild(msg);
+    let inp=null;
+    if(opt.input){ inp=document.createElement('input'); inp.type='text'; inp.value=opt.value==null?'':String(opt.value);
+      inp.style.cssText='width:100%;box-sizing:border-box;margin-top:12px;padding:9px 10px;border:1px solid #cbd5e1;border-radius:8px;font:inherit;'; box.appendChild(inp); }
+    const row=document.createElement('div'); row.style.cssText='display:flex;gap:8px;justify-content:flex-end;margin-top:14px;';
+    const done=(v)=>{ wrap.remove(); document.removeEventListener('keydown',key,true); res(v); };
+    const mk=(label,primary,val)=>{ const b=document.createElement('button'); b.type='button'; b.className='btn'+(primary?' primary':''); b.textContent=label; b.onclick=()=>done(val()); row.appendChild(b); return b; };
+    if(opt.ask||opt.input) mk('Cancel',false,()=>opt.input?null:false);
+    const ok=mk(opt.ask?'Yes':'OK',true,()=>opt.input?inp.value:(opt.ask?true:undefined));
+    box.appendChild(row); wrap.appendChild(box); document.body.appendChild(wrap);
+    const key=(e)=>{ if(e.key==='Escape'){ e.preventDefault(); done(opt.input?null:(opt.ask?false:undefined)); } else if(e.key==='Enter' && (inp?document.activeElement===inp:true)){ e.preventDefault(); ok.click(); } };
+    document.addEventListener('keydown',key,true);
+    (inp||ok).focus();
+  });
+}
+function ccAsk(text){ return CC_FRAMED ? ccModal(text,{ask:true}) : Promise.resolve(confirm(text)); }
+function ccAskText(text, value){ return CC_FRAMED ? ccModal(text,{input:true,value}) : Promise.resolve(prompt(text, value)); }
+function ccTell(text){ if(CC_FRAMED) ccModal(text,{}); else alert(text); }
 const SUPA_URL='https://zngsgedlsxinbygwmxwn.supabase.co';
 const SUPA_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpuZ3NnZWRsc3hpbmJ5Z3dteHduIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1NDIzNDQsImV4cCI6MjA5ODExODM0NH0.L_31_UKdccyRH9n7p1GaBlZTqcJipB008H-GIvxwLxM';
 const sb=window.supabase.createClient(SUPA_URL,SUPA_ANON);
@@ -336,7 +366,7 @@ async function saveItem(key,item){
   say('Saving…');
   const { error } = await sb.rpc('upsert_app_data_item',{ target_key:key, item });
   say(error ? 'Not saved' : 'Saved');
-  if(error) alert('Could not save. Check your connection and try again.');
+  if(error) ccTell('Could not save. Check your connection and try again.');
   return !error;
 }
 async function deleteItem(key,id){
@@ -359,17 +389,17 @@ async function mergeSave(key, apply){
   say('Saving…');
   for(let i=0;i<5;i++){
     let cur;
-    try{ cur=await readKeyV(key); }catch(e){ say('Not saved'); alert('Could not read the current settings, so nothing was saved. Check your connection and try again.'); return { ok:false }; }
+    try{ cur=await readKeyV(key); }catch(e){ say('Not saved'); ccTell('Could not read the current settings, so nothing was saved. Check your connection and try again.'); return { ok:false }; }
     const base=(cur.data && typeof cur.data==='object' && !Array.isArray(cur.data)) ? cur.data : {};
     const next=JSON.parse(JSON.stringify(base));
     const changed=apply(next, base)||[];
     if(!changed.length){ say('Nothing changed'); return { ok:true, changed, data:base }; }
     const { data, error } = await sb.rpc('app_data_save',{ p_key:key, p_data:next, p_expected_version: cur.exists ? cur.version : 0 });
-    if(error){ say('Not saved'); alert('Could not save ('+error.message+'). Nothing was changed.'); return { ok:false }; }
+    if(error){ say('Not saved'); ccTell('Could not save ('+error.message+'). Nothing was changed.'); return { ok:false }; }
     if(data && data.ok){ say('Saved'); return { ok:true, changed, data:next }; }
     /* someone else saved a moment ago: read again and reapply only this change */
   }
-  say('Not saved'); alert('Someone else kept saving at the same moment, so this was not saved. Try again.');
+  say('Not saved'); ccTell('Someone else kept saving at the same moment, so this was not saved. Try again.');
   return { ok:false };
 }
 
@@ -485,7 +515,7 @@ function renderStaff(){
 async function addStaff(){
   const name=document.getElementById('ns-name').value.trim();
   const email=document.getElementById('ns-email').value.trim().toLowerCase();
-  if(!name || !email){ alert('Name and hub sign-in email are both needed.'); return; }
+  if(!name || !email){ ccTell('Name and hub sign-in email are both needed.'); return; }
   const s={ id:uid('st'), name, email,
     phone:document.getElementById('ns-phone').value.trim(),
     shift:document.getElementById('ns-shift').value };
@@ -505,7 +535,7 @@ async function staffOut(id, ymd){
 }
 async function delStaff(id){
   const s=STAFF.find(x=>x.id===id); if(!s) return;
-  if(!confirm('Remove '+(s.name||'this person')+'? They disappear from every hub.')) return;
+  if(!await ccAsk('Remove '+(s.name||'this person')+'? They disappear from every hub.')) return;
   if(!(await deleteItem('coordinator_staff',id))) return;
   STAFF=STAFF.filter(x=>x.id!==id);
   renderStaff(); renderStatus();
@@ -528,10 +558,10 @@ async function saveOps(){
   const l2=parseInt(document.getElementById('op-l2').value,10)||45;
   const maxage=parseInt(document.getElementById('op-maxage').value,10)||12;
   if(live && !STAFF.some(s=>s.phone) && !fb){
-    alert('Chasing cannot be switched on yet. Nobody has a mobile number and there is no backstop number, so the texts would go nowhere.');
+    ccTell('Chasing cannot be switched on yet. Nobody has a mobile number and there is no backstop number, so the texts would go nowhere.');
     return;
   }
-  if(l2<=l1 && !confirm('The backstop fires at or before the owner does. Save anyway?')) return;
+  if(l2<=l1 && !await ccAsk('The backstop fires at or before the owner does. Save anyway?')) return;
   const mine={ live, fallback_phone:fb, max_age_hours:maxage, levels:[{after_min:l1,to:'owner'},{after_min:l2,to:'fallback'}] };
   /* Only these chasing settings change; every other Hub switch and setting in ops_settings is kept as it is now. */
   const out=await mergeSave('ops_settings',(m,base)=>{
@@ -563,8 +593,8 @@ async function addOnCall(){
   const who=document.getElementById('oc-who').value;
   const s=STAFF.find(x=>(x.email||x.name)===who);
   const start=document.getElementById('oc-start').value, end=document.getElementById('oc-end').value;
-  if(!who || !start || !end){ alert('Pick a person and both dates.'); return; }
-  if(end<start){ alert('The end date is before the start date.'); return; }
+  if(!who || !start || !end){ ccTell('Pick a person and both dates.'); return; }
+  if(end<start){ ccTell('The end date is before the start date.'); return; }
   const o={ id:uid('oc'), email:(s&&s.email)||who, name:(s&&s.name)||who,
             start_date:start, end_date:end, created_at:new Date().toISOString() };
   if(!(await saveItem('on_call_schedule',o))) return;
@@ -685,15 +715,15 @@ async function onbPermChange(kind, action, person_id, btn){
   if(!person_id) return;
   const who=(ONB_PEOPLE.find(p=>p.person_id===person_id)||{}).full_name||(((kind==='work'?ONB_PERMS.work:kind==='screening'?(ONB_PERMS.screening||[]):kind==='audit_export'?(ONB_PERMS.audit_export||[]):kind==='driver'?(ONB_PERMS.driver||[]):ONB_PERMS.advance)||[]).find(m=>m.person_id===person_id)||{}).name||'this person';
   const label=kind==='work'?'Approve to Work (final clearance)':kind==='screening'?'Screening staff (identity reveals)':kind==='audit_export'?'Audit export (personnel files)':kind==='driver'?'Approve drivers':'Approve to Advance to Orientation';
-  if(!confirm((action==='add'?'Add ':'Remove ')+who+(action==='add'?' to ':' from ')+'the '+label+' list? This is recorded with your name and the time.')) return;
+  if(!await ccAsk((action==='add'?'Add ':'Remove ')+who+(action==='add'?' to ':' from ')+'the '+label+' list? This is recorded with your name and the time.')) return;
   if(btn) btn.disabled=true; say('Saving…');
   try{
     const { data:{ session } } = await sb.auth.getSession();
     const r=await fetch(ONB_FN,{ method:'POST', headers:{ 'Content-Type':'application/json', 'apikey':SUPA_ANON, 'Authorization':'Bearer '+(session?session.access_token:'') }, body:JSON.stringify({ action, kind, person_id }) });
     const j=await r.json().catch(()=>({}));
-    if(!r.ok||!j.ok){ say('Not saved'); ONB_REFUSED={ kind, error:(j&&j.error)||('error '+r.status) }; alert('Not changed: '+ONB_REFUSED.error); }
+    if(!r.ok||!j.ok){ say('Not saved'); ONB_REFUSED={ kind, error:(j&&j.error)||('error '+r.status) }; ccTell('Not changed: '+ONB_REFUSED.error); }
     else { say('Saved'); ONB_PERMS=j; ONB_REFUSED=null; }
-  }catch(e){ say('Not saved'); ONB_REFUSED={ kind, error:'could not reach the permissions function.' }; alert('Not changed: could not reach the permissions function.'); }
+  }catch(e){ say('Not saved'); ONB_REFUSED={ kind, error:'could not reach the permissions function.' }; ccTell('Not changed: could not reach the permissions function.'); }
   if(btn) btn.disabled=false;
   renderOnboarding();
 }
@@ -713,7 +743,7 @@ async function onbSaveTiming(btn){
   const offer=onbParseDays('onb_offer'), s1=onbParseDays('onb_step1'), s2=onbParseDays('onb_step2');
   const n=(id,lo,hi)=>{ const v=Number((document.getElementById(id)||{}).value); return Number.isInteger(v)&&v>=lo&&v<=hi?v:null; };
   const hour=n('onb_hour',6,22), sd=n('onb_sentdue',1,10), vd=n('onb_verifydue',1,10), fd=n('onb_finaldue',1,10);
-  if(!offer||!s1||!s2||hour===null||sd===null||vd===null||fd===null){ alert('Each reminder box needs whole days (for example 2, 5); deadlines are 1 to 10 business days; the hour is 6 to 22.'); return; }
+  if(!offer||!s1||!s2||hour===null||sd===null||vd===null||fd===null){ ccTell('Each reminder box needs whole days (for example 2, 5); deadlines are 1 to 10 business days; the hour is 6 to 22.'); return; }
   if(btn) btn.disabled=true;
   const out=await mergeSave('ops_settings',(m,base)=>{
     const cur=onbSettings(base), next={ offer_days:offer, step1_days:s1, step2_days:s2, due_hour:hour, step2_sent_due_days:sd, verify_due_days:vd, final_approval_due_days:fd };
@@ -736,26 +766,26 @@ async function onbHolidaysApply(apply, what){
 }
 async function onbHolidayAdd(btn){
   const d=(document.getElementById('onb_hdate')||{}).value||'', name=((document.getElementById('onb_hname')||{}).value||'').trim().slice(0,80);
-  if(!/^\d{4}-\d{2}-\d{2}$/.test(d)){ alert('Pick a date first.'); return; }
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(d)){ ccTell('Pick a date first.'); return; }
   if(btn) btn.disabled=true;
   await onbHolidaysApply(cur=>{ if(cur.some(h=>h.date===d)) return null; cur.push({ date:d, name:name||'Office closed' }); return cur.sort((a,b)=>a.date<b.date?-1:1); }, 'added '+d+(name?' '+name:''));
   if(btn) btn.disabled=false;
 }
 async function onbHolidayRemove(d, btn){
-  if(!confirm('Remove '+d+' from the company holidays?')) return;
+  if(!await ccAsk('Remove '+d+' from the company holidays?')) return;
   if(btn) btn.disabled=true;
   await onbHolidaysApply(cur=>cur.filter(h=>h.date!==d), 'removed '+d);
   if(btn) btn.disabled=false;
 }
 async function onbHolidaysFederal(y, btn){
-  if(!confirm('Add the '+y+' federal holidays (eleven dates, with the federal observed days)? You can remove any the office does not observe.')) return;
+  if(!await ccAsk('Add the '+y+' federal holidays (eleven dates, with the federal observed days)? You can remove any the office does not observe.')) return;
   if(btn) btn.disabled=true;
   await onbHolidaysApply(cur=>{ let added=0; for(const h of onbFederal(y)) if(!cur.some(x=>x.date===h.date)){ cur.push(h); added++; } return added?cur.sort((a,b)=>a.date<b.date?-1:1):null; }, 'added the '+y+' federal holidays');
   if(btn) btn.disabled=false;
 }
 async function onbSaveChecklist(btn){
   const items=((document.getElementById('onb_checklist')||{}).value||'').split('\n').map(s=>s.trim().slice(0,120)).filter(Boolean);
-  if(!items.length){ alert('The checklist needs at least one item.'); return; }
+  if(!items.length){ ccTell('The checklist needs at least one item.'); return; }
   if(btn) btn.disabled=true;
   const out=await mergeSave('ops_settings',(m,base)=>{
     const cur=onbChecklist(base); if(JSON.stringify(cur.items)===JSON.stringify(items)) return [];
@@ -1161,23 +1191,23 @@ async function okEdit(which, btn){
   const st = OPS || {};
   let key, val, label;
   if(which === 'num'){
-    const v = prompt('Oklahoma sending number (a number in the Caring Companions GoHighLevel account):', okFmt(st.ok_from_number) || '(405) 500-1758'); if(v === null) return;
+    const v = await ccAskText('Oklahoma sending number (a number in the Caring Companions GoHighLevel account):', okFmt(st.ok_from_number) || '(405) 500-1758'); if(v === null) return;
     const d = v.replace(/\D/g, '').replace(/^1(?=\d{10}$)/, '');
-    if(d.length !== 10){ alert('That is not a 10-digit phone number. Nothing was saved.'); return; }
+    if(d.length !== 10){ ccTell('That is not a 10-digit phone number. Nothing was saved.'); return; }
     key = 'ok_from_number'; val = '+1' + d; label = okFmt(val);
   } else {
-    const v = prompt('Oklahoma video interview link (Zoom or Google Meet, starts with https://):', st.ok_interview_link || ''); if(v === null) return;
-    if(!okLinkOk(v)){ alert('That is not a Zoom or Google Meet link (it should start with https://...zoom.us/ or https://meet.google.com/). Nothing was saved.'); return; }
+    const v = await ccAskText('Oklahoma video interview link (Zoom or Google Meet, starts with https://):', st.ok_interview_link || ''); if(v === null) return;
+    if(!okLinkOk(v)){ ccTell('That is not a Zoom or Google Meet link (it should start with https://...zoom.us/ or https://meet.google.com/). Nothing was saved.'); return; }
     key = 'ok_interview_link'; val = v.trim(); label = val;
   }
-  if(!confirm('Save the ' + (which === 'num' ? 'Oklahoma sending number' : 'Oklahoma video interview link') + '?\n\n' + label)) return;
+  if(!await ccAsk('Save the ' + (which === 'num' ? 'Oklahoma sending number' : 'Oklahoma video interview link') + '?\n\n' + label)) return;
   if(btn) btn.disabled = true;
   const out = await mergeSave('ops_settings', (m) => { m[key] = val; return [key]; });
   if(btn) btn.disabled = false;
   if(out.ok){ if(out.data) OPS = out.data;
     recordEvent({ verb:'setting_changed', item_id:'ops_settings', area:'admin', summary:ME.email.split('@')[0] + ' set ' + (which === 'num' ? 'the Oklahoma sending number to ' : 'the Oklahoma video interview link to ') + label, data:{ [key]: val } })
       .then(r => { if(r && r.error) console.warn('[op_events] not recorded:', r.error.message); }, e => console.warn('[op_events] not recorded:', e)); }
-  else alert('Not saved. Try again.');
+  else ccTell('Not saved. Try again.');
   renderSwitches();
 }
 window.okEdit = okEdit;
@@ -1196,18 +1226,18 @@ function tpHtml(st){
 }
 async function tpEdit(btn){
   const cur=tpLists(OPS||{});
-  const ph=prompt('Test phone numbers (ours only), separated by commas. Leave empty for none:', cur.phones.join(', ')); if(ph===null) return;
-  const em=prompt('Test emails (ours only), separated by commas. Leave empty for none:', cur.emails.join(', ')); if(em===null) return;
+  const ph=await ccAskText('Test phone numbers (ours only), separated by commas. Leave empty for none:', cur.phones.join(', ')); if(ph===null) return;
+  const em=await ccAskText('Test emails (ours only), separated by commas. Leave empty for none:', cur.emails.join(', ')); if(em===null) return;
   const phones=[...new Set(ph.split(',').map(x=>x.replace(/\D/g,'').slice(-10)).filter(x=>x.length===10))];
   const emails=[...new Set(em.split(',').map(x=>x.trim().toLowerCase()).filter(x=>/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(x)))];
-  if(!confirm('Save the test list?\n\nPhones: '+(phones.join(', ')||'none')+'\nEmails: '+(emails.join(', ')||'none')+'\n\nAnyone reachable only at these gets the onboarding texts and emails even with the switches off.')) return;
+  if(!await ccAsk('Save the test list?\n\nPhones: '+(phones.join(', ')||'none')+'\nEmails: '+(emails.join(', ')||'none')+'\n\nAnyone reachable only at these gets the onboarding texts and emails even with the switches off.')) return;
   if(btn) btn.disabled=true;
   const out=await mergeSave('ops_settings',(m,base)=>{ m.test_people={ phones, emails, set_by:ME.email, set_at:new Date().toISOString() }; return ['Test people: '+(phones.length+emails.length)+' address(es)']; });
   if(btn) btn.disabled=false;
   if(out.ok){ if(out.data) OPS=out.data;
     recordEvent({ verb:'setting_changed', item_id:'ops_settings', area:'admin', summary:ME.email.split('@')[0]+' changed the test people list: '+(phones.concat(emails).join(', ')||'none'), data:{ test_people:{ phones, emails } } })
       .then(r=>{ if(r&&r.error) console.warn('[op_events] not recorded:', r.error.message); }, e=>console.warn('[op_events] not recorded:', e)); }
-  else alert('Not saved. Try again.');
+  else ccTell('Not saved. Try again.');
   renderSwitches();
 }
 window.tpEdit=tpEdit;
@@ -1215,8 +1245,8 @@ function swFind(k){ for(const [,list] of SWITCHES){ const sw=list.find(x=>x.k===
 async function swToggle(k, btn){
   const sw=swFind(k); if(!sw || sw.readOnly) return;
   const on=!swIsOn(sw, OPS);
-  if(on && sw.needs && (OPS||{})[sw.needs]!==true){ alert('Can\'t turn this on yet: '+sw.needsWhy+'.'); return; }
-  if(!confirm(on?sw.on:sw.off)) return;
+  if(on && sw.needs && (OPS||{})[sw.needs]!==true){ ccTell('Can\'t turn this on yet: '+sw.needsWhy+'.'); return; }
+  if(!await ccAsk(on?sw.on:sw.off)) return;
   if(btn) btn.disabled=true;
   let refused='';
   const out=await mergeSave('ops_settings',(m,base)=>{
@@ -1229,7 +1259,7 @@ async function swToggle(k, btn){
     return ch;
   });
   if(btn) btn.disabled=false;
-  if(refused){ alert('Not changed: '+refused+'.'); }
+  if(refused){ ccTell('Not changed: '+refused+'.'); }
   if(out.ok){
     if(out.data) OPS=out.data;
     if(out.changed && out.changed.length){

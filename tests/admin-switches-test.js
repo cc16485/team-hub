@@ -5,7 +5,7 @@
 const fs = require('fs'), path = require('path'), vm = require('vm');
 const html = fs.readFileSync(path.join(__dirname, '..', 'admin.html'), 'utf8');
 const cut = (from, to) => { const a = html.indexOf(from), b = html.indexOf(to, a + 1); if (a < 0 || b < 0) throw new Error('not found: ' + from); return html.slice(a, b); };
-const code = [cut('async function readKeyV(', '/* ── status'), cut('/* ── Switches', 'async function boot(){')].join('\n')
+const code = [cut('const CC_FRAMED', 'const SUPA_URL='), cut('async function readKeyV(', '/* ── status'), cut('/* ── Switches', 'async function boot(){')].join('\n')
   .replace('const CC_SETTINGS=', 'var CC_SETTINGS=').replace('const SWITCHES=', 'var SWITCHES=');
 let pass = 0, fail = 0;
 const ck = (n, ok, x) => { ok ? pass++ : fail++; console.log((ok ? 'PASS  ' : 'FAIL  ') + n + (ok || x === undefined ? '' : '  ' + JSON.stringify(x).slice(0, 700))); };
