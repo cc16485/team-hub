@@ -880,6 +880,15 @@ const SWITCHES=[
     { k:'applicant_msgs_v2_live', name:'New applicant messages', what:'The warmer applicant texts and emails: first invite 10 minutes after finishing, "finish your application" texts, confirmation email at any hour, the 2-days-before note, YES / NO on the day-before text (a clear NO frees the interview time), the entrance photo an hour before. Off: the older messages, exactly as before.',
       on:'Turn on the new applicant messages?\n\nFrom the next 15-minute run, applicants get the new wording and timing. Texts still only go 8am to 6pm to people who said yes to texts; opt-outs are still checked. A clear NO to the day-before text cancels that interview and frees the time.',
       off:'Turn off the new applicant messages? From the next run, applicants get the older messages again. Nothing already sent is affected.' },
+    /* 808 (2026-10-16, Samantha: "Approve the Oklahoma applicant messages plan with all five decisions as you recommended"):
+       Caring Companions Oklahoma applicants (the position Companion). Every Oklahoma message goes from the Oklahoma number
+       below, never from 417. Off = held, as since 806. References, Step 2 and offers stay held for Oklahoma either way. */
+    { k:'ok_applicant_office_msgs_live', name:'Oklahoma office messages', what:'For Oklahoma applicants: the Text button, the not-hiring and candidate pool messages, the no-show message and the cancel notice, sent from the Oklahoma number below in Oklahoma wording. Off: held (the Hub says "Call from (405) 500-1758 in LeadConnector").',
+      on:'Turn on Oklahoma office messages?\n\nFrom now, the office can text Oklahoma applicants from the Hub, and the not-hiring, candidate pool and no-show messages go to them, all FROM the Oklahoma number below. Texts still go 8am to 6pm only to people who said yes to texts; opt-outs are still checked.',
+      off:'Turn off Oklahoma office messages? Oklahoma applicants get nothing from the Hub\'s buttons again (held). Nothing already sent is affected.' },
+    { k:'ok_applicant_auto_msgs_live', name:'Oklahoma interview messages', what:'For Oklahoma applicants, automatically: "you\'re booked" with the video link, the day-before reminder (YES / NO) and the cancelled notice, from the Oklahoma number. Needs the video interview link below. No "finish your application" or "pick a time" texts in Oklahoma (the recruiter calls).',
+      on:'Turn on Oklahoma interview messages?\n\nFrom the next 15-minute run, Oklahoma applicants with a booked video interview get "you\'re booked" (with your video link), the reminder the day before, and a notice if it is cancelled, FROM the Oklahoma number. Without a video link set, nothing goes and a Needs Attention card says why.',
+      off:'Turn off Oklahoma interview messages? From the next run, Oklahoma interview messages are held again. Nothing already sent is affected.' },
     { k:'applicant_msgs_krystal_named', name:"Krystal's name in applicant messages", what:'On: follow-ups say "it\'s Krystal at Caring Companions" and confirmations name Krystal when she is the interviewer. Off: "the Caring Companions Team", and "our team" for her interviews. Only turn on once Krystal has agreed.',
       on:'Turn on Krystal\'s name? Only if Krystal has agreed. From the next run, follow-ups are signed by Krystal and her interviews name her.',
       off:'Turn off Krystal\'s name? From the next run, messages say "the Caring Companions Team" and her interviews say "our team".' },
@@ -1125,8 +1134,43 @@ function renderSwitches(){
       return '<div class="swrow">'+chip+'<div class="grow"><div class="what">'+esc(sw.name)+'</div><div class="why">'+esc(sw.what)
         +(blocked?' <b>Can\'t turn on yet: '+esc(sw.needsWhy)+'.</b>':'')+'</div></div>'+btn+'</div>';
     }).join('')).join('')
-    + tpHtml(st);
+    + tpHtml(st) + okHtml(st);
 }
+/* 808: the Oklahoma sending number and the Oklahoma video interview link (her words 2026-10-16: "I want Zoom interviews set up
+   like an easy link - or could be google meet interview"). Saved with mergeSave, recorded with who changed it. */
+const okFmt = p => { const d = String(p || '').replace(/\D/g, '').slice(-10); return d.length === 10 ? '(' + d.slice(0, 3) + ') ' + d.slice(3, 6) + '-' + d.slice(6) : ''; };
+const okLinkOk = u => /^https:\/\/([\w-]+\.)*(zoom\.us|meet\.google\.com)\/\S+$/i.test(String(u || '').trim()) && String(u).length <= 300;
+function okHtml(st){
+  const n = okFmt(st.ok_from_number), l = String(st.ok_interview_link || '');
+  const row = (cls, label, what, now, btn) => '<div class="swrow tp"><span class="chip ' + cls + '">' + label + '</span><div class="grow"><div class="what">' + what + '</div><div class="why">' + now + '</div></div>' + btn + '</div>';
+  return '<div class="swgroup"><span>Caring Companions Oklahoma</span></div>'
+    + row(n ? 'ok' : 'warn', n ? 'Set' : 'Not set', 'Oklahoma sending number', 'Every text to an Oklahoma applicant goes from this number (it must be a number in the Caring Companions GoHighLevel account). Without it, Oklahoma texts are refused, never sent from 417. <b>Now: ' + esc(n || 'none') + '</b>', '<button class="btn" onclick="okEdit(\'num\',this)">Change</button>')
+    + row(okLinkOk(l) ? 'ok' : 'warn', okLinkOk(l) ? 'Set' : 'Not set', 'Oklahoma video interview link', 'Your Zoom personal room or Google Meet link. Oklahoma interviews are video interviews; every Oklahoma interview message carries this link. <b>Now: ' + esc(okLinkOk(l) ? l : 'none') + '</b>', '<button class="btn" onclick="okEdit(\'link\',this)">Change</button>');
+}
+async function okEdit(which, btn){
+  const st = OPS || {};
+  let key, val, label;
+  if(which === 'num'){
+    const v = prompt('Oklahoma sending number (a number in the Caring Companions GoHighLevel account):', okFmt(st.ok_from_number) || '(405) 500-1758'); if(v === null) return;
+    const d = v.replace(/\D/g, '').replace(/^1(?=\d{10}$)/, '');
+    if(d.length !== 10){ alert('That is not a 10-digit phone number. Nothing was saved.'); return; }
+    key = 'ok_from_number'; val = '+1' + d; label = okFmt(val);
+  } else {
+    const v = prompt('Oklahoma video interview link (Zoom or Google Meet, starts with https://):', st.ok_interview_link || ''); if(v === null) return;
+    if(!okLinkOk(v)){ alert('That is not a Zoom or Google Meet link (it should start with https://...zoom.us/ or https://meet.google.com/). Nothing was saved.'); return; }
+    key = 'ok_interview_link'; val = v.trim(); label = val;
+  }
+  if(!confirm('Save the ' + (which === 'num' ? 'Oklahoma sending number' : 'Oklahoma video interview link') + '?\n\n' + label)) return;
+  if(btn) btn.disabled = true;
+  const out = await mergeSave('ops_settings', (m) => { m[key] = val; return [key]; });
+  if(btn) btn.disabled = false;
+  if(out.ok){ if(out.data) OPS = out.data;
+    recordEvent({ verb:'setting_changed', item_id:'ops_settings', area:'admin', summary:ME.email.split('@')[0] + ' set ' + (which === 'num' ? 'the Oklahoma sending number to ' : 'the Oklahoma video interview link to ') + label, data:{ [key]: val } })
+      .then(r => { if(r && r.error) console.warn('[op_events] not recorded:', r.error.message); }, e => console.warn('[op_events] not recorded:', e)); }
+  else alert('Not saved. Try again.');
+  renderSwitches();
+}
+window.okEdit = okEdit;
 /* TEST PEOPLE (Samantha 2026-10-11, the practice run: "Pat Practice should have my phone number and email so I can see what
    happens"; "send everything to me"). A short list of OUR OWN phones and emails. A person reachable only at addresses on it gets
    the onboarding texts and emails even while the switches above are off; nobody else does. Never AxisCare. Every change is
