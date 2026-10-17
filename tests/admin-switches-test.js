@@ -107,7 +107,7 @@ const rows = (h) => h.split('<div class="swrow">').slice(1).map((r) => ({
   } else console.log('SKIP  the Care Coordinator Hub copy is not next to this folder, so the wording was not compared');
 
   { const d = R.find((r) => r.btn === 'family_choose_live')
-    ck('2026-10-16 Let me choose: one switch, off by default, under Shifts and visits, with a Turn on button', !!d && d.name === 'Family app: Let me choose' && !d.on && /Turn on/.test(d.text), d && d.text.slice(0, 300))
+    ck('2026-10-16 Let me choose: one switch, off by default, under Shifts and visits, with a Turn on button', !!d && d.name === 'Booking App: Let me choose' && !d.on && /Turn on/.test(d.text), d && d.text.slice(0, 300))
     const W3 = world(); await W3.X.swToggle('family_choose_live')
     ck('...it can\'t be turned on while caregiver offers are off (it says why), nothing saved', W3.alerts.some((x) => /aren't offered to caregivers yet/.test(x)) && W3.db.ops_settings.data.family_choose_live !== true, [W3.alerts, W3.db.ops_settings.data.family_choose_live])
     const W4 = world({ start: { ...START, family_offer_live: true, family_app_live: true } }); await W4.X.swToggle('family_choose_live')
