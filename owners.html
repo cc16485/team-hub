@@ -7,7 +7,7 @@
 <title>Owners Hub — Caring Companions</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cc.mo-care.com/lead-rules.js?v=15"></script>
-<script src="https://cc.mo-care.com/partner-rules.js?v=1"></script><script src="https://cc.mo-care.com/ghe-forms-rules.js?v=1"></script><!-- GHE scorecard (GHE fix slice 4, 2026-10-08): the same rules file the CC Hub's Nurse Scheduling runs --><!-- Referral Partner Desk (2026-10-08): owners, tiers and timing, the same file the CC Hub desk runs --><!-- Leads intake desk Stage 5 (2026-10-07): the same rules file the CC Hub runs; the owners' numbers come from it -->
+<script src="https://cc.mo-care.com/partner-rules.js?v=1"></script><script src="https://cc.mo-care.com/writeup-rules.js?v=1"></script><!-- Who approves a write-up (SOP ruling 2, 2026-10-17): the same rules file the CC Hub runs --><script src="https://cc.mo-care.com/ghe-forms-rules.js?v=1"></script><!-- GHE scorecard (GHE fix slice 4, 2026-10-08): the same rules file the CC Hub's Nurse Scheduling runs --><!-- Referral Partner Desk (2026-10-08): owners, tiers and timing, the same file the CC Hub desk runs --><!-- Leads intake desk Stage 5 (2026-10-07): the same rules file the CC Hub runs; the owners' numbers come from it -->
 <style>
   :root{ --navy:#0D365F; --navy2:#0D365F; --teal:#54BDB8; --gold:#F0A63A; --red:#DC2626; --red-bg:#FEE2E2;
     --amber:#B45309; --amber-bg:#FEF3C7; --green:#16A34A; --green-bg:#DCFCE7;
@@ -181,7 +181,7 @@
 <!-- ============ DISCIPLINE CENTER ============ -->
 <section class="panel" id="panel-discipline">
   <h2>Discipline Center</h2>
-  <div class="muted" style="margin-bottom:1rem">Write-ups are drafted in the Staffing Hub from logged events. <b>Only Samantha or Zach can approve discipline</b> — warnings and terminations alike — here or on the CC Hub overview.</div>
+  <div class="muted" style="margin-bottom:1rem">Write-ups are drafted on the CC Hub Write-Ups tab. <b>Leadership approves a second written warning, a final written warning or a suspension (Samantha or Zach) and a termination (Samantha only).</b> Coaching, verbal and first written warnings are the team's call: any Care Coordinator approves them on the CC Hub, and you can too. Nobody approves one they started.</div>
   <div id="disc-pending"></div>
   <div class="card">
     <b style="font-size:.95rem;color:var(--navy)">Ladder board — where every caregiver stands</b>
@@ -793,12 +793,14 @@ function renderDiscipline(){
     ? '<div class="card" style="border-color:#E8B4B4;background:#FFFBFA">'
       +'<b style="font-size:.95rem;color:var(--red)">Awaiting approval ('+pend.length+')</b>'
       +pend.map(a=>{
-        const held=!DISC_APPROVERS.includes(ME.email);
+        const can=discCanApproveOwner(a), held=!can.ok;
+        const team=typeof WriteupRules!=='undefined' && WriteupRules.tier(a,DISC_ACTIONS)==='team';
         return '<div style="padding:.7rem 0;border-bottom:1px solid var(--border)">'
         +'<div style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;font-size:.88rem">'
         +'<b>'+esc(a.caregiver)+'</b><span class="chip" style="background:var(--red-bg);color:var(--red)">'+esc(a.level)+'</span>'
+        +(team?'<span class="chip" style="background:#EEF2F7;color:#334155">team decision</span>':'')
         +'<span class="muted" style="flex:1;min-width:150px">'+esc(a.reason||'')+'</span>'
-        +(held?'<span class="muted" style="color:var(--amber)">🔒 only Samantha or Zach can approve</span>'
+        +(held?'<span class="muted" style="color:var(--amber)">🔒 '+esc(can.why)+'</span>'
           :'<button class="btn green" style="padding:.35rem .8rem;font-size:.75rem" onclick="approveWU(\''+a.id+'\')">✓ Approve</button>'
           +'<button class="btn ghost" style="padding:.35rem .8rem;font-size:.75rem" onclick="rejectWU(\''+a.id+'\')">↩ Send back</button>')
         +'</div>'
@@ -831,6 +833,14 @@ function renderDiscipline(){
 // discipline. Add a founder here and nowhere else.
 const OWNERS=['samantha@mo-care.com','zach@mo-care.com'];
 const DISC_APPROVERS=OWNERS;
+/* SOP ruling 2 (2026-10-17): the level and who started it decide, through the CC Hub's writeup-rules.js. Everyone on
+   this page is an owner, and owners can approve team levels too. If the rules file did not load, nothing is approvable
+   here rather than everything. */
+function discCanApproveOwner(a){
+  if(typeof WriteupRules==='undefined') return { ok:false, why:'the rules file (cc.mo-care.com/writeup-rules.js) did not load; reload the page' };
+  const e=String(ME.email||'').toLowerCase(), owner=DISC_APPROVERS.includes(e);
+  return WriteupRules.canApprove(a, { email:e, owner, team:owner }, DISC_ACTIONS);
+}
 
 // The app_data keys this page reads that must never be readable by regular
 // staff. The gate above is client-side and stops casual access; proper
@@ -840,14 +850,14 @@ const OWNER_KEYS=['discipline_actions','finance_snapshots','owner_settings',
                   'budget_lines','budget_actuals','offboardings','file_audits'];
 async function approveWU(id){
   const a=DISC_ACTIONS.find(x=>x.id===id); if(!a) return;
-  if(!DISC_APPROVERS.includes(ME.email)){ alert('Only Samantha or Zach can approve discipline.'); return; }
+  const can=discCanApproveOwner(a); if(!can.ok){ alert(can.why); return; }
   if(!confirm('Approve this '+a.level+' for '+a.caregiver+'? Your name goes on the approval.')) return;
-  a.status='approved'; a.approved_by=ME.name||ME.email; a.approved_at=new Date().toISOString();
+  a.status='approved'; a.approved_by=ME.name||ME.email; a.approved_by_email=String(ME.email||'').toLowerCase(); a.approved_at=new Date().toISOString();
   await save('discipline_actions',a); renderDiscipline();
 }
 async function rejectWU(id){
   const a=DISC_ACTIONS.find(x=>x.id===id); if(!a) return;
-  if(!DISC_APPROVERS.includes(ME.email)){ alert('Only Samantha or Zach can act on discipline.'); return; }
+  const can=discCanApproveOwner(a); if(!can.ok){ alert(can.why); return; }
   const why=prompt('Tell staffing what to change:',''); if(why===null) return;
   a.status='draft'; a.reject_note=why.trim()||'needs changes';
   await save('discipline_actions',a); renderDiscipline();
