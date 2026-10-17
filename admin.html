@@ -307,12 +307,18 @@ html.embedded .topbar .brandword{ display:none; }
    embedded page, which blocks the browser's own pop-ups (confirm / alert / prompt), so a click silently did nothing.
    Embedded, every question, message and text box is asked IN the page instead; in its own tab the browser's pop-ups work as before. */
 const CC_FRAMED = (()=>{ try{ return typeof window!=='undefined' && window.top!==window.self; }catch(_){ return true; } })();
+/* GoHighLevel can show this page in a frame taller than the screen, so "the middle of the page" may be far below what she sees
+   (her report 2026-10-16: "when i click it does nothing"). The box opens next to where she last clicked instead. */
+let CC_LAST_Y = null;
+if(typeof document!=='undefined' && document.addEventListener) document.addEventListener('pointerdown', (e)=>{ CC_LAST_Y = e.clientY; }, true);
 function ccModal(text, opt){
   opt=opt||{};
   return new Promise(res=>{
     const wrap=document.createElement('div');
     wrap.setAttribute('role','dialog'); wrap.setAttribute('aria-modal','true'); wrap.className='cc-ask';
-    wrap.style.cssText='position:fixed;inset:0;background:rgba(14,56,96,.35);display:flex;align-items:center;justify-content:center;z-index:99999;padding:16px;';
+    const near = CC_LAST_Y!=null ? Math.max(16, CC_LAST_Y - 120) : null;
+    wrap.style.cssText='position:fixed;inset:0;background:rgba(14,56,96,.35);display:flex;justify-content:center;z-index:99999;padding:16px;'
+      + (near!=null ? 'align-items:flex-start;padding-top:'+near+'px;' : 'align-items:center;');
     const box=document.createElement('div');
     box.style.cssText='background:#fff;border-radius:12px;max-width:520px;width:100%;padding:18px 18px 14px;box-shadow:0 10px 30px rgba(0,0,0,.2);font:15px/1.45 inherit;color:#1f2a36;';
     const msg=document.createElement('div'); msg.style.whiteSpace='pre-wrap'; msg.textContent=String(text==null?'':text); box.appendChild(msg);
@@ -327,7 +333,8 @@ function ccModal(text, opt){
     box.appendChild(row); wrap.appendChild(box); document.body.appendChild(wrap);
     const key=(e)=>{ if(e.key==='Escape'){ e.preventDefault(); done(opt.input?null:(opt.ask?false:undefined)); } else if(e.key==='Enter' && (inp?document.activeElement===inp:true)){ e.preventDefault(); ok.click(); } };
     document.addEventListener('keydown',key,true);
-    (inp||ok).focus();
+    (inp||ok).focus({ preventScroll:true });
+    try{ box.scrollIntoView({ block:'nearest' }); }catch(_){}
   });
 }
 function ccAsk(text){ return CC_FRAMED ? ccModal(text,{ask:true}) : Promise.resolve(confirm(text)); }
