@@ -126,6 +126,10 @@
     <div id="growth-leaddesk" style="margin-top:.5rem"><div class="muted">Loading…</div></div>
   </div>
   <div class="card">
+    <b style="font-size:.95rem;color:var(--navy)">New families from calls: is the AI tagging them right?</b>
+    <div id="growth-aitag" style="margin-top:.5rem"><div class="muted">Loading…</div></div>
+  </div>
+  <div class="card">
     <b style="font-size:.95rem;color:var(--navy)">Referral relationships: every partner, who owns it, and what it needs</b>
     <div id="growth-relationships" style="margin-top:.5rem"><div class="muted">Loading…</div></div>
   </div>
@@ -351,7 +355,7 @@ async function renderGrievanceLog(){
     +'</tbody></table></div>';
 }
 async function loadAll(){
-  const { data } = await sb.from('app_data').select('key,data').in('key',['attendance_events','discipline_actions','offboardings','offboardings_team','file_audits','settings','leads','ops_settings','referral_orgs','referral_activities','activities','finance_snapshots','owner_settings','budget_lines','budget_actuals','staffing_tasks','feedback','ghe_watch','ghe_forms','nurse_clients']);
+  const { data } = await sb.from('app_data').select('key,data').in('key',['attendance_events','discipline_actions','offboardings','offboardings_team','file_audits','settings','leads','ops_settings','referral_orgs','referral_activities','activities','finance_snapshots','owner_settings','budget_lines','budget_actuals','staffing_tasks','feedback','ghe_watch','ghe_forms','nurse_clients','call_lead_marks']);
   (data||[]).forEach(r=>{
     if(r.key==='attendance_events')  ATT_EVENTS=r.data||[];
     if(r.key==='discipline_actions') DISC_ACTIONS=r.data||[];
@@ -374,6 +378,7 @@ async function loadAll(){
     if(r.key==='ghe_watch')          GHE_WATCH=r.data||[];
     if(r.key==='ghe_forms')          GHE_FORMS=r.data||[];
     if(r.key==='nurse_clients')      NURSE_CLIENTS=r.data||[];
+    if(r.key==='call_lead_marks')    CALL_MARKS=r.data||[];
   });
   OFFBOARDINGS=mergeOffboardings(OFF_OWNER,OFF_TEAM);
 }
@@ -469,6 +474,51 @@ function renderRelationships(){
         +'<td style="padding:.3rem .4rem;border-bottom:1px solid var(--border);'+(r.overdue?'color:#B42318;font-weight:700':'')+'">'+esc(r.due)+(r.overdue&&r.overdue_days?' ('+r.overdue_days+'d late)':'')+'</td>'
         +'<td style="padding:.3rem .4rem;border-bottom:1px solid var(--border)">'+r.sent_12m+(r.became?' <span class="muted">· '+r.became+' became clients</span>':'')+'</td></tr>').join('')+'</tbody></table></div>')
     +'<div class="muted" style="font-size:.75rem;margin-top:.3rem">Owners and details are set on each partner\'s profile in the CC Hub (Referrers). Timing per tier is in the CC Hub\'s Settings, Referral partner desk.</div>';
+}
+/* NEW FAMILIES FROM CALLS (2026-10-18, her "build all"): how often the AI's "new family" tag on a call is right, from what
+   the office decided on each New family? card. Every call the AI tagged is counted once (its newest reading):
+     became a lead · the family's lead holds the call (from_calls), or the call was already on a lead
+     not a lead    · someone tapped Not a lead (call_lead_marks verdict 'not'), with who it really was
+     waiting       · nobody has decided yet
+     missed        · a lead was made from a call (Make this a lead) that the AI did NOT tag as a new family
+   Right = became a lead out of everything decided. */
+let CALL_MARKS=[];
+const AITAG_WHY={ caregiver:'caregiver or applicant', current:'current client or family', referral:'referral partner', spam:'spam or sales', other:'something else' };
+function aiTagNumbers(readings, leads, marks, days, nowMs){
+  const from=(nowMs||Date.now())-days*864e5, inP=t=>{ const x=Date.parse(t||''); return isFinite(x)&&x>=from; };
+  const newest={}; (readings||[]).forEach(r=>{ if(r&&r.message_id&&(!newest[r.message_id]||String(r.read_at||'')>String(newest[r.message_id].read_at||''))) newest[r.message_id]=r; });
+  const onLead={}; (leads||[]).forEach(l=>(Array.isArray(l&&l.from_calls)?l.from_calls:[]).forEach(c=>{ if(c&&c.message_id) onLead[c.message_id]={ lead:l, at:c.at }; }));
+  const notMark={}; (marks||[]).forEach(m=>{ if(m&&m.id&&m.verdict==='not') notMark[m.id]=m; });
+  const o={ tagged:0, lead:0, not:0, waiting:0, missed:0, why:{} };
+  Object.values(newest).forEach(r=>{
+    if(r.call_type!=='new_client_inquiry'||!inP(r.call_at)) return;
+    o.tagged++;
+    if(onLead[r.message_id]||r.lead_id) o.lead++;
+    else if(notMark[r.message_id]){ o.not++; const k=notMark[r.message_id].reason||'unsaid'; o.why[k]=(o.why[k]||0)+1; }
+    else o.waiting++;
+  });
+  Object.keys(onLead).forEach(id=>{ const r=newest[id]; const at=(r&&r.call_at)||onLead[id].at; if(inP(at)&&(!r||r.call_type!=='new_client_inquiry')) o.missed++; });
+  o.right=(o.lead+o.not)?Math.round(o.lead/(o.lead+o.not)*100):null;
+  return o;
+}
+function aiTagRead(){ return sb.from('call_task_reading').select('message_id, call_type, call_at, read_at, lead_id').eq('channel','call').gte('call_at',new Date(Date.now()-30*864e5).toISOString()).order('read_at',{ascending:false}).limit(3000); }
+async function renderAiTag(){
+  const box=document.getElementById('growth-aitag'); if(!box) return;
+  const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  let rows=[];
+  try{
+    const { data, error }=await aiTagRead();
+    if(error) throw error; rows=data||[];
+  }catch(e){ box.innerHTML='<div class="muted">The call readings could not be read just now, so these numbers are not shown rather than guessed. Reload the page.</div>'; return; }
+  const td=(v,al)=>'<td style="padding:.3rem .4rem;border-bottom:1px solid var(--border);text-align:'+(al||'right')+'">'+v+'</td>';
+  const th=(x,i)=>'<th style="text-align:'+(i?'right':'left')+';padding:.3rem .4rem;border-bottom:1px solid var(--border)">'+x+'</th>';
+  const line=(label,o)=>'<tr>'+td(label,'left')+td(o.tagged)+td(o.lead)+td(o.not+(o.not?' <span class="muted">('+esc(Object.entries(o.why).map(([k,n])=>(AITAG_WHY[k]||'no reason given')+(n>1?' '+n:'')).join(', '))+')</span>':''))+td(o.waiting)
+    +td(o.missed,'right')+td(o.right==null?'<span class="muted">nothing decided yet</span>':'<b style="color:'+(o.right>=80?'#15803D':o.right>=60?'#B45309':'#DC2626')+'">'+o.right+'%</b>')+'</tr>';
+  const w=aiTagNumbers(rows,LEADS,CALL_MARKS,7), m=aiTagNumbers(rows,LEADS,CALL_MARKS,30);
+  box.innerHTML='<div class="muted" style="font-size:.78rem;margin-bottom:.4rem">Every call the AI tagged as a new family, and what the office decided on its New family? card. Missed = a lead made from a call the AI did not tag.</div>'
+    +'<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:.82rem;min-width:620px"><thead><tr>'
+    +['','AI said new family','Became leads','Not a lead (who it was)','Not decided yet','Leads it missed','Right'].map(th).join('')+'</tr></thead><tbody>'
+    +line('Last 7 days',w)+line('Last 30 days',m)+'</tbody></table></div>';
 }
 function renderLeadDesk(){
   const box=document.getElementById('growth-leaddesk'); if(!box) return;
@@ -1104,7 +1154,7 @@ async function boot(){
   document.getElementById('app').style.display='block';
   await loadAll();
   renderDiscipline(); renderOffboarding(); renderAudits(); renderOwnersFeedback();
-  renderMoney(); renderBudget(); renderFunnel(); renderLeadDesk(); renderRelationships(); renderGheScorecard(); renderGrievanceLog(); renderOwnerInbox(); loadGrowthPulse(); loadHiringFunnel();
+  renderMoney(); renderBudget(); renderFunnel(); renderLeadDesk(); renderAiTag(); renderRelationships(); renderGheScorecard(); renderGrievanceLog(); renderOwnerInbox(); loadGrowthPulse(); loadHiringFunnel();
 }
 boot();
 </script>
