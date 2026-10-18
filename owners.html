@@ -197,7 +197,7 @@
 <!-- ============ OFFBOARDING ============ -->
 <section class="panel" id="panel-offboarding">
   <h2>Offboarding</h2>
-  <div class="muted" style="margin-bottom:1rem">Every separation — resignation or termination — runs the same checklist, so nothing is missed and every exit looks the same if it's ever questioned. Samantha signs off before any termination proceeds.</div>
+  <div class="muted" id="off-intro" style="margin-bottom:1rem">Every separation, resignation or termination, runs the same checklist, so nothing is missed and every exit looks the same if it's ever questioned. Samantha signs off before any termination proceeds.</div>
   <div class="card noprint">
     <b style="font-size:.95rem;color:var(--navy)">Start an offboarding</b>
     <div style="display:flex;gap:.6rem;flex-wrap:wrap;align-items:center;margin-top:.5rem">
@@ -351,11 +351,12 @@ async function renderGrievanceLog(){
     +'</tbody></table></div>';
 }
 async function loadAll(){
-  const { data } = await sb.from('app_data').select('key,data').in('key',['attendance_events','discipline_actions','offboardings','file_audits','settings','leads','ops_settings','referral_orgs','referral_activities','activities','finance_snapshots','owner_settings','budget_lines','budget_actuals','staffing_tasks','feedback','ghe_watch','ghe_forms','nurse_clients']);
+  const { data } = await sb.from('app_data').select('key,data').in('key',['attendance_events','discipline_actions','offboardings','offboardings_team','file_audits','settings','leads','ops_settings','referral_orgs','referral_activities','activities','finance_snapshots','owner_settings','budget_lines','budget_actuals','staffing_tasks','feedback','ghe_watch','ghe_forms','nurse_clients']);
   (data||[]).forEach(r=>{
     if(r.key==='attendance_events')  ATT_EVENTS=r.data||[];
     if(r.key==='discipline_actions') DISC_ACTIONS=r.data||[];
-    if(r.key==='offboardings')       OFFBOARDINGS=r.data||[];
+    if(r.key==='offboardings')       OFF_OWNER=r.data||[];
+    if(r.key==='offboardings_team')  OFF_TEAM=r.data||[];
     if(r.key==='file_audits')        AUDITS=r.data||[];
     if(r.key==='settings')           STAFF_SETTINGS=r.data||{};
     if(r.key==='leads')              LEADS=r.data||[];
@@ -374,6 +375,7 @@ async function loadAll(){
     if(r.key==='ghe_forms')          GHE_FORMS=r.data||[];
     if(r.key==='nurse_clients')      NURSE_CLIENTS=r.data||[];
   });
+  OFFBOARDINGS=mergeOffboardings(OFF_OWNER,OFF_TEAM);
 }
 async function save(key,item){
   const { error } = await sb.rpc('upsert_app_data_item',{ target_key:key, item });
@@ -865,27 +867,73 @@ async function rejectWU(id){
 
 /* ---------------- Offboarding ---------------- */
 const OFF_STEPS_BASE=[
-  'Personnel file reviewed — attendance record, warnings and reason documented and consistent',
-  'Final schedule confirmed — no shifts assigned after the last day (check Open Shifts for coverage)',
-  'AxisCare: caregiver DEACTIVATED (never deleted — records are retained for audits)',
+  'Personnel file reviewed: attendance record, warnings and reason documented and consistent',
+  'Final schedule confirmed: no shifts assigned after the last day (check Open Shifts for coverage)',
+  'AxisCare: caregiver DEACTIVATED (never deleted; records are retained for audits)',
   'Viventium: separation processed; final pay issued per Missouri final-paycheck rules',
   'EVV / app / hub access removed; passwords or shared codes rotated if they had any',
-  'Company property returned (badge, keys, supplies) — or documented as unreturned',
+  'Company property returned (badge, keys, supplies), or documented as unreturned',
   'Clients reassigned and notified through their care coordinator',
-  'Training records and certificates archived (kept — state audit retention)',
+  'Training records and certificates archived (kept for state audit retention)',
   'Exit note added to the personnel file (voluntary: forwarding contact; involuntary: final documentation)',
 ];
 const OFF_TERM_STEP='Samantha\'s final termination sign-off (required BEFORE the employee is told)';
+/* Who runs which offboarding (Samantha, 2026-10-18): the Springfield lead runs Resignation and End of assignment;
+   Samantha runs Termination and her sign-off stays required before the employee is told. So the checklists live in two
+   app_data slots: 'offboardings' (Termination, owners only in the database since 576) and 'offboardings_team'
+   (Resignation and End of assignment, owners and the Springfield lead; the database refuses a Termination there, 916).
+   Owners see both as one list. The lead sees, reads and saves only 'offboardings_team'. */
+const OFF_TEAM_KEY='offboardings_team';
+let OFF_OWNER=[], OFF_TEAM=[], LEAD_MODE=false;
+const offKey=o=>o.kind==='Termination'?'offboardings':OFF_TEAM_KEY;
+function mergeOffboardings(own,team){
+  const seen=new Set(), out=[];
+  (team||[]).concat(own||[]).forEach(o=>{ if(o&&o.id&&!seen.has(o.id)){ seen.add(o.id); out.push(o); } });
+  return out;
+}
+/* The Springfield lead is whoever holds the springfield_lead role in staff_roles (Krystal now), same test as admin.html. */
+async function holdsLeadRole(email){
+  try{
+    const { data:ppl, error:e1 }=await sb.from('persons').select('person_id, primary_email');
+    if(e1) return false;
+    const ids=(ppl||[]).filter(p=>String(p.primary_email||'').toLowerCase()===email).map(p=>p.person_id);
+    if(!ids.length) return false;
+    const { data:roles, error:e2 }=await sb.from('staff_roles').select('person_id, role').eq('entity','cc_ihs').in('person_id', ids);
+    if(e2) return false;
+    return (roles||[]).some(r=>r.role==='springfield_lead');
+  }catch(e){ return false; }
+}
+/* Springfield lead view: the Offboarding section only. Every other tab and panel is removed from the page and none of
+   their data is read; the only slot read is 'offboardings_team'. */
+async function bootLeadOffboarding(){
+  document.querySelectorAll('nav.tabs button').forEach(b=>{ if(b.dataset.t!=='offboarding') b.remove(); });
+  document.querySelectorAll('.panel').forEach(p=>{ if(p.id!=='panel-offboarding') p.remove(); });
+  document.querySelector('nav.tabs button[data-t="offboarding"]').classList.add('active');
+  document.getElementById('panel-offboarding').classList.add('active');
+  document.querySelector('header h1').textContent='Caregiver offboarding';
+  document.querySelector('header .sub').textContent='Resignations and end of assignment';
+  document.getElementById('who').textContent=ME.name+' · Springfield lead';
+  document.querySelectorAll('#off-kind option').forEach(o=>{ if(o.value==='Termination') o.remove(); });
+  document.getElementById('off-intro').textContent='Every resignation and end of assignment runs the same checklist, so nothing is missed and every exit looks the same if it is ever questioned. Terminations are started by Samantha.';
+  document.getElementById('notowner').style.display='none';
+  document.getElementById('app').style.display='block';
+  const { data, error } = await sb.from('app_data').select('key,data').eq('key',OFF_TEAM_KEY);
+  if(error){ document.getElementById('off-list').innerHTML='<div class="muted">The checklists could not be read. Reload the page.</div>'; return; }
+  OFF_TEAM=((data||[])[0]||{}).data||[];
+  OFFBOARDINGS=OFF_TEAM.filter(o=>o.kind!=='Termination');
+  renderOffboarding();
+}
 async function startOffboarding(){
   const name=document.getElementById('off-name').value.trim();
   if(!name){ alert('Employee name first.'); return; }
   const kind=document.getElementById('off-kind').value;
+  if(LEAD_MODE&&kind==='Termination'){ alert('Terminations are started by Samantha.'); return; }
   const steps=(kind==='Termination'?[OFF_TERM_STEP]:[]).concat(OFF_STEPS_BASE).map((s,i)=>({i,label:s,done_at:null,done_by:null}));
   const o={ id:'off'+Date.now(), name, kind, last_day:document.getElementById('off-last').value||'',
     reason:document.getElementById('off-reason').value.trim(), steps, status:'open',
     created_at:new Date().toISOString(), created_by:ME.name||ME.email };
   OFFBOARDINGS.push(o);
-  await save('offboardings',o);
+  await save(offKey(o),o);
   document.getElementById('off-name').value=''; document.getElementById('off-reason').value='';
   renderOffboarding();
 }
@@ -895,7 +943,7 @@ async function offStep(id,i,checked){
   o.steps[i].done_by=checked?(ME.name||ME.email):null;
   if(o.steps.every(s=>s.done_at)){ o.status='complete'; o.completed_at=new Date().toISOString(); }
   else o.status='open';
-  await save('offboardings',o); renderOffboarding();
+  await save(offKey(o),o); renderOffboarding();
 }
 function renderOffboarding(){
   const open=OFFBOARDINGS.filter(o=>o.status==='open');
@@ -911,7 +959,7 @@ function renderOffboarding(){
     +(o.reason?'<div class="muted" style="margin:.2rem 0 .4rem">'+esc(o.reason)+'</div>':'')
     +o.steps.map(s=>'<div class="checkrow"><input type="checkbox" '+(s.done_at?'checked':'')+' onchange="offStep(\''+o.id+'\','+s.i+',this.checked)">'
       +'<div style="'+(s.done_at?'color:var(--muted)':'')+'">'+esc(s.label)
-      +(s.done_at?'<div class="muted">✓ '+String(s.done_at).slice(0,10)+' — '+esc(s.done_by||'')+'</div>':'')+'</div></div>').join('')
+      +(s.done_at?'<div class="muted">✓ '+String(s.done_at).slice(0,10)+', '+esc(s.done_by||'')+'</div>':'')+'</div></div>').join('')
     +(o.status==='complete'?'<div style="color:var(--green);font-weight:700;font-size:.85rem;margin-top:.5rem">✓ Offboarding complete '+String(o.completed_at).slice(0,10)+'</div>':'')
     +'</div>';};
   document.getElementById('off-list').innerHTML=
@@ -1045,6 +1093,8 @@ async function boot(){
   // this stops casual access, not a determined technical user — the real
   // enforcement is RLS on the sensitive app_data keys (see OWNER_KEYS below).
   if(!OWNERS.includes(ME.email)){
+    LEAD_MODE=await holdsLeadRole(ME.email);
+    if(LEAD_MODE){ await bootLeadOffboarding(); return; }
     document.getElementById('notowner').style.display='flex';
     document.getElementById('app').style.display='none';
     return;                     // deliberately never loads the data
