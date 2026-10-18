@@ -816,7 +816,7 @@ function renderDiscipline(){
       +'<span class="muted">'+l.callins+' call-ins · '+l.tardies+' tardies'+(l.ncns?' · <b style="color:var(--red)">'+l.ncns+' NCNS</b>':'')+'</span>'
       +'<span style="flex:1"></span>'
       +(l.issued.length?'<span class="chip" style="background:var(--amber-bg);color:var(--amber)">'+l.issued.length+' warning'+(l.issued.length===1?'':'s')+' on file</span>':'')
-      +(l.termEligible?'<span class="chip" style="background:var(--red-bg);color:var(--red)">eligible for termination on next occurrence</span>':'')
+      +(l.termEligible?'<span class="chip" style="background:var(--red-bg);color:var(--red)">next step is leadership\'s (final warning or above)</span>':'')
       +'</div>';}).join('') : '<div class="muted">No attendance events logged yet (they\'re logged in the Staffing Hub).</div>';
   const archive=DISC_ACTIONS.filter(a=>a.status==='issued').sort((a,b)=>String(b.issued_at).localeCompare(String(a.issued_at)));
   document.getElementById('disc-archive').innerHTML = archive.length ? archive.map(a=>
