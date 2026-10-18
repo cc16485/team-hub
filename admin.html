@@ -1046,6 +1046,11 @@ const SWITCHES=[
       off:'Turn off changing visits from the Live Schedule? The calendar still shows everything; changes are made in AxisCare.' },
   ]],
   ['Today and the office', [
+    /* Team Work (Stage 1 of the My Work and Team Work plan, approved 2026-10-18, VZcAbTf7U5ZT8nQt2aXsLz): the on-duty pile
+       in My Work. The same switch and the same questions as the Care Coordinator Hub's Settings > Team Work. */
+    { k:'team_work_live', name:'Team Work', what:'Call-offs, missed clock-ins, same-day scheduling and time-sensitive family requests the Hub opened move from My Work to a Team Work tab until someone takes them, each with its responsible role, deadline and escalation path. The family keeps its Care Coordinator. Off: My Work as before; owners see a preview.',
+      on:'Turn on Team Work?\n\nFrom now:\n· call-offs, missed clock-ins, same-day scheduling and time-sensitive family requests the Hub opened move from My Work to a Team Work tab, until someone takes them\n· each one shows the responsible role, its deadline and its escalation path\n· the cards of a coordinator marked out today show there as Covering\n· Take it makes that one task yours; the family keeps its Care Coordinator\n\nNothing is texted, emailed or called because of this, and escalation rules are unchanged.',
+      off:'Turn off Team Work? Everyone’s My Work goes back to how it was; owners keep the preview. Cards already taken stay with whoever took them.' },
     /* My Desk 6b (2026-10-06): the shift-note reader suggests kind words; a person's yes puts them in the jar. No texts. */
     /* 2026-10-06: To talk about tags and threads email the people on the thread (talk-notify, Desktop 473) */
     { k:'talk_email_live', name:'To talk about emails', what:'When someone tags a person or replies on To talk about, everyone on that thread except the writer gets one email with the whole card. Office staff only.',
@@ -1162,6 +1167,7 @@ const HUB_SETTINGS=[
     ['calls-ring','Calls: your phone rings first','Who is linked to a GoHighLevel user, so the Hub\'s Call buttons ring their phone first.'],
     ['calls-ghl','Calls from GoHighLevel','Answered calls are read every 10 minutes; new-client calls become leads with a drafted follow-up.'] ]],
   ['Today and the office', [
+    ['team-work','Team Work','On or off, who is working (from the duty schedule) and who is out today, so their cards show as Covering.'],
     ['talk-emails','To talk about emails','Whether tags and replies on To talk about email the people on the thread.'],
     ['my-desk','My Desk','Who sees My Desk (each person\'s own planner page and sticky notes) while it is being tried, or everyone with a desk.'],
     ['routing','Right person first, then escalate','Who holds Operations, Staffing and Owner Escalation when nobody is scheduled.'],
