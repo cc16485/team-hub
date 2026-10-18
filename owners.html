@@ -7,7 +7,7 @@
 <title>Owners Hub — Caring Companions</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cc.mo-care.com/lead-rules.js?v=15"></script>
-<script src="https://cc.mo-care.com/partner-rules.js?v=1"></script><script src="https://cc.mo-care.com/writeup-rules.js?v=1"></script><!-- Who approves a write-up (SOP ruling 2, 2026-10-17): the same rules file the CC Hub runs --><script src="https://cc.mo-care.com/ghe-forms-rules.js?v=1"></script><!-- GHE scorecard (GHE fix slice 4, 2026-10-08): the same rules file the CC Hub's Nurse Scheduling runs --><!-- Referral Partner Desk (2026-10-08): owners, tiers and timing, the same file the CC Hub desk runs --><!-- Leads intake desk Stage 5 (2026-10-07): the same rules file the CC Hub runs; the owners' numbers come from it -->
+<script src="https://cc.mo-care.com/partner-rules.js?v=1"></script><script src="https://cc.mo-care.com/writeup-rules.js?v=3"></script><!-- Who approves a write-up (HR decisions, 2026-10-18): the same rules file the CC Hub runs --><script src="https://cc.mo-care.com/ghe-forms-rules.js?v=1"></script><!-- GHE scorecard (GHE fix slice 4, 2026-10-08): the same rules file the CC Hub's Nurse Scheduling runs --><!-- Referral Partner Desk (2026-10-08): owners, tiers and timing, the same file the CC Hub desk runs --><!-- Leads intake desk Stage 5 (2026-10-07): the same rules file the CC Hub runs; the owners' numbers come from it -->
 <style>
   :root{ --navy:#0D365F; --navy2:#0D365F; --teal:#54BDB8; --gold:#F0A63A; --red:#DC2626; --red-bg:#FEE2E2;
     --amber:#B45309; --amber-bg:#FEF3C7; --green:#16A34A; --green-bg:#DCFCE7;
@@ -185,7 +185,7 @@
 <!-- ============ DISCIPLINE CENTER ============ -->
 <section class="panel" id="panel-discipline">
   <h2>Discipline Center</h2>
-  <div class="muted" style="margin-bottom:1rem">Write-ups are drafted on the CC Hub Write-Ups tab. <b>Leadership approves a second written warning, a final written warning or a suspension (Samantha or Zach) and a termination (Samantha only).</b> Coaching, verbal and first written warnings are the team's call: any Care Coordinator approves them on the CC Hub, and you can too. Nobody approves one they started.</div>
+  <div class="muted" style="margin-bottom:1rem">Write-ups are drafted on the CC Hub Write-Ups tab, which only Samantha and Zach see. <b>Zach, the HR lead, approves every write-up from a verbal warning up, including a termination.</b> When a case involves protected leave, an accommodation, an injury or workers' comp, a discrimination or harassment complaint, a retaliation concern, or another serious legal risk, Samantha is consulted first. Care Coordinators coach; coaching is not a write-up.</div>
   <div id="disc-pending"></div>
   <div class="card">
     <b style="font-size:.95rem;color:var(--navy)">Ladder board — where every caregiver stands</b>
@@ -201,7 +201,7 @@
 <!-- ============ OFFBOARDING ============ -->
 <section class="panel" id="panel-offboarding">
   <h2>Offboarding</h2>
-  <div class="muted" id="off-intro" style="margin-bottom:1rem">Every separation, resignation or termination, runs the same checklist, so nothing is missed and every exit looks the same if it's ever questioned. Samantha signs off before any termination proceeds.</div>
+  <div class="muted" id="off-intro" style="margin-bottom:1rem">Every separation, resignation or termination, runs the same checklist, so nothing is missed and every exit looks the same if it's ever questioned. Zach decides a termination before the employee is told; Samantha is consulted first when a protected situation is involved.</div>
   <div class="card noprint">
     <b style="font-size:.95rem;color:var(--navy)">Start an offboarding</b>
     <div style="display:flex;gap:.6rem;flex-wrap:wrap;align-items:center;margin-top:.5rem">
@@ -255,7 +255,7 @@
    HR & Compliance hub — lives at hub.mo-care.com/hr.html.
    Same shared Supabase project and logins as the other hubs; reads the
    discipline data the Staffing Hub writes, owns 'offboardings' and
-   'file_audits'. Termination decisions stay with samantha@mo-care.com.
+   'file_audits'. Termination decisions are Zach's (HR decisions, 2026-10-18), with Samantha consulted in protected cases.
    ========================================================================= */
 const SUPA_URL='https://zngsgedlsxinbygwmxwn.supabase.co';
 const SUPA_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpuZ3NnZWRsc3hpbmJ5Z3dteHduIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1NDIzNDQsImV4cCI6MjA5ODExODM0NH0.L_31_UKdccyRH9n7p1GaBlZTqcJipB008H-GIvxwLxM';
@@ -846,14 +846,17 @@ function renderDiscipline(){
       +'<b style="font-size:.95rem;color:var(--red)">Awaiting approval ('+pend.length+')</b>'
       +pend.map(a=>{
         const can=discCanApproveOwner(a), held=!can.ok;
-        const team=typeof WriteupRules!=='undefined' && WriteupRules.tier(a,DISC_ACTIONS)==='team';
+        const pw=(typeof WriteupRules!=='undefined' && WriteupRules.protectedWords)?WriteupRules.protectedWords(a):[];
+        const isSam=String(ME.email||'').toLowerCase()==='samantha@mo-care.com';
         return '<div style="padding:.7rem 0;border-bottom:1px solid var(--border)">'
         +'<div style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;font-size:.88rem">'
         +'<b>'+esc(a.caregiver)+'</b><span class="chip" style="background:var(--red-bg);color:var(--red)">'+esc(a.level)+'</span>'
-        +(team?'<span class="chip" style="background:#EEF2F7;color:#334155">team decision</span>':'')
+        +(pw.length?'<span class="chip" style="background:var(--amber-bg);color:var(--amber)">involves '+esc(pw.join(', '))+(a.samantha_consulted_at?' · Samantha consulted':'')+'</span>':'')
         +'<span class="muted" style="flex:1;min-width:150px">'+esc(a.reason||'')+'</span>'
-        +(held?'<span class="muted" style="color:var(--amber)">🔒 '+esc(can.why)+'</span>'
-          :'<button class="btn green" style="padding:.35rem .8rem;font-size:.75rem" onclick="approveWU(\''+a.id+'\')">✓ Approve</button>'
+        +(held&&!can.consult?'<span class="muted" style="color:var(--amber)">🔒 '+esc(can.why)+'</span>'
+          :(held?'<span class="muted" style="color:var(--amber)">Waiting on Samantha\'s consult</span>'
+              :'<button class="btn green" style="padding:.35rem .8rem;font-size:.75rem" onclick="approveWU(\''+a.id+'\')">✓ Approve</button>')
+          +(isSam&&pw.length&&!a.samantha_consulted_at?'<button class="btn ghost" style="padding:.35rem .8rem;font-size:.75rem" onclick="consultWU(\''+a.id+'\')">I was consulted</button>':'')
           +'<button class="btn ghost" style="padding:.35rem .8rem;font-size:.75rem" onclick="rejectWU(\''+a.id+'\')">↩ Send back</button>')
         +'</div>'
         +'<details style="margin-top:.35rem"><summary style="cursor:pointer;font-size:.75rem;color:var(--muted)">Read the full notice</summary><pre class="notice">'+esc(a.body||'')+'</pre></details>'
@@ -885,9 +888,9 @@ function renderDiscipline(){
 // discipline. Add a founder here and nowhere else.
 const OWNERS=['samantha@mo-care.com','zach@mo-care.com'];
 const DISC_APPROVERS=OWNERS;
-/* SOP ruling 2 (2026-10-17): the level and who started it decide, through the CC Hub's writeup-rules.js. Everyone on
-   this page is an owner, and owners can approve team levels too. If the rules file did not load, nothing is approvable
-   here rather than everything. */
+/* HR decisions (2026-10-18): the CC Hub's writeup-rules.js decides. Everyone on this page is an owner; Zach approves
+   every write-up, and a case marked as involving a protected situation waits for Samantha's consult. If the rules file
+   did not load, nothing is approvable here rather than everything. */
 function discCanApproveOwner(a){
   if(typeof WriteupRules==='undefined') return { ok:false, why:'the rules file (cc.mo-care.com/writeup-rules.js) did not load; reload the page' };
   const e=String(ME.email||'').toLowerCase(), owner=DISC_APPROVERS.includes(e);
@@ -900,8 +903,33 @@ function discCanApproveOwner(a){
 // exists, treat the gate as a lock on the door, not a safe.
 const OWNER_KEYS=['discipline_actions','finance_snapshots','owner_settings',
                   'budget_lines','budget_actuals','offboardings','file_audits'];
+/* Before approving: ask once whether the case involves a protected situation (HR decision 1). Same question the CC
+   Hub asks; the answer is kept on the case. Samantha answering yes counts as her consult. */
+async function protectedCheckWU(a){
+  if(Array.isArray(a.protected)) return true;
+  const list=(typeof WriteupRules!=='undefined' && WriteupRules.PROTECTED)||[];
+  const none=confirm('One check before you approve.\n\nDoes this case involve any of these?\n'+list.map(p=>'  · '+p.words).join('\n')
+    +'\n\nOK = none of these apply.\nCancel = at least one does, so Samantha is consulted before a final decision.');
+  const me=String(ME.email||'').toLowerCase(), now=new Date().toISOString();
+  if(none){ a.protected=[]; a.protected_checked_by=me; a.protected_checked_at=now; return true; }
+  const which=prompt('Which ones? Type any of: leave, accommodation, injury, discrimination, retaliation, legal. It is saved on the case so Samantha sees why.','');
+  if(which===null) return false;
+  const keys=list.map(p=>p.key).filter(k=>new RegExp('\\b'+k).test(which.toLowerCase()));
+  a.protected=keys.length?keys:['legal']; a.protected_note=which.trim(); a.protected_checked_by=me; a.protected_checked_at=now;
+  if(me==='samantha@mo-care.com'){ a.samantha_consulted_at=now; a.samantha_consult_note='Samantha approved it herself.'; return true; }
+  await save('discipline_actions',a); renderDiscipline();
+  alert('Saved. Talk to Samantha first: she marks the consult on this write-up, then you can approve it.');
+  return false;
+}
+async function consultWU(id){
+  const a=DISC_ACTIONS.find(x=>x.id===id); if(!a) return;
+  const note=prompt('You talked with Zach about this case. Anything to note? (optional)',''); if(note===null) return;
+  a.samantha_consulted_at=new Date().toISOString(); a.samantha_consult_note=note.trim();
+  await save('discipline_actions',a); renderDiscipline();
+}
 async function approveWU(id){
   const a=DISC_ACTIONS.find(x=>x.id===id); if(!a) return;
+  if(!(await protectedCheckWU(a))) return;
   const can=discCanApproveOwner(a); if(!can.ok){ alert(can.why); return; }
   if(!confirm('Approve this '+a.level+' for '+a.caregiver+'? Your name goes on the approval.')) return;
   a.status='approved'; a.approved_by=ME.name||ME.email; a.approved_by_email=String(ME.email||'').toLowerCase(); a.approved_at=new Date().toISOString();
@@ -927,9 +955,10 @@ const OFF_STEPS_BASE=[
   'Training records and certificates archived (kept for state audit retention)',
   'Exit note added to the personnel file (voluntary: forwarding contact; involuntary: final documentation)',
 ];
-const OFF_TERM_STEP='Samantha\'s final termination sign-off (required BEFORE the employee is told)';
+const OFF_TERM_STEP='Zach\'s termination decision recorded BEFORE the employee is told (Samantha consulted first if leave, an accommodation, an injury or workers\' comp, a discrimination or harassment complaint, or a retaliation concern is involved)';
 /* Who runs which offboarding (Samantha, 2026-10-18): the Springfield lead runs Resignation and End of assignment;
-   Samantha runs Termination and her sign-off stays required before the employee is told. So the checklists live in two
+   the owners run Termination. HR decisions (same day, later): Zach decides a termination, with Samantha consulted in
+   protected cases, before the employee is told. So the checklists live in two
    app_data slots: 'offboardings' (Termination, owners only in the database since 576) and 'offboardings_team'
    (Resignation and End of assignment, owners and the Springfield lead; the database refuses a Termination there, 916).
    Owners see both as one list. The lead sees, reads and saves only 'offboardings_team'. */
