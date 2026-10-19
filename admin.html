@@ -1072,6 +1072,11 @@ const SWITCHES=[
        in My Work. The same switch and the same questions as the Care Coordinator Hub's Settings > Team Work. */
     /* My Work tiers (Stage 2, approved 2026-10-18, EZ3uEb9WyBBuTRUWR91qYS): Today grouped by what the work is. Same switch
        and questions as the Care Coordinator Hub's Settings > My Work layout. */
+    /* Tracked Ask for help (Stage 2, approved 2026-10-18 rule 5): accept, decline, no answer. Same switch and questions as the
+       Care Coordinator Hub's Settings > Ask for help. */
+    { k:'ask_help_live', name:'Ask for help: accept or decline', what:'Ask for help records what is needed and by when; the person asked accepts (saying what they\'ll do) or declines (saying why); no answer in 15 minutes for urgent work, or by the end of their shift, shows as Help not answered. The card stays the owner\'s. Off: Ask for help just picks a person.',
+      on:'Turn on tracked Ask for help?\n\nFrom now:\n· Ask for help asks what you need and by when\n· the person asked accepts (saying what they’ll do) or declines (saying why)\n· no answer in 15 minutes for urgent work, or by the end of their shift, shows as "Help not answered"\n· the card stays the owner’s and open the whole time\n\nNothing is texted, emailed or called because of this.',
+      off:'Turn off tracked Ask for help? Ask for help goes back to picking a person, with no accept or decline. Asks already on cards stay in their history.' },
     { k:'my_work_tiers_live', name:'My Work layout: grouped', what:'Today shows Needs you now, then Relationship builders, Your leads, Your clients and tasks, and Hub reminders (compact, last, never in the red number). All mine grouped the same way. Off: one list by time; owners can preview it on Today.',
       on:'Turn on the new My Work layout?\n\nFrom now, everyone’s Today shows their work grouped: Needs you now, Relationship builders, Your leads, Your clients and tasks, and Hub reminders (compact, last, never in the red number). All mine is grouped the same way.\n\nNothing is texted, emailed or called because of this, and Team Work is unchanged.',
       off:'Turn off the new My Work layout? Today goes back to one list sorted by time. Nothing is lost.' },
@@ -1230,6 +1235,7 @@ const HUB_SETTINGS=[
     ['calls-ring','Calls: your phone rings first','Who is linked to a GoHighLevel user, so the Hub\'s Call buttons ring their phone first.'],
     ['calls-ghl','Calls from GoHighLevel','Answered calls are read every 10 minutes; new-client calls become leads with a drafted follow-up.'] ]],
   ['Today and the office', [
+    ['ask-help','Ask for help','On or off: asks are accepted, declined or run out, and the card stays the owner\'s.'],
     ['my-work-tiers','My Work layout','On or off: Today grouped into Relationship builders, Your leads, Your clients and tasks, and Hub reminders.'],
     ['team-work','Team Work','On or off, who is working (from the duty schedule) and who is out today, so their cards show as Covering.'],
     ['talk-emails','To talk about emails','Whether tags and replies on To talk about email the people on the thread.'],
