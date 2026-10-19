@@ -1059,6 +1059,13 @@ const SWITCHES=[
       needs:'care_notes_flag_live', needsWhy:'shift-note flags are not running',
       on:'Turn on kind words from shift notes?\n\nFrom the next shift-note run (every two hours), kind words a client or family member said, copied word for word from the caregiver\'s note, wait in the Kind Words jar under "Waiting for a yes". Only owners and coordinators see them. Nothing goes in the jar or on anyone\'s desk until one of you says yes.\n\nNobody is texted or emailed.',
       off:'Turn off kind words from shift notes? Nothing new is suggested. Anything already waiting stays in the jar\'s "Waiting for a yes" until someone answers it.' },
+    /* 2026-10-18 (fun across the Hub, step 4): seasons on the Dashboard and work anniversaries (Care Coordinator Hub seasons.js). Nothing is sent. */
+    { k:'seasons_live', name:'Seasons on the Dashboard', what:'Leaves, snow, blossoms or summer sparkle drift across the Hub\'s top bar for one minute the first time it opens each day, and a small scene for the season sits by the Dashboard greeting. Nothing is sent.',
+      on:'Turn on seasons on the Dashboard?\n\nThe season follows the calendar. The first time someone opens the Hub each day, a few leaves, snowflakes, blossoms or summer sparkles drift across the top bar for one minute and then stop, and a small scene sits by the Dashboard greeting. Anyone whose computer asks for less motion sees a still picture. Nothing is sent to anyone.',
+      off:'Turn off seasons? The top bar and the Dashboard greeting go back to plain.' },
+    { k:'anniversaries_live', name:'Work anniversaries', what:'An "Anniversaries this week" card on the Dashboard and a banner on the caregiver\'s page, from their hire date in AxisCare. Nothing is sent to them.',
+      on:'Turn on work anniversaries?\n\nEach week the Dashboard shows the caregivers reaching a whole year with Caring Companions (from their hire date in AxisCare), and their page shows a banner that week. Office staff are not listed, because the Hub has no hire date for them. Nothing is texted or emailed: a card or a call is the office\'s choice.',
+      off:'Turn off work anniversaries? The card and the banners go away.' },
   ]],
   ['Clients', [
     /* 2026-10-12 (Samantha "build step 2"): the Caregiver packet card's Send / Remind / Send update texts (care-packet, Desktop 661) */
