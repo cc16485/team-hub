@@ -21,6 +21,10 @@ FAKE=r"""(email)=>{
       in:(k,vs)=>{ if(t==='app_data'&&k==='key') window.__keys.push(...vs); r=r.filter(x=>vs.includes(x[k])); return o; },
       order:()=>o, limit:()=>o, gte:()=>o, lte:()=>o, not:()=>o, is:()=>o, then:(ok)=>ok({data:r,error:null}) }; return o; };
   sb.auth.getSession=async()=>({data:{session:{user:{email}}}});
+  window.__fn=[]; for(const k in OFF_BONUS) delete OFF_BONUS[k];
+  Object.defineProperty(sb,'functions',{ configurable:true, value:{ invoke:async(n,{body})=>{ window.__fn.push({n,body}); if(body.name==='Nina New') return { data:null, error:{ message:'down', context:{ json:async()=>({ error:'service down' }) } } };
+    if(body.name==='Rita Resign') return { data:{ office:true, name:'Rita Resign', approved:{ total:100, lines:[{ client:'Rose Able', first_visit:'2026-11-03', amount:100, words:'Approved' }] }, running:{ total:0, lines:[] }, paid:{ total:0, lines:[] }, note:'Nothing here is paid or cancelled because someone leaves.' }, error:null };
+    return { data:{ office:false }, error:null }; } } });
   sb.from=(t)=>({ select:()=>q(t) });
   sb.rpc=async(n,args)=>{ if(n==='upsert_app_data_item') window.__saves.push({key:args.target_key,id:args.item.id,kind:args.item.kind}); return {data:[],error:null}; };
   window.confirm=()=>true; window.alert=(m)=>{ (window.__alerts=window.__alerts||[]).push(m); };
@@ -34,6 +38,8 @@ FAKE=r"""(email)=>{
       const nn=OFFBOARDINGS.find(x=>x.name==='Nina New'); await offStep(nn.id,0,true);
       if(email.startsWith('samantha')){ document.getElementById('off-name').value='Tom Fired'; document.getElementById('off-kind').value='Termination'; await startOffboarding(); }
     }
+    await new Promise(r=>setTimeout(r,150)); renderOffboarding();
+    out.fn=window.__fn; out.bn=[...document.querySelectorAll('.off-bonus')].map(x=>x.innerText); out.list3=document.getElementById('off-list').innerText;
     out.keys=window.__keys; out.saves=window.__saves; out.list2=document.getElementById('off-list')?document.getElementById('off-list').innerText:'';
     return out; });
 }"""
@@ -61,6 +67,12 @@ checks=[('the lead gets in, labelled Springfield lead', k['app']=='block' and k[
         ('an owner sees every tab and both lists as one', len(s['tabs'])>=6 and 'Rita Resign' in s['list'] and 'Terry Term' in s['list'] and 'Termination' in s['kinds']),
         ('an owner saves a resignation to offboardings_team and a termination to offboardings',
             [x['key'] for x in s['saves'] if x['kind']=='Resignation']==['offboardings_team','offboardings_team'] and [x['key'] for x in s['saves'] if x['kind']=='Termination']==['offboardings']),
+        ('step 5 · the lead view never asks for bonuses', not k['fn'] and 'bonuses' not in k['list3'].lower()),
+        ('step 5 · owner: Rita (a Care Coordinator) shows her approved $100 bonus for final pay and that nothing changes by itself',
+            any('Care Coordinator bonuses for final pay' in x and 'Approved, not paid yet: $100' in x and 'Rose Able' in x and 'Nothing here is paid or cancelled' in x for x in s['bn'])),
+        ('step 5 · owner: Terry (no bonus, a caregiver) shows no bonus box', len(s['bn'])==1),
+        ('step 5 · owner: a failed check says so, never silent', 'Care Coordinator bonuses could not be checked: service down' in s['list3']),
+        ('step 5 · the owner asks the server by name, action separation', all(x['body'].get('action')=='separation' for x in s['fn'] if x['n']=='cc-bonus') and {'Rita Resign','Terry Term'} <= {x['body'].get('name') for x in s['fn'] if x['n']=='cc-bonus'}),
         ('no page errors for the lead or the coordinator', not errs['krystal@mo-care.com'] and not errs['casey@mo-care.com'])]
 for n,ok in checks: print(('PASS  ' if ok else 'FAIL  ')+n)
 if any(errs.values()): print(errs)

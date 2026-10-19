@@ -1024,6 +1024,34 @@ async function offStep(id,i,checked){
   else o.status='open';
   await save(offKey(o),o); renderOffboarding();
 }
+/* Bonuses at separation (audit step 5, Samantha 2026-10-18): an owner's offboarding card lists any Care Coordinator bonus
+   on file for that person (the cc-bonus server answers owners only, by the exact full name; a caregiver has none, so
+   nothing shows). It only lists: whether a bonus is still paid when someone leaves, and final pay, is Samantha's
+   decision 3 with the attorney and Viventium. Never in the Springfield lead's view (pay is private). */
+const OFF_BONUS={};
+async function offBonusLoad(o){
+  if(LEAD_MODE||(OFF_BONUS[o.id]&&!OFF_BONUS[o.id].error)) return;   /* a failed check is tried again on the next look */
+  OFF_BONUS[o.id]={ loading:true };
+  try{
+    const { data, error }=await sb.functions.invoke('cc-bonus',{ body:{ action:'separation', name:o.name } });
+    if(error){ let m=error.message||'the bonus service did not answer'; try{ const j=await error.context.json(); if(j&&j.error) m=j.error; }catch(e){} OFF_BONUS[o.id]={ error:m }; }
+    else OFF_BONUS[o.id]=data||{ error:'no answer' };
+  }catch(e){ OFF_BONUS[o.id]={ error:'the bonus service could not be reached' }; }
+  const el=document.getElementById('offBn_'+o.id); if(el) el.innerHTML=offBonusHtml(o);
+}
+function offBonusHtml(o){
+  const b=OFF_BONUS[o.id]; if(!b||b.loading||b.office===false) return '';
+  if(b.error) return '<div style="color:var(--red);font-size:.82rem;margin:.3rem 0">Care Coordinator bonuses could not be checked: '+esc(b.error)+'. Open Bonuses in the CC Hub before final pay.</div>';
+  const m=n=>'$'+Number(n||0).toLocaleString('en-US');
+  const grp=(title,g)=>g&&g.lines&&g.lines.length?'<div style="margin-top:.3rem"><b style="font-size:.82rem">'+title+': '+m(g.total)+'</b>'
+    +g.lines.map(l=>'<div class="muted">'+esc(l.client)+' · first visit '+esc(l.first_visit)+' · '+m(l.amount)+' · '+esc(l.words||l.status_words||'')+'</div>').join('')+'</div>':'';
+  const any=['approved','running','paid'].some(k=>b[k]&&b[k].lines&&b[k].lines.length);
+  return '<div class="off-bonus" style="background:#FDF3E3;border-radius:8px;padding:.5rem .7rem;margin:.4rem 0 .6rem">'
+    +'<b style="font-size:.85rem;color:var(--navy)">Care Coordinator bonuses for final pay</b>'
+    +(any?grp('Approved, not paid yet',b.approved)+grp('Still running (day 30 not reached or not decided)',b.running)+grp('Already paid',b.paid)
+      :'<div class="muted">None on file.</div>')
+    +'<div class="muted" style="margin-top:.35rem">'+esc(b.note||'')+'</div></div>';
+}
 function renderOffboarding(){
   const open=OFFBOARDINGS.filter(o=>o.status==='open');
   const done=OFFBOARDINGS.filter(o=>o.status==='complete').sort((a,b)=>String(b.completed_at).localeCompare(String(a.completed_at)));
@@ -1036,6 +1064,7 @@ function renderOffboarding(){
     +(o.last_day?'<span class="muted">last day '+esc(o.last_day)+'</span>':'')
     +'<span style="flex:1"></span><span class="muted">'+doneN+'/'+o.steps.length+'</span></div>'
     +(o.reason?'<div class="muted" style="margin:.2rem 0 .4rem">'+esc(o.reason)+'</div>':'')
+    +(LEAD_MODE?'':'<div id="offBn_'+esc(o.id)+'">'+offBonusHtml(o)+'</div>')
     +o.steps.map(s=>'<div class="checkrow"><input type="checkbox" '+(s.done_at?'checked':'')+' onchange="offStep(\''+o.id+'\','+s.i+',this.checked)">'
       +'<div style="'+(s.done_at?'color:var(--muted)':'')+'">'+esc(s.label)
       +(s.done_at?'<div class="muted">✓ '+String(s.done_at).slice(0,10)+', '+esc(s.done_by||'')+'</div>':'')+'</div></div>').join('')
@@ -1046,6 +1075,7 @@ function renderOffboarding(){
     +(done.length?'<details><summary style="cursor:pointer;font-size:.85rem;font-weight:700;color:var(--muted)">Completed ('+done.length+')</summary>'+done.map(card).join('')+'</details>':'');
   const b=document.getElementById('b-off');
   b.style.display=open.length?'inline':'none'; b.textContent=open.length;
+  if(!LEAD_MODE) OFFBOARDINGS.forEach(offBonusLoad);
 }
 
 /* ---------------- Monthly audits ---------------- */
