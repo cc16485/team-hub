@@ -542,15 +542,20 @@ function renderStaff(){
   if(!STAFF.length){ el.innerHTML='<p class="sub" style="margin:0">Nobody yet. Add your coordinators below.</p>'; fillOnCallWho(); return; }
   /* Out until (speed to lead, 2026-10-07): while a person is out, their not-yet-yes inquiries go to whoever holds Operations */
   const today=new Date().toLocaleDateString('en-CA',{ timeZone:'America/Chicago' });
-  el.innerHTML='<table><thead><tr><th>Name</th><th>Hub sign-in email</th><th>Mobile</th><th>Shift</th><th>Out until</th><th></th></tr></thead><tbody>'
+  /* planned time off (2026-10-18, switched by ops_settings.planned_time_off_live in the CC Hub): an "Out from" date, so
+     time off can be entered ahead; out only from that day through Out until. Off: Out until alone, as before. */
+  const plan=!!(OPS&&OPS.planned_time_off_live===true);
+  const outNow=s=>!!(s.out_until&&s.out_until>=today&&!(s.out_from&&s.out_from>today));
+  el.innerHTML='<table><thead><tr><th>Name</th><th>Hub sign-in email</th><th>Mobile</th><th>Shift</th>'+(plan?'<th>Out from</th>':'')+'<th>Out until</th><th></th></tr></thead><tbody>'
    + STAFF.map(s=>'<tr><td>'+esc(s.name||'')+'</td><td>'+esc(s.email||'')+'</td>'
      +'<td>'+(s.phone?esc(s.phone):'<span class="chip bad">none</span>')+'</td>'
      +'<td>'+esc(s.shift||'')+'</td>'
+     +(plan?'<td style="white-space:nowrap"><input type="date" value="'+esc(s.out_from&&s.out_until&&s.out_until>=today?s.out_from:'')+'" onchange="staffOutFrom(\''+s.id+'\', this.value)" style="width:150px;padding:4px 6px"></td>':'')
      +'<td style="white-space:nowrap"><input type="date" value="'+esc(s.out_until&&s.out_until>=today?s.out_until:'')+'" onchange="staffOut(\''+s.id+'\', this.value)" style="width:150px;padding:4px 6px">'
-       +(s.out_until&&s.out_until>=today?' <span class="chip bad">out</span>':'')+'</td>'
+       +(outNow(s)?' <span class="chip bad">out</span>':(s.out_until&&s.out_until>=today&&s.out_from?' <span class="chip">planned from '+esc(s.out_from)+'</span>':''))+'</td>'
      +'<td style="text-align:right"><button class="btn danger" onclick="delStaff(\''+s.id+'\')">Remove</button></td></tr>').join('')
    + '</tbody></table>'
-   + '<p class="sub" style="margin:8px 0 0">Out until: through that day their new inquiries move to whoever holds Operations (the Hub\'s speed-to-lead check, when it is on). Clear the date when they are back.</p>';
+   + '<p class="sub" style="margin:8px 0 0">'+(plan?'Out from and Out until: from the first day through the last, their new inquiries move to whoever holds Operations and nothing counts against them. Leave Out from empty to start today. ':'Out until: through that day their new inquiries move to whoever holds Operations (the Hub\'s speed-to-lead check, when it is on). ')+'Clear the date when they are back.</p>';
   fillOnCallWho();
 }
 async function addStaff(){
@@ -568,10 +573,23 @@ async function addStaff(){
 async function staffOut(id, ymd){
   const s=STAFF.find(x=>x.id===id); if(!s) return;
   const v=/^\d{4}-\d{2}-\d{2}$/.test(String(ymd||''))?ymd:'';
-  const was=s.out_until||''; s.out_until=v||null; if(!v) delete s.out_until;
-  if(!(await saveItem('coordinator_staff',s))){ s.out_until=was||null; return; }
+  if(v&&s.out_from&&s.out_from>v){ ccTell('The last day is before the first day ('+s.out_from+'). Pick a later date, or change Out from.'); renderStaff(); return; }
+  const was=s.out_until||'', wasFrom=s.out_from||''; s.out_until=v||null; if(!v){ delete s.out_until; delete s.out_from; }   /* back: a planned start goes too */
+  if(!(await saveItem('coordinator_staff',s))){ s.out_until=was||null; if(wasFrom) s.out_from=wasFrom; return; }
   await recordEvent({ verb:'setting_changed', item_id:String(s.id), area:'team',
     summary:((ME&&(ME.name||ME.email))||'Someone')+(v?' marked '+(s.name||s.email)+' out until '+v:' marked '+(s.name||s.email)+' back') });
+  renderStaff();
+}
+/* planned time off: the first day out (empty = from today). Needs an Out until on or after it. */
+async function staffOutFrom(id, ymd){
+  const s=STAFF.find(x=>x.id===id); if(!s) return;
+  const v=/^\d{4}-\d{2}-\d{2}$/.test(String(ymd||''))?ymd:'';
+  if(v&&!s.out_until){ ccTell('Set Out until (the last day out) first, then Out from.'); renderStaff(); return; }
+  if(v&&s.out_until&&v>s.out_until){ ccTell('Out from is after the last day ('+s.out_until+'). Pick an earlier date.'); renderStaff(); return; }
+  const was=s.out_from||''; if(v) s.out_from=v; else delete s.out_from;
+  if(!(await saveItem('coordinator_staff',s))){ if(was) s.out_from=was; else delete s.out_from; return; }
+  await recordEvent({ verb:'setting_changed', item_id:String(s.id), area:'team',
+    summary:((ME&&(ME.name||ME.email))||'Someone')+(v?' planned '+(s.name||s.email)+' out from '+v+' until '+s.out_until:' made '+(s.name||s.email)+'\'s time off start today') });
   renderStaff();
 }
 async function delStaff(id){
