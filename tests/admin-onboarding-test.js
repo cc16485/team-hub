@@ -106,12 +106,10 @@ function world(opt = {}) {
   { const src = cut('/* ── Onboarding workflow', '/* ── boot');
     ck('no code on the card writes onboarding_switch_date', !/m\.onboarding_switch_date|onboarding_switch_date\s*=[^=]/.test(src)); }
   
-  /* SLICE 2a: the screening staff list */
+  /* SLICE 2a, changed 2026-10-21: every active office user reveals; the Screening staff list editor is gone */
   { const w = world({ perms: { ok: true, version: 1, advance: [], work: [{ person_id: 'p-sam', email: 'samantha@mo-care.com', name: 'Samantha', added_at: '2026-10-08' }], screening: [], history: [], me: { person_id: 'p-sam', email: 'samantha@mo-care.com', may_change_advance: true, may_change_work: true, may_change_screening: true, may_reveal_identity: false } } });
     await w.ctx.onbLoadPerms(); const h = w.el('onbCard').innerHTML;
-    ck('the Admin page shows the third list, Screening staff, with its plain explanation and its own add picker', /Screening staff \(may reveal identity details for a check order\)/.test(h) && /Every reveal is logged with who, when and why/.test(h) && /<select id="onbAdd_screening">/.test(h));
-    await w.ctx.onbPermChange('screening', 'add', 'p-kry', null);
-    ck('adding to the screening list asks the function with kind screening after a confirm', w.fetches.some((f) => f.kind === 'screening' && f.action === 'add' && f.person_id === 'p-kry'), w.fetches); }
+    ck('2026-10-21: the Admin page says every active office user can reveal, logged, with no Screening staff list or picker', /Who can reveal identity details/.test(h) && /Every active office user/.test(h) && /Every reveal is logged with who, when and why/.test(h) && !/Screening staff \(may reveal/.test(h) && !/<select id="onbAdd_screening">/.test(h) && !/\u2014/.test(h)); }
 
   /* DRIVER COMPLIANCE (2026-10-13): Approve drivers, the fifth list */
   { const P = () => ({ ok: true, version: 1, advance: [], work: [{ person_id: 'p-sam', email: 'samantha@mo-care.com', name: 'Samantha', added_at: '2026-10-08' }], screening: [], driver: [{ person_id: 'p-kry', email: 'krystal@mo-care.com', name: 'Krystal', added_at: '2026-10-13', added_by: 'samantha@mo-care.com' }], history: [], me: { person_id: 'p-sam', email: 'samantha@mo-care.com', may_change_advance: true, may_change_work: true, may_approve_driver: true, may_change_driver: true } });   /* the real get (onboarding-permissions, 2026-10-13): driver, may_approve_driver, may_change_driver */
