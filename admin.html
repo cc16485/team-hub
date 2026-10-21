@@ -727,10 +727,10 @@ function renderOnboarding(){
     +'<div id="onbAdvance">'+(ONB_PERMS?onbList('advance'):'<div class="sub" style="margin:0">Loading…</div>')+'</div>'
     +'<div class="what" style="margin-top:14px">Approve to Work (final clearance)</div><div class="why" style="margin-bottom:6px">Samantha and Zachary only. Changing this list is itself an owner action with an audit trail: only someone already on it can add or remove, and it can never be emptied.</div>'
     +'<div id="onbWork">'+(ONB_PERMS?onbList('work'):'<div class="sub" style="margin:0">Loading…</div>')+'</div>'
-    /* SLICE 2a (Samantha, 2026-10-09, identity security): who may reveal a caregiver's Social Security number, date of birth or
-       license number for a check order. Named people only, never a role; owners change the list; every reveal is logged. */
-    +'<div class="what" style="margin-top:14px">Screening staff (may reveal identity details for a check order)</div><div class="why" style="margin-bottom:6px">Only the people named here can open a caregiver\'s Social Security number, date of birth or license number, for five minutes, to order their background checks. Not all office users, and not owners by title. Every reveal is logged with who, when and why.</div>'
-    +'<div id="onbScreening">'+(ONB_PERMS?onbList('screening'):'<div class="sub" style="margin:0">Loading…</div>')+'</div>'
+    /* SLICE 2a (2026-10-09) named a Screening staff list for identity reveals. 2026-10-21 (Samantha: "every active office user
+       can open SSN and DOB without being added by name. Still log every reveal."): the server no longer reads the list, so
+       the editor is gone and this note says who can reveal. */
+    +'<div class="what" style="margin-top:14px">Who can reveal identity details</div><div class="why" style="margin-bottom:6px">Every active office user (owners, Care Coordinators, Staffing Coordinators) can open a caregiver\'s Social Security number, date of birth or license number for five minutes, from the Screening desk in Background &amp; References. Nobody needs to be added by name. Every reveal is logged with who, when and why. To take this away from someone, turn off their access in Team Access.</div>'
     /* SLICE 6 (2026-10-10, decision 10): who may run the read-only personnel-file export; the owners always may; every export is logged. */
     +'<div class="what" style="margin-top:14px">Audit export (personnel files)</div><div class="why" style="margin-bottom:6px">The owners, plus the people named here, may export a caregiver\'s personnel file as a read-only PDF with five-minute links to the proofs. Every export and every proof open is written to the access log.</div>'
     +'<div id="onbExport">'+(ONB_PERMS?onbList('audit_export'):'<div class="sub" style="margin:0">Loading…</div>')+'</div>'
