@@ -7,6 +7,7 @@
 <title>Owners Hub — Caring Companions</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cc.mo-care.com/lead-rules.js?v=15"></script>
+<script src="https://cc.mo-care.com/speed-rules.js?v=1"></script><!-- Speed to lead (2026-10-22, her design): the same numbers the CC Hub's My speed tab uses -->
 <script src="https://cc.mo-care.com/partner-rules.js?v=1"></script><script src="https://cc.mo-care.com/writeup-rules.js?v=4"></script><!-- Who approves a write-up (HR decisions and the step 6 required items, 2026-10-18): the same rules file the CC Hub runs --><script src="https://cc.mo-care.com/ghe-forms-rules.js?v=1"></script><!-- GHE scorecard (GHE fix slice 4, 2026-10-08): the same rules file the CC Hub's Nurse Scheduling runs --><!-- Referral Partner Desk (2026-10-08): owners, tiers and timing, the same file the CC Hub desk runs --><!-- Leads intake desk Stage 5 (2026-10-07): the same rules file the CC Hub runs; the owners' numbers come from it -->
 <style>
   :root{ --navy:#0D365F; --navy2:#0D365F; --teal:#54BDB8; --gold:#F0A63A; --red:#DC2626; --red-bg:#FEE2E2;
@@ -120,6 +121,13 @@
   <div class="card">
     <b style="font-size:.95rem;color:var(--navy)">Lead funnel: this month vs last</b>
     <div id="growth-funnel" style="margin-top:.5rem"><div class="muted">Loading…</div></div>
+  </div>
+  <div class="card">
+    <div style="display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;justify-content:space-between">
+      <b style="font-size:.95rem;color:var(--navy)">Speed to lead: how fast a family hears a real person</b>
+      <div id="speed-periods" style="display:flex;gap:.35rem;flex-wrap:wrap"></div>
+    </div>
+    <div id="growth-speed" style="margin-top:.5rem"><div class="muted">Loading…</div></div>
   </div>
   <div class="card">
     <b style="font-size:.95rem;color:var(--navy)">Lead response and losses: last 30 days vs the 30 before</b>
@@ -520,6 +528,52 @@ async function renderAiTag(){
     +['','AI said new family','Became leads','Not a lead (who it was)','Not decided yet','Leads it missed','Right'].map(th).join('')+'</tr></thead><tbody>'
     +line('Last 7 days',w)+line('Last 30 days',m)+'</tbody></table></div>';
 }
+/* ---------------- Speed to lead (2026-10-22, Samantha's approved design: https://claude.ai/artifact/5vuSNJ9NKGhNiYf9ScEj7M) ----------------
+   The numbers come from cc.mo-care.com/speed-rules.js, on top of lead-rules.js, so this card, the Leads board, the 5-minute text
+   and each coordinator's My speed tab can never disagree. Owners only (this page). Nothing here writes. */
+let SPEED_PERIOD='week';
+function renderSpeed(period){
+  if(period) SPEED_PERIOD=period;
+  const box=document.getElementById('growth-speed'), pills=document.getElementById('speed-periods'); if(!box) return;
+  const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  if(typeof LeadRules==='undefined'||typeof SpeedRules==='undefined'){ box.innerHTML='<div class="muted">The rules files (cc.mo-care.com/lead-rules.js and speed-rules.js) did not load, so these numbers are not shown rather than guessed. Reload the page.</div>'; if(pills) pills.innerHTML=''; return; }
+  const P=SpeedRules.speedPage(LEADS, LeadRules.responseHours(OPS_SET||{}), { period:SPEED_PERIOD, now:new Date().toISOString() });
+  if(pills) pills.innerHTML=Object.entries(SpeedRules.PERIODS).map(([k,l])=>'<button class="'+(k===SPEED_PERIOD?'':'secondary ')+'" style="font-size:.75rem;padding:.25rem .7rem" onclick="renderSpeed(\''+k+'\')">'+esc(l)+'</button>').join('');
+  const mins=SpeedRules.minWords;
+  const TONE={ good:['#E7F4EF','#145C3E'], mixed:['#FDF1DC','#7A4E0B'], bad:['#FBE7E3','#9B2C1A'], quiet:['#F1F5F9','#334155'] };
+  const t=TONE[P.tone]||TONE.quiet;
+  let h='<div style="background:'+t[0]+';color:'+t[1]+';border-radius:12px;padding:.7rem .9rem;margin-bottom:.7rem"><div style="font-size:.7rem;font-weight:800;letter-spacing:.05em;text-transform:uppercase">Is it a problem?</div>'
+    +'<div style="font-size:1.15rem;font-weight:800;margin:.1rem 0">'+esc(P.verdict)+'</div><div style="font-size:.85rem">'+esc(P.why)+'</div></div>';
+  const tile=(val,label,sub,col)=>'<div style="flex:1 1 150px;background:#fff;border:1px solid var(--border);border-radius:10px;padding:.6rem .8rem;min-width:0"><div style="font-size:1.35rem;font-weight:800;color:'+(col||'var(--navy)')+';line-height:1.1">'+val+'</div><div style="font-size:.78rem;font-weight:700">'+label+'</div>'+(sub?'<div style="font-size:.72rem" class="muted">'+sub+'</div>':'')+'</div>';
+  const T=P.tiles;
+  h+='<div style="display:flex;gap:.6rem;flex-wrap:wrap">'
+    +tile(mins(T.median),'middle wait to the first call','goal: '+P.goal+' minutes', T.median!=null&&T.median>P.goal?'#B45309':'#15803D')
+    +tile(T.talked24+' of '+T.counted,'talked to within 24 hours', T.counted-T.talked24?((T.counted-T.talked24)+' not yet'):'')
+    +tile(T.overHour,'waited over an hour', T.longNoTry?T.longNoTry+' of them still not called':'', T.overHour?'#DC2626':'#15803D')
+    +tile(T.afterHours,'came in after hours','their clock started at 8am')+'</div>';
+  const tot=P.buckets.reduce((x,b)=>x+b.count,0), COL=['#1F7A8C','#8FD1C7','#F0A63A','#C2412D'], TXT=['#fff','#103D47','#3a2503','#fff'];
+  h+='<div style="margin-top:.8rem"><div style="font-size:.78rem;font-weight:700;margin-bottom:.3rem">How long families waited, '+esc(P.label.toLowerCase())+'</div>'
+    +(tot?'<div style="display:flex;height:30px;border-radius:8px;overflow:hidden">'+P.buckets.map((b,i)=>b.count?'<div style="flex:'+b.count+' 1 0;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.8rem;background:'+COL[i]+';color:'+TXT[i]+'">'+b.count+'</div>':'').join('')+'</div>'
+      +'<div style="display:flex;flex-wrap:wrap;gap:.3rem 1rem;font-size:.75rem;margin-top:.35rem">'+P.buckets.map((b,i)=>'<span><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:'+COL[i]+';margin-right:4px"></span>'+esc(b.label)+': <b>'+b.count+'</b></span>').join('')+'</div>'
+      :'<div class="muted" style="font-size:.8rem">No families to measure in this period.</div>')+'</div>';
+  const maxT=Math.max(P.goal*2,...P.trend.map(w=>w.median||0));
+  h+='<div style="display:flex;flex-wrap:wrap;gap:1rem;margin-top:.9rem">'
+    +'<div style="flex:1 1 320px;min-width:0"><div style="font-size:.78rem;font-weight:700">The last 8 weeks <span class="muted" style="font-weight:400">(middle wait each week; the line is the 5-minute goal)</span></div>'
+    +'<div style="position:relative;display:flex;gap:6px;align-items:flex-end;height:110px;border-bottom:1px solid var(--border);margin-top:.4rem">'
+    +'<div style="position:absolute;left:0;right:0;bottom:'+Math.round(P.goal/maxT*92)+'px;border-top:2px dashed #C17A12"></div>'
+    +P.trend.map(w=>'<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px"><div style="font-size:.68rem;font-weight:700">'+(w.median==null?'':w.median+'m')+'</div><div style="width:100%;height:'+(w.median==null?0:Math.max(3,Math.round(w.median/maxT*92)))+'px;background:'+(w.median!=null&&w.median>P.goal?'#F0A63A':'#1F7A8C')+';border-radius:4px 4px 0 0"></div></div>').join('')
+    +'</div><div style="display:flex;gap:6px">'+P.trend.map(w=>'<div style="flex:1;text-align:center;font-size:.64rem" class="muted">'+esc(w.label)+'</div>').join('')+'</div></div>'
+    +'<div style="flex:1 1 280px;min-width:0"><div style="font-size:.78rem;font-weight:700">Where the time goes <span class="muted" style="font-weight:400">(last 8 weeks)</span></div>'
+    +'<div style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;margin-top:.4rem">'+P.byDay.map(d=>{ const slow=d.median!=null&&d.median>P.goal; return '<div style="border-radius:8px;padding:.35rem .1rem;text-align:center;background:'+(d.median==null?'#F1F5F9':slow?'#FDF1DC':'#E7F4EF')+';color:'+(slow?'#7A4E0B':'#145C3E')+'"><div style="font-size:.66rem;font-weight:700">'+d.day+'</div><div style="font-size:.85rem;font-weight:800">'+(d.median==null?'-':d.median+'m')+'</div></div>'; }).join('')+'</div>'
+    +'<div style="font-size:.78rem;margin-top:.5rem">'+P.bySource.map(x=>esc(x.label)+': <b>'+(x.median==null?'none yet':x.key==='called'&&x.median===0?'right away':mins(x.median))+'</b>').join(' · ')+'</div></div></div>';
+  const TC={ good:'#145C3E', mid:'#7A4E0B', bad:'#9B2C1A', quiet:'#475569' }, TB={ good:'#E7F4EF', mid:'#FDF1DC', bad:'#FBE7E3', quiet:'#F1F5F9' };
+  h+='<div style="margin-top:.9rem"><div style="font-size:.78rem;font-weight:700;margin-bottom:.3rem">Every family, '+esc(P.label.toLowerCase())+' <span class="muted" style="font-weight:400">(side by side by owner: Lead response and losses, below)</span></div>'
+    +(P.rows.length?'<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:.8rem;min-width:640px"><thead><tr style="text-align:left;color:#5A6B7E"><th>Family</th><th>Came in</th><th>How</th><th>Owner</th><th>First try</th><th>Talked</th><th>Wait</th></tr></thead><tbody>'
+      +P.rows.slice(0,40).map(r=>'<tr style="border-top:1px solid #DCE4EE"><td style="padding:.3rem .2rem;font-weight:700">'+esc(r.name)+'</td><td>'+esc(r.came)+'</td><td>'+esc(r.how)+'</td><td>'+esc(r.owner)+'</td><td>'+esc(r.tried)+'</td><td>'+esc(r.talked)+'</td><td><span style="padding:.1rem .45rem;border-radius:999px;font-weight:800;background:'+TB[r.tone]+';color:'+TC[r.tone]+'">'+esc(r.wait)+'</span></td></tr>').join('')
+      +'</tbody></table></div>'+(P.rows.length>40?'<div class="muted" style="font-size:.75rem">plus '+(P.rows.length-40)+' more</div>':'')
+      :'<div class="muted" style="font-size:.8rem">Nobody new reached out in this period.</div>')+'</div>';
+  box.innerHTML=h;
+}
 function renderLeadDesk(){
   const box=document.getElementById('growth-leaddesk'); if(!box) return;
   const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -531,20 +585,13 @@ function renderLeadDesk(){
   const tile=(label,val,sub,col)=>'<div style="flex:1 1 150px;background:#fff;border:1px solid var(--border);border-radius:10px;padding:.6rem .8rem;min-width:0">'
     +'<div style="font-size:1.35rem;font-weight:800;color:'+(col||'var(--navy)')+';line-height:1.1">'+val+'</div><div style="font-size:.78rem;font-weight:700">'+label+'</div>'+(sub?'<div style="font-size:.72rem" class="muted">'+sub+'</div>':'')+'</div>';
   const pct=v=>v==null?'no data':v+'%';
-  let h='<div style="display:flex;gap:.6rem;flex-wrap:wrap">'
-    +tile('median first attempt', mins(a.median_first_attempt_min)+vs(0,b.median_first_attempt_min,mins), a.inquiries+' inquiries, '+a.attempted+' tried', a.median_first_attempt_min!=null&&a.median_first_attempt_min>5?'#B45309':'#15803D')
-    +tile('reached within 24 h', pct(a.reached_24h_pct)+vs(0,b.reached_24h_pct,pct), a.reached_24h+' of '+a.inquiries+' had a real conversation in a day')
-    +tile('never attempted', a.never_attempted+vs(0,b.never_attempted), 'older than a day, nobody has called', a.never_attempted?'#DC2626':'#15803D')
+  /* Speed to lead (2026-10-22): the speed tiles and the speed bar moved up to the Speed to lead card; this card keeps the
+     outcomes, the losses, the team table and the partners. One place for each number. */
+  let h='<div class="muted" style="font-size:.78rem;margin-bottom:.5rem">How fast families hear from us is in <b>Speed to lead</b> above.</div><div style="display:flex;gap:.6rem;flex-wrap:wrap">'
     +tile('said yes', a.said_yes+vs(0,b.said_yes), a.inquiry_to_yes_median_days!=null?'typically '+a.inquiry_to_yes_median_days+' days from inquiry to yes':'')
     +tile('started care', a.started+vs(0,b.started), a.yes_to_first_shift_median_days!=null?'typically '+a.yes_to_first_shift_median_days+' days from yes to first shift (the first clock-in in AxisCare)':'started = the first clock-in in AxisCare', '#15803D')
     +tile('lost', a.lost+vs(0,b.lost), a.lost_hours_week+' hrs/wk walked away'+(a.lost_after_yes?' · '+a.lost_after_yes+' after a yes':''), a.lost?'#B45309':'var(--navy)')
     +'</div>';
-  /* speed buckets */
-  const keys=Object.keys(a.buckets), tot=a.inquiries||1;
-  h+='<div style="margin-top:.8rem"><div style="font-size:.78rem;font-weight:700;margin-bottom:.3rem">Speed to first attempt, this period <span class="muted" style="font-weight:400">(from when lead response hours open; goal: under 5 minutes)</span></div>'
-    +'<div style="display:flex;gap:4px;align-items:flex-end;height:54px">'+keys.map(k=>{ const n=a.buckets[k], hgt=Math.round(n/tot*46)+(n?4:0); const col=k==='≤5 min'?'#15803D':k==='never'?'#DC2626':k==='over 4 h'?'#B45309':'#2F6FB0';
-      return '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px"><div style="font-size:.72rem;font-weight:700">'+n+'</div><div style="width:100%;height:'+hgt+'px;background:'+col+';border-radius:3px 3px 0 0"></div></div>'; }).join('')+'</div>'
-    +'<div style="display:flex;gap:4px">'+keys.map(k=>'<div style="flex:1;text-align:center;font-size:.68rem" class="muted">'+esc(k)+'</div>').join('')+'</div></div>';
   /* lost by reason */
   h+='<div style="margin-top:.8rem"><div style="font-size:.78rem;font-weight:700;margin-bottom:.3rem">Lost, by reason <span class="muted" style="font-weight:400">(hours a week the family wanted; towns on staffing losses)</span></div>';
   if(!a.by_reason.length) h+='<div class="muted" style="font-size:.8rem">Nobody lost in this period.</div>';
@@ -1213,7 +1260,7 @@ async function boot(){
   document.getElementById('app').style.display='block';
   await loadAll();
   renderDiscipline(); renderOffboarding(); renderAudits(); renderOwnersFeedback();
-  renderMoney(); renderBudget(); renderFunnel(); renderLeadDesk(); renderAiTag(); renderRelationships(); renderGheScorecard(); renderGrievanceLog(); renderOwnerInbox(); loadGrowthPulse(); loadHiringFunnel();
+  renderMoney(); renderBudget(); renderFunnel(); renderSpeed(); renderLeadDesk(); renderAiTag(); renderRelationships(); renderGheScorecard(); renderGrievanceLog(); renderOwnerInbox(); loadGrowthPulse(); loadHiringFunnel();
 }
 boot();
 </script>
