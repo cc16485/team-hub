@@ -1127,6 +1127,10 @@ const SWITCHES=[
   ]],
   ['Clients', [
     /* 2026-10-24 (Samantha): Life Story, three questions on the intake, the assessment and Home & Life (Care Coordinator Hub life-story.js) */
+    /* 2026-10-24 (Samantha): Life Story step 2, the AI draft of the Caregiver Preview introduction (Staffing caregiver-preview 'draft', Desktop 1101) */
+    { k:'cgp_ai_draft_live', name:'Caregiver Preview: draft it from the Life Story', what:'A "Draft it from the Life Story" button on the Caregiver Preview tab. The AI writes a short introduction and up to 6 things the client enjoys, only from the Life Story, leaving out health, family and money details, and never naming other people. It fills the boxes as a draft; a coordinator edits, saves and approves it as usual. Off (practice): only owners see the button.',
+      on:'Turn on drafting from the Life Story?\n\nFrom now, every coordinator sees "Draft it from the Life Story" on the Caregiver Preview tab. Drafts are never saved or shown to caregivers until a person saves and approves them. Nothing is sent to anyone.',
+      off:'Turn off drafting from the Life Story? The button is hidden from coordinators again (owners still see it). Introductions already saved are kept.' },
     { k:'life_story_live', name:'Life Story questions', what:'Three short questions about who the client is (work and life, what they enjoy talking about or doing, little things that make their day) on the intake call, the assessment and the client\'s Home & Life tab. Answers are asked once and carried forward. Office only; caregivers see only the approved Caregiver Preview. Off (practice): only owners see the questions.',
       on:'Turn on the Life Story questions?\n\nFrom now, everyone in the office sees the three questions on the intake, the assessment and Home & Life. Nothing is sent to anyone.',
       off:'Turn off the Life Story questions? They are hidden from coordinators again (owners still see them). Answers already saved are kept.' },
