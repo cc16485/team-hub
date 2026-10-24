@@ -1126,6 +1126,10 @@ const SWITCHES=[
       off:'Turn off client anniversaries? The card goes away.' },
   ]],
   ['Clients', [
+    /* 2026-10-24 (Samantha): Life Story, three questions on the intake, the assessment and Home & Life (Care Coordinator Hub life-story.js) */
+    { k:'life_story_live', name:'Life Story questions', what:'Three short questions about who the client is (work and life, what they enjoy talking about or doing, little things that make their day) on the intake call, the assessment and the client\'s Home & Life tab. Answers are asked once and carried forward. Office only; caregivers see only the approved Caregiver Preview. Off (practice): only owners see the questions.',
+      on:'Turn on the Life Story questions?\n\nFrom now, everyone in the office sees the three questions on the intake, the assessment and Home & Life. Nothing is sent to anyone.',
+      off:'Turn off the Life Story questions? They are hidden from coordinators again (owners still see them). Answers already saved are kept.' },
     /* 2026-10-24 (Samantha): the Caregiver Preview tab on every client profile (Care Coordinator Hub caregiver-preview.js, Staffing caregiver-preview function, Desktop 1098) */
     { k:'caregiver_preview_live', name:'Caregiver Preview tab', what:'Every client profile gets a Caregiver Preview tab: the friendly introduction (About, What they enjoy) and an optional care summary from the care plan. Caregivers see only the approved version, on Cara\'s shift pages and the Booking App\'s visit offers. Approvers: owners and care coordinators; showing more care detail needs a second person. If the care plan changes after approval, care details are held back until reviewed. Off (practice): owners can try the tab; shift pages and the Booking App use the About on Family & Contacts as before.',
       on:'Turn on the Caregiver Preview tab?\n\nFrom now, every coordinator sees the Caregiver Preview tab on client profiles, and caregivers see only what is approved there (on Cara\'s shift pages and Booking App visit offers). Anything already on Family & Contacts is carried over. No messages are sent.',
