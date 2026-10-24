@@ -1126,6 +1126,10 @@ const SWITCHES=[
       off:'Turn off client anniversaries? The card goes away.' },
   ]],
   ['Clients', [
+    /* 2026-10-24 (Samantha): the Caregiver Preview tab on every client profile (Care Coordinator Hub caregiver-preview.js, Staffing caregiver-preview function, Desktop 1098) */
+    { k:'caregiver_preview_live', name:'Caregiver Preview tab', what:'Every client profile gets a Caregiver Preview tab: the friendly introduction (About, What they enjoy) and an optional care summary from the care plan. Caregivers see only the approved version, on Cara\'s shift pages and the Booking App\'s visit offers. Approvers: owners and care coordinators; showing more care detail needs a second person. If the care plan changes after approval, care details are held back until reviewed. Off (practice): owners can try the tab; shift pages and the Booking App use the About on Family & Contacts as before.',
+      on:'Turn on the Caregiver Preview tab?\n\nFrom now, every coordinator sees the Caregiver Preview tab on client profiles, and caregivers see only what is approved there (on Cara\'s shift pages and Booking App visit offers). Anything already on Family & Contacts is carried over. No messages are sent.',
+      off:'Turn off the Caregiver Preview? The tab is hidden from coordinators and shift offers go back to the About on Family & Contacts. Nothing saved on the tab is lost.' },
     /* 2026-10-12 (Samantha "build step 2"): the Caregiver packet card's Send / Remind / Send update texts (care-packet, Desktop 661) */
     /* 2026-10-12 (Samantha "build step 3"): the twice-daily check for caregivers coming up who haven't confirmed (care-packet-watch, Desktop 662) */
     { k:'care_packet_watch_live', name:'Caregiver packet check before shifts', what:'Twice a day, for each client with a ready caregiver packet, anyone on their AxisCare schedule in the next 3 days who has not confirmed the packet goes on one Needs Attention card for Client Care. It texts nobody.',
