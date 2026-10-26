@@ -213,6 +213,9 @@ let sessionEmail='';
   const guess={'samantha@mo-care.com':'Samantha','krystal@mo-care.com':'Krystal'}[sessionEmail.toLowerCase()];
   if(guess) document.getElementById('f_by').value=guess;
   document.getElementById('formView').style.display='block';
+  /* Medicaid goes to CDS (her rule 2026-10-26, CC Hub switch ops_settings.medicaid_cds_live): a new hire is not ticked for Medicaid clients */
+  try{ const r=await sb.from('app_data').select('data').eq('key','ops_settings').maybeSingle();
+    if(r&&r.data&&r.data.data&&r.data.data.medicaid_cds_live===true){ const nb=document.querySelector('.yn[data-k="payor_medicaid"] .no'); if(nb) setAttr('payor_medicaid',false,nb); } }catch(e){}
 })();
 
 async function submitOffer(){
