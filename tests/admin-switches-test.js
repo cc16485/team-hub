@@ -40,6 +40,9 @@ const rows = (h) => h.split('<div class="swrow">').slice(1).map((r) => ({
   disabled: /<button[^>]* disabled/.test(r), text: r }));
 (async () => {
   let W = world(); W.X.renderSwitches(); let R = rows(W.box.innerHTML);
+  /* 2026-10-30 calmer shift-note flags: listed, off, needs red and yellow flags first, says nothing goes to a family */
+  { const q = R.find((r) => r.name === 'Shift notes: calmer flags'), sw = W.X.SWITCHES.flatMap((g) => g[1]).find((x) => x.k === 'calm_flags_live');
+    ck('Calmer shift-note flags: listed, off, needs red and yellow flags, says nothing goes to a family or caregiver', !!q && !q.on && sw.needs === 'care_notes_levels_live' && /Normal for/.test(sw.on) && /Nothing is texted or emailed to a family or caregiver/.test(sw.on), q && q.text.slice(0, 300)); }
   /* 2026-10-29 quieter call reader: listed under Today and the office, off, with its own button and questions */
   { const q = R.find((r) => r.name === 'Quieter call reader'), sw = W.X.SWITCHES.flatMap((g) => g[1]).find((x) => x.k === 'quiet_calls_live');
     ck('Quieter call reader: listed, off, with a Turn on button, says nothing is texted', !!q && !q.on && q.btn === 'quiet_calls_live' && /promise not kept/.test(q.text) && /Nothing is texted, emailed or called/.test(sw.on), q && q.text.slice(0, 300)); }
