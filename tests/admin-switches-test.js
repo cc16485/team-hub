@@ -40,6 +40,9 @@ const rows = (h) => h.split('<div class="swrow">').slice(1).map((r) => ({
   disabled: /<button[^>]* disabled/.test(r), text: r }));
 (async () => {
   let W = world(); W.X.renderSwitches(); let R = rows(W.box.innerHTML);
+  /* 2026-11-02 Move on to orientation by itself: listed, off, its own button, flagged checks still go to the owners */
+  { const q = R.find((r) => r.name === 'Move on to orientation by itself');
+    ck('Move on to orientation by itself: listed, off, with a Turn on button, says flagged checks still go to the owners', !!q && !q.on && q.btn === 'approve_advance_auto_live' && /still comes to you and Zachary/.test(q.text) && !/\u2014/.test(q.text), q) }
   /* 2026-11-01 Active in AxisCare when orientation is done: listed, off, its own button, says shifts still wait for Approve to Work */
   { const q = R.find((r) => r.name === 'Active in AxisCare when orientation is done');
     ck('Active in AxisCare when orientation is done: listed, off, with a Turn on button, says no shifts until Approve to Work', !!q && !q.on && q.btn === 'axiscare_active_at_orientation_live' && /no shifts until Approve to Work/.test(q.text), q) }
