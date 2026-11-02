@@ -40,6 +40,9 @@ const rows = (h) => h.split('<div class="swrow">').slice(1).map((r) => ({
   disabled: /<button[^>]* disabled/.test(r), text: r }));
 (async () => {
   let W = world(); W.X.renderSwitches(); let R = rows(W.box.innerHTML);
+  /* 2026-11-01 Active in AxisCare when orientation is done: listed, off, its own button, says shifts still wait for Approve to Work */
+  { const q = R.find((r) => r.name === 'Active in AxisCare when orientation is done');
+    ck('Active in AxisCare when orientation is done: listed, off, with a Turn on button, says no shifts until Approve to Work', !!q && !q.on && q.btn === 'axiscare_active_at_orientation_live' && /no shifts until Approve to Work/.test(q.text), q) }
   /* 2026-10-30 calmer shift-note flags: listed, off, needs red and yellow flags first, says nothing goes to a family */
   { const q = R.find((r) => r.name === 'Shift notes: calmer flags'), sw = W.X.SWITCHES.flatMap((g) => g[1]).find((x) => x.k === 'calm_flags_live');
     ck('Calmer shift-note flags: listed, off, needs red and yellow flags, says nothing goes to a family or caregiver', !!q && !q.on && sw.needs === 'care_notes_levels_live' && /Normal for/.test(sw.on) && /Nothing is texted or emailed to a family or caregiver/.test(sw.on), q && q.text.slice(0, 300)); }
