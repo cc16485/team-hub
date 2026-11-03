@@ -1163,6 +1163,10 @@ const SWITCHES=[
     { k:'client_anniversaries_live', name:'Client anniversaries', what:'A "Client anniversaries this week" card on the Dashboard: clients reaching a whole year with Caring Companions, from their start date in AxisCare. Nothing is sent to families.',
       on:'Turn on client anniversaries?\n\nEach week the Dashboard lists the active clients reaching a whole year with Caring Companions this week, from their start date in AxisCare. It is a reason for a card or a call; nothing is texted or emailed to any family. (It needs Desktop step 996 to have run, so the Hub has the start dates.)',
       off:'Turn off client anniversaries? The card goes away.' },
+    /* 2026-11-03 Samantha: "Turn the tag switch on" and "build" (the switch on this page). Hub server hub-status-tags, nightly 2 am. */
+    { k:'hub_status_tags_live', name:'Current employee and client tags in GoHighLevel', what:'Each night at 2 am the Hub puts three tags on GoHighLevel contacts: "hub: current employee" for every active caregiver, "hub: current client" and "hub: current client family" for active clients and their family list. Anyone who stops being current loses the tag that night. Your smart lists "Current Employees" and "Current Clients & Families" read these tags. It never touches any other tag, never adds a contact and never sends anything. Off: it only lists what it would do.',
+      on:'Turn on the current employee and client tags?\n\nFrom tonight at 2 am, the three "hub:" tags are added in GoHighLevel to every current caregiver, active client and family member it can find by phone or email, and taken off anyone who is no longer current. No other tag is touched, no contact is added and nothing is sent.',
+      off:'Turn off the current employee and client tags? From tonight it only lists what it would do. The tags already on contacts stay as they are until it is turned on again.' },
   ]],
   ['Clients', [
     /* 2026-10-24 (Samantha): Life Story, three questions on the intake, the assessment and Home & Life (Care Coordinator Hub life-story.js) */
