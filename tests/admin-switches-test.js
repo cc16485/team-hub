@@ -40,6 +40,9 @@ const rows = (h) => h.split('<div class="swrow">').slice(1).map((r) => ({
   disabled: /<button[^>]* disabled/.test(r), text: r }));
 (async () => {
   let W = world(); W.X.renderSwitches(); let R = rows(W.box.innerHTML);
+  /* 2026-11-03 Onboarding as a table: listed, off, its own button, says nothing about the process changes */
+  { const q = R.find((r) => r.name === 'Onboarding as a table');
+    ck('Onboarding as a table: listed, off, with a Turn on button, says every check, reminder, permission and approval stays the same', !!q && !q.on && q.btn === 'onboarding_table_live' && /stays exactly the same/.test(q.text) && !/\u2014/.test(q.text), q) }
   /* 2026-11-02 Move on to orientation by itself: listed, off, its own button, flagged checks still go to the owners */
   { const q = R.find((r) => r.name === 'Move on to orientation by itself');
     ck('Move on to orientation by itself: listed, off, with a Turn on button, says flagged checks still go to the owners', !!q && !q.on && q.btn === 'approve_advance_auto_live' && /still comes to you and Zachary/.test(q.text) && !/\u2014/.test(q.text), q) }
