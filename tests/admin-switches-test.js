@@ -46,6 +46,9 @@ const rows = (h) => h.split('<div class="swrow">').slice(1).map((r) => ({
   /* 2026-11-03 Orientation inside Onboarding: listed, off, its own button, needs the Onboarding table */
   { const q = R.find((r) => r.name === 'Orientation inside Onboarding'), sw = W.X.SWITCHES.flatMap((g) => g[1]).find((x) => x.k === 'orientation_in_onboarding_live');
     ck('Orientation inside Onboarding: listed, off, with a Turn on button, needs the Onboarding table, nothing about orientation changes', !!q && !q.on && q.btn === 'orientation_in_onboarding_live' && sw && sw.needs === 'onboarding_table_live' && /nothing about orientation changes/.test(q.text) && !/\u2014/.test(q.text), q) }
+  /* 2026-11-03 Ask references by themselves: listed, off, its own button, email only, the same email as Ask refs */
+  { const q = R.find((r) => r.name === 'Ask references by themselves');
+    ck('Ask references by themselves: listed, off, with a Turn on button, says email only and the same email as Ask refs', !!q && !q.on && q.btn === 'refs_auto_ask_live' && /Email only: no texts/.test(q.text) && /what the Ask refs button does/.test(q.text) && !/\u2014/.test(q.text), q) }
   /* 2026-11-02 Move on to orientation by itself: listed, off, its own button, flagged checks still go to the owners */
   { const q = R.find((r) => r.name === 'Move on to orientation by itself');
     ck('Move on to orientation by itself: listed, off, with a Turn on button, says flagged checks still go to the owners', !!q && !q.on && q.btn === 'approve_advance_auto_live' && /still comes to you and Zachary/.test(q.text) && !/\u2014/.test(q.text), q) }
