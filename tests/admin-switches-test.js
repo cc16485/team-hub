@@ -43,6 +43,9 @@ const rows = (h) => h.split('<div class="swrow">').slice(1).map((r) => ({
   /* 2026-11-03 Onboarding as a table: listed, off, its own button, says nothing about the process changes */
   { const q = R.find((r) => r.name === 'Onboarding as a table');
     ck('Onboarding as a table: listed, off, with a Turn on button, says every check, reminder, permission and approval stays the same', !!q && !q.on && q.btn === 'onboarding_table_live' && /stays exactly the same/.test(q.text) && !/\u2014/.test(q.text), q) }
+  /* 2026-11-03 Getting ready as a table: listed, off, its own button, says every step, card and rule stays the same */
+  { const q = R.find((r) => r.name === 'Getting ready as a table');
+    ck('Getting ready as a table: listed, off, with a Turn on button, says every step, card and rule stays the same', !!q && !q.on && q.btn === 'getting_ready_table_live' && /stays exactly the same/.test(q.text) && !/\u2014/.test(q.text), q) }
   /* 2026-11-03 Orientation inside Onboarding: listed, off, its own button, needs the Onboarding table */
   { const q = R.find((r) => r.name === 'Orientation inside Onboarding'), sw = W.X.SWITCHES.flatMap((g) => g[1]).find((x) => x.k === 'orientation_in_onboarding_live');
     ck('Orientation inside Onboarding: listed, off, with a Turn on button, needs the Onboarding table, nothing about orientation changes', !!q && !q.on && q.btn === 'orientation_in_onboarding_live' && sw && sw.needs === 'onboarding_table_live' && /nothing about orientation changes/.test(q.text) && !/\u2014/.test(q.text), q) }
