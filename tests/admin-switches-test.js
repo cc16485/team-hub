@@ -49,6 +49,9 @@ const rows = (h) => h.split('<div class="swrow">').slice(1).map((r) => ({
   /* 2026-11-03 Orientation inside Onboarding: listed, off, its own button, needs the Onboarding table */
   { const q = R.find((r) => r.name === 'Orientation inside Onboarding'), sw = W.X.SWITCHES.flatMap((g) => g[1]).find((x) => x.k === 'orientation_in_onboarding_live');
     ck('Orientation inside Onboarding: listed, off, with a Turn on button, needs the Onboarding table, nothing about orientation changes', !!q && !q.on && q.btn === 'orientation_in_onboarding_live' && sw && sw.needs === 'onboarding_table_live' && /nothing about orientation changes/.test(q.text) && !/\u2014/.test(q.text), q) }
+  /* 2026-11-04 Offers inside Onboarding: listed, off, its own button, needs the Onboarding table, nothing sent */
+  { const q = R.find((r) => r.name === 'Offers inside Onboarding'), sw = W.X.SWITCHES.flatMap((g) => g[1]).find((x) => x.k === 'offers_in_onboarding_live');
+    ck('Offers inside Onboarding: listed, off, with a Turn on button, needs the Onboarding table, says nothing is sent', !!q && !q.on && q.btn === 'offers_in_onboarding_live' && sw && sw.needs === 'onboarding_table_live' && /Nothing is sent to anyone/.test(q.text) && !/\u2014/.test(q.text), q) }
   /* 2026-11-03 Current employee and client tags in GoHighLevel: listed, its own button, only our three tags, nothing sent */
   { const q = R.find((r) => r.name === 'Current employee and client tags in GoHighLevel');
     ck('Current employee and client tags: listed, off, with a Turn on button, says no other tag is touched and nothing is sent', !!q && !q.on && q.btn === 'hub_status_tags_live' && /never touches any other tag/.test(q.text) && /never sends anything/.test(q.text) && !/—/.test(q.text), q) }
