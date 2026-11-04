@@ -49,6 +49,9 @@ const rows = (h) => h.split('<div class="swrow">').slice(1).map((r) => ({
   /* 2026-11-03 Current employee and client tags in GoHighLevel: listed, its own button, only our three tags, nothing sent */
   { const q = R.find((r) => r.name === 'Current employee and client tags in GoHighLevel');
     ck('Current employee and client tags: listed, off, with a Turn on button, says no other tag is touched and nothing is sent', !!q && !q.on && q.btn === 'hub_status_tags_live' && /never touches any other tag/.test(q.text) && /never sends anything/.test(q.text) && !/—/.test(q.text), q) }
+  /* 2026-11-03 Employee folders in GoHighLevel: listed, off, its own button, hand-typed left alone, rehire and SSN never touched */
+  { const q = R.find((r) => r.name === 'Employee folders in GoHighLevel filled from the Hub');
+    ck('Employee folders in GoHighLevel: listed, off, with a Turn on button, leaves hand-typed values, never rehire or SSN, nothing sent', !!q && !q.on && q.btn === 'hub_ghl_folders_live' && /typed by hand is left alone/.test(q.text) && /eligible for rehire/.test(q.text) && /Social Security Number/.test(q.text) && /never sends anything/.test(q.text) && !/—/.test(q.text), q) }
   /* 2026-11-03 Ask references by themselves: listed, off, its own button, email only, the same email as Ask refs */
   { const q = R.find((r) => r.name === 'Ask references by themselves');
     ck('Ask references by themselves: listed, off, with a Turn on button, says email only and the same email as Ask refs', !!q && !q.on && q.btn === 'refs_auto_ask_live' && /Email only: no texts/.test(q.text) && /what the Ask refs button does/.test(q.text) && !/\u2014/.test(q.text), q) }
