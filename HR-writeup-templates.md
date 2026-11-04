@@ -18,10 +18,10 @@ ever challenged:
 - "Employees shall not discuss personal issues or religious or political beliefs…"
 - "Good communication between you, the office, your client, and other caregivers…"
 
-**The gift language was the opposite of current policy.** The drafts said employees may
-never accept gifts. Section **4Q** says small tokens may occasionally be appropriate and
-prohibits something narrower. Writing someone up for accepting a small gift while quoting a
-blanket ban you do not have is a real risk. Corrected below.
+**The gift language now matches a blanket ban (handbook updated 11-04).** Samantha set the rule
+on 2026-11-04: no gifts or tips of any kind, not even small ones, the same as the Code of Ethics
+and orientation. Section **4Q** of "2025-2027 Employee Handbook (updated 11-04).pdf" says so, and
+template 6 quotes it.
 
 **The call-off rule is real but softer than drafted.** Section 2 says "whenever possible"
 and "whenever reasonably possible", not "required". The notices now say what the handbook
@@ -164,25 +164,24 @@ office staff ☐ Ignored scheduling instructions ☐ Other
 ## 6. Client boundaries and gifts  ⚠ corrected
 
 **Policy (handbook §4Q, Gifts & Gratuities). Quote it accurately:**
-> Many clients express appreciation through gifts or tips. While small tokens of appreciation
-> may occasionally be appropriate, employees should never request or expect gifts.
+> Many clients express appreciation through gifts or tips. Employees may not accept gifts or
+> tips of any kind, not even small ones, and should never request or expect gifts.
 
 > Employees may NOT: Ask clients for money. Request gifts. Solicit donations. Pressure clients
-> to purchase items. Accept expensive gifts or valuable property.
+> to purchase items. Accept gifts, tips, or valuable property.
 
 > If a client offers: Large amounts of cash, Jewelry, Vehicles, Real estate, Valuable
-> collectibles, Other significant gifts — politely decline the gift and notify the office.
+> collectibles, Any other gift or tip: politely decline the gift and notify the office.
 
 **Boundaries (handbook §2M):** the "Employees should avoid" list quoted in template 4 above.
 
 **Checkboxes:** ☐ Asked a client for money ☐ Requested or solicited a gift ☐ Accepted an
-expensive gift or valuable property ☐ Did not decline and report a significant gift
+gift, tip or valuable property ☐ Did not decline and report a gift or tip
 ☐ Became personally involved in family conflicts ☐ Shared excessive personal information
 ☐ Made promises that could not be kept ☐ Other
 
-⚠ **Do not use this template for a small token of appreciation.** Under §4Q that is not a
-violation. If the concern is a pattern rather than a single gift, say so explicitly in the
-incident description.
+⚠ **Since 11-04, §4Q says no gifts or tips of any kind, not even small ones.** Describe exactly
+what was offered and what the caregiver did with it.
 
 ---
 
