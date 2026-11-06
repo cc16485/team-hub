@@ -63,7 +63,10 @@ const rows = (h) => h.split('<div class="swrow">').slice(1).map((r) => ({
     ck('Client and family contacts in GoHighLevel: listed, off, with a Turn on button, hand-typed left alone, nothing medical, nothing sent', !!q && !q.on && q.btn === 'hub_ghl_clients_live' && /typed by hand is left alone/.test(q.text) && /never puts anything medical/.test(q.text) && /never sends anything/.test(q.text) && !/\u2014/.test(q.text), q) }
   /* 2026-11-03 Ask references by themselves: listed, off, its own button, email only, the same email as Ask refs */
   { const q = R.find((r) => r.name === 'Ask references by themselves');
-    ck('Ask references by themselves: listed, off, with a Turn on button, says email only and the same email as Ask refs', !!q && !q.on && q.btn === 'refs_auto_ask_live' && /Email only: no texts/.test(q.text) && /what the Ask refs button does/.test(q.text) && !/\u2014/.test(q.text), q) }
+    ck('Ask references by themselves: listed, off, with a Turn on button, says texts need the text switch and the same email as Ask refs', !!q && !q.on && q.btn === 'refs_auto_ask_live' && /Texts only when .{0,8}Text references by themselves.{0,8} is on too/.test(q.text) && /what the Ask refs button does/.test(q.text) && !/\u2014/.test(q.text), q) }
+  /* 2026-11-05 Text references by themselves: listed, off, its own button, the office wording without the thank-you line, STOP */
+  { const q = R.find((r) => r.name === 'Text references by themselves');
+    ck('Text references by themselves: listed, off, with a Turn on button, the office text with STOP, no "Thanks for saying"', !!q && !q.on && q.btn === 'ref_auto_text_live' && /Reply STOP to opt out/.test(q.text) && /just a friendly reminder/.test(q.text) && !/Thanks for saying/.test(q.text) && !/\u2014/.test(q.text), q) }
   /* 2026-11-02 Move on to orientation by itself: listed, off, its own button, flagged checks still go to the owners */
   { const q = R.find((r) => r.name === 'Move on to orientation by itself');
     ck('Move on to orientation by itself: listed, off, with a Turn on button, says flagged checks still go to the owners', !!q && !q.on && q.btn === 'approve_advance_auto_live' && /still comes to you and Zachary/.test(q.text) && !/\u2014/.test(q.text), q) }
