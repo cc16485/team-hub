@@ -87,7 +87,7 @@
 <header>
   <div>
     <h1>🏛️ Owners Hub</h1>
-    <div class="sub">Growth · Financials · Discipline · Offboarding · Audits</div>
+    <div class="sub">Cockpit · Growth · Financials · Discipline · Offboarding · Audits</div>
   </div>
   <span style="flex:1"></span>
   <span class="muted" id="who" style="color:#B9CBDD"></span>
@@ -99,7 +99,8 @@
   <button class="ghost btn" style="padding:.35rem .8rem" onclick="signOut()">Sign Out</button>
 </header>
 <nav class="tabs">
-  <button data-t="growth" class="active" onclick="go('growth',this)"><svg aria-hidden="true" style="width:1.05em;height:1.05em;vertical-align:-0.16em;display:inline-block;"><use href="icons.svg#i-chart"/></svg> Growth &amp; Value</button>
+  <button data-t="cockpit" class="active" onclick="go('cockpit',this)"><svg aria-hidden="true" style="width:1.05em;height:1.05em;vertical-align:-0.16em;display:inline-block;"><use href="icons.svg#i-target"/></svg> Cockpit</button>
+  <button data-t="growth" onclick="go('growth',this)"><svg aria-hidden="true" style="width:1.05em;height:1.05em;vertical-align:-0.16em;display:inline-block;"><use href="icons.svg#i-chart"/></svg> Growth &amp; Value</button>
   <button data-t="money" onclick="go('money',this)"><svg aria-hidden="true" style="width:1.05em;height:1.05em;vertical-align:-0.16em;display:inline-block;"><use href="icons.svg#i-money"/></svg> Financials</button>
   <button data-t="discipline" onclick="go('discipline',this)"><svg aria-hidden="true" style="width:1.05em;height:1.05em;vertical-align:-0.16em;display:inline-block;"><use href="icons.svg#i-doc"/></svg> Discipline <span class="badge" id="b-disc" style="display:none"></span></button>
   <button data-t="offboarding" onclick="go('offboarding',this)"><svg aria-hidden="true" style="width:1.05em;height:1.05em;vertical-align:-0.16em;display:inline-block;"><use href="icons.svg#i-wave"/></svg> Offboarding <span class="badge" id="b-off" style="display:none"></span></button>
@@ -108,11 +109,32 @@
 </nav>
 <main>
 
+<!-- ============ COCKPIT (CEO cockpit v1, 2026-11-07, her "Yes, first tab") ============
+     The first screen: growth goals and pace only. Springfield hours come live from the AxisCare pulse;
+     CDS, Oklahoma and Show-Me Neighbors are typed in here until they are connected. Goals live in
+     owner_settings (owners only), so they are changed here, not in code. -->
+<section class="panel active" id="panel-cockpit">
+  <h2>Cockpit</h2>
+  <div class="muted" style="margin-bottom:1rem">Your growth goals and where each business stands. The details live in the other tabs.</div>
+  <div id="owner-inbox"></div>
+  <div id="cockpit-springfield"><div class="card"><div class="muted">Pulling Springfield from AxisCare…</div></div></div>
+  <div class="card">
+    <div style="display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;justify-content:space-between">
+      <b style="font-size:.95rem;color:var(--navy)">The road to the yearly goal: all four businesses</b>
+      <button class="linklike" onclick="ckEdit()">Update numbers and goals</button>
+    </div>
+    <div id="cockpit-total" style="margin-top:.6rem"><div class="muted">Loading…</div></div>
+  </div>
+  <div class="card">
+    <b style="font-size:.95rem;color:var(--navy)">New families: this month vs last</b>
+    <div id="cockpit-leads" style="margin-top:.5rem"><div class="muted">Loading…</div></div>
+  </div>
+</section>
+
 <!-- ============ GROWTH & VALUE ============ -->
-<section class="panel active" id="panel-growth">
+<section class="panel" id="panel-growth">
   <h2>Growth &amp; Value</h2>
   <div class="muted" style="margin-bottom:1rem">The operating pulse, straight from AxisCare and the lead pipeline: the numbers a buyer will ask about first.</div>
-  <div id="owner-inbox"></div>
   <div id="growth-pulse"><div class="muted">Loading the pulse…</div></div>
   <div class="card">
     <b style="font-size:.95rem;color:var(--navy)">GHE scorecard: by nurse, from the visit to Fusion</b>
@@ -417,6 +439,7 @@ async function loadGrowthPulse(){
       body:JSON.stringify({mode:'metrics',days:60})});
     const d=await r.json();
     if(d.error) throw new Error(d.error);
+    PULSE=d; renderCockpit();
     const R=d.recent||{}, P=d.prior||{};
     const newEra=!P.visits; // AxisCare adoption too recent for a prior period
     const delta=(a,b)=>{ if(newEra||!b) return ''; const pct=Math.round((a-b)/b*100); return '<span style="font-size:.72rem;font-weight:700;color:'+(pct>=0?'var(--green)':'var(--red)')+'"> '+(pct>=0?'▲':'▼')+' '+Math.abs(pct)+'%</span>'; };
@@ -431,7 +454,7 @@ async function loadGrowthPulse(){
       +tile('Caregivers scheduled',R.caregivers||0,delta(R.caregivers,P.caregivers),(R.caregivers?('≈ '+Math.round((R.hours||0)/R.caregivers)+' hrs each'):''))
       +'</div>'
       +(newEra?'<div class="muted" style="margin-bottom:.5rem">ℹ️ No prior-month comparison yet — scheduling moved into AxisCare recently. Trend arrows appear once there are two full months of data.</div>':'');
-  }catch(e){ box.innerHTML='<div style="color:var(--red);font-size:.85rem">Could not pull the pulse: '+esc(e&&e.message?e.message:'error')+'</div><div class="muted" style="margin-top:.3rem"><button class="linklike" onclick="loadGrowthPulse()">try again</button></div>'; }
+  }catch(e){ PULSE={error:(e&&e.message)||'error'}; renderCockpit(); box.innerHTML='<div style="color:var(--red);font-size:.85rem">Could not pull the pulse: '+esc(e&&e.message?e.message:'error')+'</div><div class="muted" style="margin-top:.3rem"><button class="linklike" onclick="loadGrowthPulse()">try again</button></div>'; }
 }
 function renderFunnel(){
   /* item 4 (2026-10-07): the funnel as bars, from the CC Hub's own lead-rules.js (the same counts the Leads board uses): for the
@@ -1236,6 +1259,98 @@ function printAudit(id){
   w.document.close(); w.print();
 }
 
+/* ---------------- Cockpit (CEO cockpit v1, 2026-11-07) ----------------
+   Her plan: Springfield 1,000 to 1,500 hours a week, CDS 60 consumers at about 20 hours each, Oklahoma
+   carries the rest, Show-Me Neighbors is a separate company with its own row. Springfield is live from the
+   AxisCare pulse (scheduled visits, last 30 days). The other three are typed in here until they are
+   connected, with the date they were typed. Every goal is an owner setting, changed on this screen. */
+let PULSE=null;
+const CK_DEFAULTS={ year_goal:5000000, sf_goal_hours:1500, cds_goal:60, cds_hours_each:20, cds_rate:20.92, ok_rate:30, smn_rate:34,
+  cds_consumers:null, ok_hours:null, smn_hours:null, ok_status:'License pending', smn_status:'Planning', typed_at:null };
+function ckSet(){ return Object.assign({},CK_DEFAULTS,OSET.cockpit||{}); }
+const ckNum=n=>Math.round(n||0).toLocaleString('en-US');
+const ckM=n=>{ n=n||0; return n>=1e6?('$'+(n/1e6).toFixed(n>=1e7?0:1)+'M'):n>=1e3?('$'+Math.round(n/1e3)+'K'):fmt$(n); };
+function ckBar(pct,color){ pct=Math.max(0,Math.min(100,pct||0));
+  return '<div style="height:12px;background:#EEF2F6;border-radius:6px;overflow:hidden"><div style="width:'+Math.max(pct,pct?2:0)+'%;height:100%;background:'+(color||'var(--navy)')+'"></div></div>'; }
+function ckEsc(s){ return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function ckSpringfield(){
+  const R=(PULSE&&PULSE.recent)||{};
+  if(!PULSE||PULSE.error||!R.hours) return null;
+  const week=R.hours*7/30, rate=R.est_revenue/R.hours;
+  return { week, rate, clients:R.clients||0, caregivers:R.caregivers||0, perCg:R.caregivers?R.hours/R.caregivers*7/30:0 };
+}
+function renderCockpit(){
+  const a=document.getElementById('cockpit-springfield'), b=document.getElementById('cockpit-total'), c=document.getElementById('cockpit-leads');
+  if(!a||!b||!c) return;
+  const S=ckSet(), sf=ckSpringfield();
+  /* Springfield pace */
+  if(!PULSE){ a.innerHTML='<div class="card"><div class="muted">Pulling Springfield from AxisCare…</div></div>'; }
+  else if(!sf){ a.innerHTML='<div class="card"><b style="font-size:.95rem;color:var(--navy)">Springfield: hours a week</b><div style="color:var(--red);font-size:.85rem;margin-top:.4rem">AxisCare could not be read just now'+(PULSE.error?' ('+ckEsc(PULSE.error)+')':'')+', so the hours are not shown rather than guessed.</div><div class="muted" style="margin-top:.3rem"><button class="linklike" onclick="loadGrowthPulse()">try again</button></div></div>'; }
+  else {
+    const pct=sf.week/S.sf_goal_hours*100, gap=S.sf_goal_hours-sf.week;
+    a.innerHTML='<div class="card"><div style="display:flex;flex-wrap:wrap;gap:.5rem;align-items:baseline;justify-content:space-between"><b style="font-size:.95rem;color:var(--navy)">Springfield: hours a week</b><span class="muted">goal '+ckNum(S.sf_goal_hours)+' a week</span></div>'
+      +'<div style="font-size:2rem;font-weight:800;color:var(--navy);margin:.3rem 0">'+ckNum(sf.week)+' <span style="font-size:.9rem;font-weight:600;color:var(--muted)">hours a week</span></div>'
+      +ckBar(pct,'var(--teal)')
+      +'<div style="margin-top:.45rem;font-size:.86rem">'+(gap>0?'<b>'+ckNum(gap)+' more hours a week</b> to reach the goal ('+Math.round(pct)+'% there).':'<b>Goal reached.</b> Time to raise it.')+'</div>'
+      +'<div style="display:flex;gap:1.2rem;flex-wrap:wrap;margin-top:.6rem;font-size:.82rem">'
+      +'<span><b>'+ckNum(sf.clients)+'</b> clients</span><span><b>'+ckNum(sf.caregivers)+'</b> caregivers, about <b>'+ckNum(sf.perCg)+'</b> hours a week each</span><span>about <b>'+fmt$(sf.rate)+'</b> an hour</span></div>'
+      +'<div class="muted" style="margin-top:.45rem">Scheduled visits in AxisCare over the last 30 days, shown per week. Scheduled is not the same as billed.</div></div>';
+  }
+  /* four businesses toward the yearly goal */
+  const rows=[];
+  const sfNow=sf?sf.week*sf.rate*52:null, sfGoal=sf?S.sf_goal_hours*sf.rate*52:null;
+  rows.push({ name:'Springfield, Caring Companions', now: sf?ckNum(sf.week)+' hours a week':'not read yet', goal: ckNum(S.sf_goal_hours)+' hours a week', yNow:sfNow, yGoal:sfGoal, src:'live from AxisCare' });
+  const cdsNow=S.cds_consumers!=null?S.cds_consumers*S.cds_hours_each*S.cds_rate*52:null, cdsGoal=S.cds_goal*S.cds_hours_each*S.cds_rate*52;
+  rows.push({ name:'CDS', now: S.cds_consumers!=null?ckNum(S.cds_consumers)+' consumers':'not entered yet', goal: ckNum(S.cds_goal)+' consumers at about '+ckNum(S.cds_hours_each)+' hours', yNow:cdsNow, yGoal:cdsGoal, src:'typed in' });
+  const okNow=S.ok_hours!=null?S.ok_hours*S.ok_rate*52:null;
+  const smnNow=S.smn_hours!=null?S.smn_hours*S.smn_rate*52:null;
+  const restGoal=sfGoal!=null?Math.max(0,S.year_goal-sfGoal-cdsGoal):null;
+  rows.push({ name:'Mustang, Oklahoma companion', now: S.ok_hours!=null?ckNum(S.ok_hours)+' hours a week':ckEsc(S.ok_status), goal: restGoal!=null?'about '+ckNum(restGoal/(S.ok_rate*52))+' hours a week (the rest)':'the rest', yNow:okNow, yGoal:restGoal, src:'typed in' });
+  rows.push({ name:'Show-Me Neighbors (separate company)', now: S.smn_hours!=null?ckNum(S.smn_hours)+' hours a week':ckEsc(S.smn_status), goal:'its own plan', yNow:smnNow, yGoal:null, src:'typed in' });
+  const total=rows.reduce((t,r)=>t+(r.yNow||0),0);
+  b.innerHTML='<div style="display:flex;flex-wrap:wrap;gap:.5rem;align-items:baseline;justify-content:space-between;margin-bottom:.35rem"><span style="font-size:1.5rem;font-weight:800;color:var(--navy)">'+ckM(total)+' <span style="font-size:.85rem;font-weight:600;color:var(--muted)">a year at today\'s pace</span></span><span class="muted">goal '+ckM(S.year_goal)+' a year</span></div>'
+    +ckBar(total/S.year_goal*100,'var(--gold)')
+    +'<div style="overflow-x:auto;margin-top:.8rem"><table style="width:100%;border-collapse:collapse;font-size:.8rem;min-width:620px"><thead><tr style="text-align:left;color:#5A6B7E"><th style="padding:.3rem .4rem">Business</th><th style="padding:.3rem .4rem">Today</th><th style="padding:.3rem .4rem">Goal</th><th style="padding:.3rem .4rem">A year today</th><th style="padding:.3rem .4rem">A year at goal</th></tr></thead><tbody>'
+    +rows.map(r=>'<tr style="border-top:1px solid #DCE4EE"><td style="padding:.4rem"><b>'+r.name+'</b><div class="muted" style="font-size:.7rem">'+r.src+'</div></td><td style="padding:.4rem">'+r.now+'</td><td style="padding:.4rem">'+r.goal+'</td><td style="padding:.4rem">'+(r.yNow!=null?ckM(r.yNow):'<span class="muted">not yet</span>')+'</td><td style="padding:.4rem">'+(r.yGoal!=null?ckM(r.yGoal):'<span class="muted">not set</span>')+'</td></tr>').join('')
+    +'</tbody></table></div>'
+    +'<div class="muted" style="margin-top:.45rem">A year = hours a week times the hourly rate times 52. CDS at about $'+(+S.cds_rate).toFixed(2)+' an hour billed, Oklahoma at '+fmt$(S.ok_rate)+', Show-Me Neighbors at '+fmt$(S.smn_rate)+'.'+(S.typed_at?' Typed-in numbers last updated '+new Date(S.typed_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})+'.':'')+'</div>'
+    +'<div id="ck-form" style="display:none"></div>';
+  /* new families */
+  if(typeof LeadRules==='undefined'){ c.innerHTML='<div class="muted">The rules file (cc.mo-care.com/lead-rules.js) did not load, so these numbers are not shown rather than guessed. Reload the page.</div>'; return; }
+  const now=new Date(), hours=LeadRules.responseHours(OPS_SET||{});
+  const mStart=new Date(now.getFullYear(),now.getMonth(),1), pStart=new Date(now.getFullYear(),now.getMonth()-1,1), nowPlus=new Date(now.getTime()+86400000);
+  const F=(f,t)=>LeadRules.periodNumbers(LEADS,hours,f.toISOString(),t.toISOString(),now.toISOString(),{orgs:ORGS||{}}).funnel||{};
+  const A=F(mStart,nowPlus), B=F(pStart,mStart);
+  const tile=(lab,x,y)=>'<div style="flex:1;min-width:140px"><div class="muted" style="font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;font-weight:800">'+lab+'</div><div style="font-size:1.4rem;font-weight:800;color:var(--navy)">'+ckNum(x)+'</div><div class="muted">last month '+ckNum(y)+'</div></div>';
+  c.innerHTML='<div style="display:flex;gap:.8rem;flex-wrap:wrap">'+tile('Inquiries',A.inquiries,B.inquiries)+tile('Said yes',A.won,B.won)+tile('First shift',A.started,B.started)+'</div>'
+    +'<div class="muted" style="margin-top:.45rem">Families who first called each month, from the CC Hub leads. The full funnel and referral sources are on Growth &amp; Value.</div>';
+}
+function ckEdit(){
+  const f=document.getElementById('ck-form'); if(!f) return;
+  if(f.style.display==='block'){ f.style.display='none'; return; }
+  const S=ckSet();
+  const inp=(id,lab,v,step)=>'<label style="display:flex;flex-direction:column;gap:.2rem;font-size:.75rem;font-weight:700;min-width:170px;flex:1">'+lab+'<input id="'+id+'" type="number" min="0" step="'+(step||'1')+'" value="'+(v==null?'':v)+'"></label>';
+  const txt=(id,lab,v)=>'<label style="display:flex;flex-direction:column;gap:.2rem;font-size:.75rem;font-weight:700;min-width:170px;flex:1">'+lab+'<input id="'+id+'" type="text" value="'+ckEsc(v||'')+'"></label>';
+  f.style.display='block';
+  f.innerHTML='<div style="border-top:1px solid var(--border);margin-top:.8rem;padding-top:.8rem">'
+    +'<div style="font-weight:800;font-size:.82rem;color:var(--navy);margin-bottom:.4rem">Where things stand today (leave blank if not started)</div>'
+    +'<div style="display:flex;gap:.6rem;flex-wrap:wrap">'+inp('ck-cds',"CDS consumers working today",S.cds_consumers)+inp('ck-ok','Oklahoma hours a week',S.ok_hours)+txt('ck-okst','Oklahoma status (when no hours yet)',S.ok_status)+inp('ck-smn','Show-Me Neighbors hours a week',S.smn_hours)+txt('ck-smnst','Show-Me Neighbors status',S.smn_status)+'</div>'
+    +'<div style="font-weight:800;font-size:.82rem;color:var(--navy);margin:.8rem 0 .4rem">Goals and rates</div>'
+    +'<div style="display:flex;gap:.6rem;flex-wrap:wrap">'+inp('ck-year','Yearly goal, all businesses ($)',S.year_goal)+inp('ck-sfg','Springfield goal, hours a week',S.sf_goal_hours)+inp('ck-cdsg','CDS goal, consumers',S.cds_goal)+inp('ck-cdsh','CDS hours a week per consumer',S.cds_hours_each)+inp('ck-cdsr','CDS billed per hour ($)',S.cds_rate,'0.01')+inp('ck-okr','Oklahoma rate per hour ($)',S.ok_rate,'0.01')+inp('ck-smnr','Show-Me Neighbors rate per hour ($)',S.smn_rate,'0.01')+'</div>'
+    +'<div style="display:flex;gap:.5rem;margin-top:.8rem"><button class="btn" onclick="ckSave()">Save</button><button class="btn ghost" onclick="ckEdit()">Cancel</button></div></div>';
+}
+async function ckSave(){
+  const v=id=>{ const x=document.getElementById(id).value.trim(); return x===''?null:+x; };
+  const t=id=>document.getElementById(id).value.trim();
+  const S=ckSet();
+  const next=Object.assign({},S,{ cds_consumers:v('ck-cds'), ok_hours:v('ck-ok'), smn_hours:v('ck-smn'), ok_status:t('ck-okst')||CK_DEFAULTS.ok_status, smn_status:t('ck-smnst')||CK_DEFAULTS.smn_status,
+    year_goal:v('ck-year')||S.year_goal, sf_goal_hours:v('ck-sfg')||S.sf_goal_hours, cds_goal:v('ck-cdsg')||S.cds_goal, cds_hours_each:v('ck-cdsh')||S.cds_hours_each,
+    cds_rate:v('ck-cdsr')||S.cds_rate, ok_rate:v('ck-okr')||S.ok_rate, smn_rate:v('ck-smnr')||S.smn_rate, typed_at:new Date().toISOString(), typed_by:ME.name||ME.email });
+  const prev=OSET.cockpit; OSET.cockpit=next;
+  try{ await saveOset(); }catch(e){ OSET.cockpit=prev; return; }
+  renderCockpit();
+}
+
 async function boot(){
   const { data:{ session } } = await sb.auth.getSession();
   if(!session){ document.getElementById('signin').style.display='flex'; document.getElementById('app').style.display='none'; return; }
@@ -1260,7 +1375,7 @@ async function boot(){
   document.getElementById('app').style.display='block';
   await loadAll();
   renderDiscipline(); renderOffboarding(); renderAudits(); renderOwnersFeedback();
-  renderMoney(); renderBudget(); renderFunnel(); renderSpeed(); renderLeadDesk(); renderAiTag(); renderRelationships(); renderGheScorecard(); renderGrievanceLog(); renderOwnerInbox(); loadGrowthPulse(); loadHiringFunnel();
+  renderMoney(); renderBudget(); renderFunnel(); renderSpeed(); renderLeadDesk(); renderAiTag(); renderRelationships(); renderGheScorecard(); renderGrievanceLog(); renderOwnerInbox(); renderCockpit(); loadGrowthPulse(); loadHiringFunnel();
 }
 boot();
 </script>
