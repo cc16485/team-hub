@@ -16,11 +16,14 @@ def run(pg):
       PULSE={ error:'AxisCare answered 403' }; renderCockpit(); const err=document.getElementById('cockpit-springfield').innerText;
       PULSE={ recent:{ hours:3000, est_revenue:93000, clients:40, caregivers:30 }, prior:{} }; renderCockpit();
       const sf=document.getElementById('cockpit-springfield').innerText, tot1=document.getElementById('cockpit-total').innerText;
+      PULSE={ recent:{ hours:3000, est_revenue:93000, clients:40, caregivers:30 }, prior:{}, incomplete_dates:['2026-11-01','2026-11-02'] }; renderCockpit();
+      const gapTxt=document.getElementById('cockpit-springfield').innerText;
+      PULSE={ recent:{ hours:3000, est_revenue:93000, clients:40, caregivers:30 }, prior:{} }; renderCockpit();
       ckEdit(); document.getElementById('ck-cds').value='12'; document.getElementById('ck-ok').value=''; document.getElementById('ck-smn').value='';
       await ckSave();
       const tot2=document.getElementById('cockpit-total').innerText, leads=document.getElementById('cockpit-leads').innerText;
       const all=document.getElementById('panel-cockpit').innerText;
-      return { first, active, loading, err, sf, tot1, tot2, leads, saved, em:/—/.test(all+err+loading) };
+      return { first, active, loading, err, sf, gapTxt, tot1, tot2, leads, saved, em:/—/.test(all+err+loading) };
     }""")
 with sync_playwright() as pw:
     b=pw.chromium.launch()
@@ -40,6 +43,7 @@ ok=[('Cockpit is the first tab and opens first', r['first']=='cockpit' and r['ac
     ('waiting for AxisCare says so', 'Pulling Springfield' in r['loading']),
     ('AxisCare unreachable: says so, never shows zero', 'could not be read just now' in r['err'] and '403' in r['err'] and 'more hours a week' not in r['err']),
     ('Springfield: 3,000 hours in 30 days is 700 a week, 800 to go to 1,500', '700' in r['sf'] and '800 more hours a week' in r['sf'] and '47% there' in r['sf']),
+    ('days AxisCare did not answer are named: hours may be low', 'did not answer in full for 2 days' in r['gapTxt'] and 'did not answer' not in r['sf']),
     ('Springfield rate and caregivers shown', '$31' in r['sf'] and '30 caregivers' in r['sf']),
     ('before typing: CDS not entered, Oklahoma shows its status', 'not entered yet' in r['tot1'] and 'License pending' in r['tot1']),
     ('saving goes to owner_settings with the typed date', r['saved'] and r['saved'][-1][0]=='owner_settings' and sv.get('cockpit',{}).get('cds_consumers')==12 and sv['cockpit'].get('typed_at')),
