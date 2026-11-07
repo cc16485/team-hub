@@ -453,6 +453,7 @@ async function loadGrowthPulse(){
       +tile('Clients scheduled',R.clients||0,delta(R.clients,P.clients),'on the schedule, last 30 days')
       +tile('Caregivers scheduled',R.caregivers||0,delta(R.caregivers,P.caregivers),(R.caregivers?('≈ '+Math.round((R.hours||0)/R.caregivers)+' hrs each'):''))
       +'</div>'
+      +((d.incomplete_dates||[]).length?'<div style="color:var(--amber);font-size:.8rem;font-weight:700;margin-bottom:.5rem">AxisCare did not answer in full for '+d.incomplete_dates.length+' day'+(d.incomplete_dates.length===1?'':'s')+', so these numbers may be low.</div>':'')
       +(newEra?'<div class="muted" style="margin-bottom:.5rem">ℹ️ No prior-month comparison yet — scheduling moved into AxisCare recently. Trend arrows appear once there are two full months of data.</div>':'');
   }catch(e){ PULSE={error:(e&&e.message)||'error'}; renderCockpit(); box.innerHTML='<div style="color:var(--red);font-size:.85rem">Could not pull the pulse: '+esc(e&&e.message?e.message:'error')+'</div><div class="muted" style="margin-top:.3rem"><button class="linklike" onclick="loadGrowthPulse()">try again</button></div>'; }
 }
@@ -1279,6 +1280,8 @@ function ckSpringfield(){
   const week=R.hours*7/30, rate=R.est_revenue/R.hours;
   return { week, rate, clients:R.clients||0, caregivers:R.caregivers||0, perCg:R.caregivers?R.hours/R.caregivers*7/30:0 };
 }
+function ckGapNote(){ const g=(PULSE&&PULSE.incomplete_dates)||[]; if(!g.length) return '';
+  return '<div style="color:var(--amber);font-size:.8rem;font-weight:700;margin-top:.35rem">AxisCare did not answer in full for '+g.length+' day'+(g.length===1?'':'s')+', so these hours may be low. Try again later.</div>'; }
 function renderCockpit(){
   const a=document.getElementById('cockpit-springfield'), b=document.getElementById('cockpit-total'), c=document.getElementById('cockpit-leads');
   if(!a||!b||!c) return;
@@ -1294,7 +1297,8 @@ function renderCockpit(){
       +'<div style="margin-top:.45rem;font-size:.86rem">'+(gap>0?'<b>'+ckNum(gap)+' more hours a week</b> to reach the goal ('+Math.round(pct)+'% there).':'<b>Goal reached.</b> Time to raise it.')+'</div>'
       +'<div style="display:flex;gap:1.2rem;flex-wrap:wrap;margin-top:.6rem;font-size:.82rem">'
       +'<span><b>'+ckNum(sf.clients)+'</b> clients</span><span><b>'+ckNum(sf.caregivers)+'</b> caregivers, about <b>'+ckNum(sf.perCg)+'</b> hours a week each</span><span>about <b>'+fmt$(sf.rate)+'</b> an hour</span></div>'
-      +'<div class="muted" style="margin-top:.45rem">Scheduled visits in AxisCare over the last 30 days, shown per week. Scheduled is not the same as billed.</div></div>';
+      +'<div class="muted" style="margin-top:.45rem">Visits with a caregiver in AxisCare over the last 30 days, shown per week. Deleted and cancelled visits are left out. Scheduled is not the same as billed.</div>'
+      +ckGapNote()+'</div>';
   }
   /* four businesses toward the yearly goal */
   const rows=[];
