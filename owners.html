@@ -8,7 +8,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cc.mo-care.com/lead-rules.js?v=15"></script>
 <script src="https://cc.mo-care.com/speed-rules.js?v=1"></script><script src="https://cc.mo-care.com/heard-about.js?v=1"></script><!-- How did they hear about us? (2026-11-09, content scorecard): the same list the CC Hub Add lead form uses --><!-- Speed to lead (2026-10-22, her design): the same numbers the CC Hub's My speed tab uses -->
-<script src="https://cc.mo-care.com/partner-rules.js?v=1"></script><script src="https://cc.mo-care.com/writeup-rules.js?v=4"></script><!-- Who approves a write-up (HR decisions and the step 6 required items, 2026-10-18): the same rules file the CC Hub runs --><script src="https://cc.mo-care.com/ghe-forms-rules.js?v=1"></script><!-- GHE scorecard (GHE fix slice 4, 2026-10-08): the same rules file the CC Hub's Nurse Scheduling runs --><!-- Referral Partner Desk (2026-10-08): owners, tiers and timing, the same file the CC Hub desk runs --><!-- Leads intake desk Stage 5 (2026-10-07): the same rules file the CC Hub runs; the owners' numbers come from it -->
+<script src="owner-money.js?v=1"></script><script src="https://cc.mo-care.com/partner-rules.js?v=1"></script><script src="https://cc.mo-care.com/writeup-rules.js?v=4"></script><!-- Who approves a write-up (HR decisions and the step 6 required items, 2026-10-18): the same rules file the CC Hub runs --><script src="https://cc.mo-care.com/ghe-forms-rules.js?v=1"></script><!-- GHE scorecard (GHE fix slice 4, 2026-10-08): the same rules file the CC Hub's Nurse Scheduling runs --><!-- Referral Partner Desk (2026-10-08): owners, tiers and timing, the same file the CC Hub desk runs --><!-- Leads intake desk Stage 5 (2026-10-07): the same rules file the CC Hub runs; the owners' numbers come from it -->
 <style>
   :root{ --navy:#0D365F; --navy2:#0D365F; --teal:#54BDB8; --gold:#F0A63A; --red:#DC2626; --red-bg:#FEE2E2;
     --amber:#B45309; --amber-bg:#FEF3C7; --green:#16A34A; --green-bg:#DCFCE7;
@@ -87,7 +87,7 @@
 <header>
   <div>
     <h1>🏛️ Owners Hub</h1>
-    <div class="sub">Cockpit · Growth · Financials · Discipline · Offboarding · Audits</div>
+    <div class="sub">Cockpit · Money · Growth · Financials · Discipline · Offboarding · Audits</div>
   </div>
   <span style="flex:1"></span>
   <span class="muted" id="who" style="color:#B9CBDD"></span>
@@ -100,6 +100,7 @@
 </header>
 <nav class="tabs">
   <button data-t="cockpit" class="active" onclick="go('cockpit',this)"><svg aria-hidden="true" style="width:1.05em;height:1.05em;vertical-align:-0.16em;display:inline-block;"><use href="icons.svg#i-target"/></svg> Cockpit</button>
+  <button data-t="cash" onclick="go('cash',this)"><svg aria-hidden="true" style="width:1.05em;height:1.05em;vertical-align:-0.16em;display:inline-block;"><use href="icons.svg#i-money"/></svg> Money</button>
   <button data-t="growth" onclick="go('growth',this)"><svg aria-hidden="true" style="width:1.05em;height:1.05em;vertical-align:-0.16em;display:inline-block;"><use href="icons.svg#i-chart"/></svg> Growth &amp; Value</button>
   <button data-t="money" onclick="go('money',this)"><svg aria-hidden="true" style="width:1.05em;height:1.05em;vertical-align:-0.16em;display:inline-block;"><use href="icons.svg#i-money"/></svg> Financials</button>
   <button data-t="discipline" onclick="go('discipline',this)"><svg aria-hidden="true" style="width:1.05em;height:1.05em;vertical-align:-0.16em;display:inline-block;"><use href="icons.svg#i-doc"/></svg> Discipline <span class="badge" id="b-disc" style="display:none"></span></button>
@@ -138,6 +139,15 @@
 </section>
 
 <!-- ============ GROWTH & VALUE ============ -->
+<!-- ============ MONEY (2026-11-09, her "Yes, build it"): cash alert, weekly books, debts, tax set-aside.
+     Numbers come from QuickBooks through a Claude task on Samantha's Mac into the Training server's owner-money
+     function (private table, owners only). Nothing financial is in this repo. See owner-money.js. ============ -->
+<section class="panel" id="panel-cash">
+  <h2>Money</h2>
+  <div class="muted" style="margin-bottom:1rem">Will payroll clear, what the books need from you, what you owe, and what to save for taxes. Claude refreshes it from QuickBooks every weekday morning.</div>
+  <div id="owner-money"></div>
+</section>
+
 <section class="panel" id="panel-growth">
   <h2>Growth &amp; Value</h2>
   <div class="muted" style="margin-bottom:1rem">The operating pulse, straight from AxisCare and the lead pipeline: the numbers a buyer will ask about first.</div>
@@ -1507,7 +1517,7 @@ async function boot(){
   document.getElementById('app').style.display='block';
   await loadAll();
   renderDiscipline(); renderOffboarding(); renderAudits(); renderOwnersFeedback();
-  renderMoney(); renderBudget(); renderFunnel(); renderSpeed(); renderLeadDesk(); renderAiTag(); renderRelationships(); renderGheScorecard(); renderGrievanceLog(); renderOwnerInbox(); renderCockpit(); loadGrowthPulse(); loadHiringFunnel(); loadSiteEvents();
+  renderMoney(); renderBudget(); renderFunnel(); renderSpeed(); renderLeadDesk(); renderAiTag(); renderRelationships(); renderGheScorecard(); renderGrievanceLog(); renderOwnerInbox(); renderCockpit(); loadGrowthPulse(); { const omb=document.getElementById('owner-money'); OwnerMoney.wire(sb, HUB_FN_ANON, omb); OwnerMoney.load(sb, HUB_FN_ANON, omb); } loadHiringFunnel(); loadSiteEvents();
 }
 boot();
 </script>
