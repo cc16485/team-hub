@@ -1350,6 +1350,7 @@ function siteChannel(r){
     if(/^(youtube|yt)([-_]|$)/.test(t)) return 'youtube';
     if(/^(facebook|fb)([-_]|$)/.test(t)) return 'facebook';
     if(/^(instagram|ig)([-_]|$)/.test(t)) return 'instagram';
+    if(/^(email|letter)([-_]|$)/.test(t)) return 'email';
     if(['google','other_search','nextdoor','direct','other_site'].includes(t)) return t;
     return 'tagged'; };
   const f=r&&r.props&&r.props.from; if(f) return norm(f);
@@ -1423,7 +1424,7 @@ function renderContentScore(){
   const siteW=(f)=>siteErr?'':(B?n(f(B)):wait);
   const fam=(o,k)=>typeof LeadRules==='undefined'?red('rules file did not load'):n(o[k]);
   const hire=(o,k)=>HIRE_D&&HIRE_D.error?red('could not count'):(!HIRE_D?wait:n(o?o[k]||0:0));
-  const CH=[['google','Google'],['other_search','Bing, DuckDuckGo or Yahoo'],['facebook','Facebook'],['youtube','YouTube'],['instagram','Instagram'],['nextdoor','Nextdoor'],['tagged','Other tagged links'],['direct','Typed the address, or an app'],['other_site','Other websites']];
+  const CH=[['google','Google'],['other_search','Bing, DuckDuckGo or Yahoo'],['facebook','Facebook'],['youtube','YouTube'],['instagram','Instagram'],['nextdoor','Nextdoor'],['email','Our email letter'],['tagged','Other tagged links'],['direct','Typed the address, or an app'],['other_site','Other websites']];
   let h='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:.85rem;min-width:380px"><thead><tr style="color:#5A6B7E"><th style="text-align:left;padding:.3rem .4rem"></th><th style="text-align:right;padding:.3rem .4rem">'+esc(monthName(mStart))+' so far</th><th style="text-align:right;padding:.3rem .4rem">'+esc(monthName(pStart))+'</th></tr></thead><tbody>';
   h+=step('1 Seen');
   h+=row('Facebook and YouTube views','<span class="muted" style="font-weight:500">not connected yet</span>','',  'The scheduled posts start going out this month. Their views will show here once they are connected.');

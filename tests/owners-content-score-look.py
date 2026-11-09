@@ -23,7 +23,7 @@ JS=r"""async()=>{
     ev('a','page_view',d(0,1),'https://www.google.com/'), ev('a','page_view',d(0,1),'https://mo-care.com/'), ev('a','lead_submitted',d(0,1)),
     ev('b','page_view',d(0,1),'',{from:'youtube'}), ev('b','call_click',d(0,1)),
     ev('c','page_view',d(0,1),'https://m.facebook.com/'),
-    ev('e','page_view',d(0,1),''), ev('f','page_view',d(0,2),'https://www.bing.com/'), ev('g','page_view',d(0,2),'',{from:'fb-starter'}), ev('h','page_view',d(0,2),'android-app://com.google.android.googlequicksearchbox/'), ev('i','page_view',d(0,2),'https://www.caring.com/x'),
+    ev('e','page_view',d(0,1),''), ev('f','page_view',d(0,2),'https://www.bing.com/'), ev('g','page_view',d(0,2),'',{from:'fb-starter'}), ev('h','page_view',d(0,2),'android-app://com.google.android.googlequicksearchbox/'), ev('i','page_view',d(0,2),'https://www.caring.com/x'), ev('j','page_view',d(0,2),'',{from:'email-2612'}),
     ev('p','page_view',d(-1,5),'https://www.google.com/'), ev('q','page_view',d(-1,6),''), ev('q','lead_submitted',d(-1,6)),
     ev('old','page_view',d(-2,6),'https://www.google.com/')]};
   const ym=x=>x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0');
@@ -52,12 +52,13 @@ with sync_playwright() as pw:
 ok=[('while loading it says counting', 'counting' in r['waiting']),
     ('website unreadable: says so in words, no zeros guessed', 'could not be read' in r['err'] and 'permission denied' in r['err'] and 'could not read' in r['err']),
     ('views honestly not connected', 'not connected yet' in r['views']),
-    ('4 visits this month (a tab counts once), 2 last month, older month left out', r['visits'].endswith('8 2')),
+    ('4 visits this month (a tab counts once), 2 last month, older month left out', r['visits'].endswith('9 2')),
     ('Google 2 this month (incl. Android app), 1 last; own-site page did not count twice', r['google'].endswith('2 1')),
     ('YouTube tag counted', r['yt'].endswith('1 0')),
     ('typed in counted', r['typed'].endswith('1 1')),
     ('Bing counted as other search', 'Bing, DuckDuckGo or Yahoo 1 0' in r['full'].replace('\t',' ')),
     ('fb-starter tag folds into Facebook (2)', 'Facebook 2 0' in r['full'].replace('\t',' ')),
+    ('email letter tag counted', 'Our email letter 1 0' in r['full'].replace('\t',' ')),
     ('other website counted', 'Other websites 1 0' in r['full'].replace('\t',' ')),
     ('forms 1 and 1', r['forms'].endswith('1 1')),
     ('phone taps 1 and 0', r['taps'].endswith('1 0')),
