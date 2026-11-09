@@ -9,7 +9,7 @@
   'use strict';
   const FN='https://rdqujxiycycwhskyvrwa.supabase.co/functions/v1/owner-money';
   const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  const num=v=>{ const n=Number(v); return isFinite(n)?n:null; };
+  const num=v=>{ if(v==null||v==='') return null; const n=Number(v); return isFinite(n)?n:null; };
   function usd(v,cents){
     const n=num(v); if(n===null) return '';
     const s=Math.abs(n).toLocaleString('en-US',{minimumFractionDigits:cents?2:0,maximumFractionDigits:cents?2:0});
@@ -93,12 +93,12 @@
     const tot=items.reduce((s,x)=>s+(num(x.balance)||0),0);
     const rows=items.map((x,i)=>'<tr style="border-top:1px solid var(--border);'+(x.pay_first?'background:var(--green-bg)':'')+'"><td style="padding:.4rem .3rem">'+esc(x.name)+est(x.estimate)
       +(x.pay_first?' <span class="chip" style="background:var(--green);color:#fff">pay this first</span>':'')+(x.note?'<div class="muted">'+esc(x.note)+'</div>':'')+'</td>'
-      +'<td style="text-align:right">'+usd(x.balance)+'</td><td style="text-align:right">'+(num(x.rate)!==null?esc(x.rate)+'%':'')+'</td>'
+      +'<td style="text-align:right">'+(num(x.balance)===null?'<span class="muted">not known yet</span>':usd(x.balance))+'</td><td style="text-align:right">'+(num(x.rate)!==null?esc(x.rate)+'%':'')+'</td>'
       +'<td style="text-align:right">'+usd(x.payment)+(x.every?'<div class="muted">'+esc(x.every)+'</div>':'')+'</td><td style="text-align:right">'+usd(x.interest_ytd)+'</td></tr>').join('');
     return '<div class="card"><b style="font-size:1rem;color:var(--navy)">Debts</b>'
       +'<div style="overflow-x:auto;margin-top:.4rem"><table style="width:100%;font-size:.86rem;border-collapse:collapse;min-width:560px"><thead><tr class="muted" style="text-align:right"><th style="text-align:left;padding:.3rem">Loan or card</th><th>Balance</th><th>Rate</th><th>Payment</th><th>Interest this year</th></tr></thead><tbody>'
       +(rows||'<tr><td class="muted" colspan="5">No debts listed yet.</td></tr>')
-      +(items.length?'<tr style="border-top:2px solid var(--navy);font-weight:800"><td style="padding:.4rem .3rem">Total</td><td style="text-align:right">'+usd(tot)+'</td><td colspan="2"></td><td style="text-align:right">'+usd(items.reduce((s,x)=>s+(num(x.interest_ytd)||0),0))+'</td></tr>':'')
+      +(items.length?'<tr style="border-top:2px solid var(--navy);font-weight:800"><td style="padding:.4rem .3rem">Total</td><td style="text-align:right">'+usd(tot)+(items.some(x=>num(x.balance)===null)?'<div class="muted" style="font-weight:400">plus loans not known yet</div>':'')+'</td><td colspan="2"></td><td style="text-align:right">'+(items.some(x=>num(x.interest_ytd)!==null)?usd(items.reduce((s,x)=>s+(num(x.interest_ytd)||0),0)):'')+'</td></tr>':'')
       +'</tbody></table></div>'
       +(d.pay_first?'<div style="margin-top:.6rem;font-size:.88rem"><b>Why that one first:</b> '+esc(d.pay_first)+'</div>':'')
       +(d.note?'<div class="muted" style="margin-top:.4rem">'+esc(d.note)+'</div>':'')+'</div>';
@@ -106,7 +106,7 @@
 
   function taxesCard(t){
     t=t||{};
-    const yrs=(t.years||[]).map(y=>'<tr style="border-top:1px solid var(--border)"><td style="padding:.35rem 0;font-weight:700">'+esc(y.year)+'</td><td>'+esc(y.status)+'</td><td style="color:'+(/past due/i.test(y.due||'')?'var(--red)':'var(--muted)')+';font-weight:700;text-align:right">'+esc(y.due||'')+'</td></tr>').join('');
+    const yrs=(t.years||[]).map(y=>'<tr style="border-top:1px solid var(--border)"><td style="padding:.35rem .8rem .35rem 0;font-weight:700;vertical-align:top">'+esc(y.year)+'</td><td>'+esc(y.status)+'</td><td style="color:'+(/past due/i.test(y.due||'')?'var(--red)':'var(--muted)')+';font-weight:700;text-align:right">'+esc(y.due||'')+'</td></tr>').join('');
     const open=(t.open_items||[]).map(x=>'<li style="margin:.2rem 0 .2rem 1.1rem">'+esc(x)+'</li>').join('');
     return '<div class="card"><b style="font-size:1rem;color:var(--navy)">Tax set-aside</b>'
       +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1rem;margin-top:.5rem">'
