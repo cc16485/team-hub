@@ -7,7 +7,7 @@
 <title>Owners Hub — Caring Companions</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cc.mo-care.com/lead-rules.js?v=15"></script>
-<script src="https://cc.mo-care.com/speed-rules.js?v=1"></script><!-- Speed to lead (2026-10-22, her design): the same numbers the CC Hub's My speed tab uses -->
+<script src="https://cc.mo-care.com/speed-rules.js?v=1"></script><script src="https://cc.mo-care.com/heard-about.js?v=1"></script><!-- How did they hear about us? (2026-11-09, content scorecard): the same list the CC Hub Add lead form uses --><!-- Speed to lead (2026-10-22, her design): the same numbers the CC Hub's My speed tab uses -->
 <script src="https://cc.mo-care.com/partner-rules.js?v=1"></script><script src="https://cc.mo-care.com/writeup-rules.js?v=4"></script><!-- Who approves a write-up (HR decisions and the step 6 required items, 2026-10-18): the same rules file the CC Hub runs --><script src="https://cc.mo-care.com/ghe-forms-rules.js?v=1"></script><!-- GHE scorecard (GHE fix slice 4, 2026-10-08): the same rules file the CC Hub's Nurse Scheduling runs --><!-- Referral Partner Desk (2026-10-08): owners, tiers and timing, the same file the CC Hub desk runs --><!-- Leads intake desk Stage 5 (2026-10-07): the same rules file the CC Hub runs; the owners' numbers come from it -->
 <style>
   :root{ --navy:#0D365F; --navy2:#0D365F; --teal:#54BDB8; --gold:#F0A63A; --red:#DC2626; --red-bg:#FEE2E2;
@@ -128,6 +128,12 @@
   <div class="card">
     <b style="font-size:.95rem;color:var(--navy)">New families: this month vs last</b>
     <div id="cockpit-leads" style="margin-top:.5rem"><div class="muted">Loading…</div></div>
+  </div>
+  <!-- Content scorecard (2026-11-09, her "Yes, build it"): did the posts and videos turn into families and caregivers?
+       Seen, Visited, Reached out, Became, this month vs last. Counts only, never a person. -->
+  <div class="card">
+    <b style="font-size:.95rem;color:var(--navy)">Did our content work this month?</b>
+    <div id="cockpit-content" style="margin-top:.5rem"><div class="muted">Loading…</div></div>
   </div>
 </section>
 
@@ -674,6 +680,7 @@ async function loadHiringFunnel(){
     let d=data;
     if(error){ let m=error.message||'error'; try{ const j=await error.context.json(); if(j&&j.error) m=j.error; }catch(_){} throw new Error(m); }
     if(!d||d.error) throw new Error((d&&d.error)||'no answer');
+    HIRE_D=d; renderContentScore();
     const mName=m=>new Date(m+'-15T12:00:00Z').toLocaleDateString('en-US',{month:'long',timeZone:'UTC'});
     const steps=[['applied','Applied'],['interviewed','Interviewed'],['offered','Offered'],['start_form','Start form in'],['cleared','Cleared (references and checks)'],['started','Started']];
     const pct=(n,of)=>of?' <span class="muted">('+Math.round(n/of*100)+'%)</span>':'';
@@ -696,7 +703,7 @@ async function loadHiringFunnel(){
       : '<span style="color:var(--red)">Still working at 90 days: AxisCare could not be read just now ('+esc(d.census_error||'unknown')+'). The other numbers use the Hub\'s own caregiver list.</span>')+'</div>';
     h+='<div class="muted" style="margin-top:.4rem">Typical days are the middle value across the three months. People are matched by phone or email, never by name. Counts only.</div>';
     box.innerHTML=h;
-  }catch(e){ box.innerHTML='<div style="color:var(--red);font-size:.85rem">Could not count the hiring funnel: '+esc(e&&e.message?e.message:'error')+'</div><div class="muted" style="margin-top:.3rem"><button class="linklike" onclick="loadHiringFunnel()">try again</button></div>'; }
+  }catch(e){ HIRE_D={error:(e&&e.message)||'error'}; renderContentScore(); box.innerHTML='<div style="color:var(--red);font-size:.85rem">Could not count the hiring funnel: '+esc(e&&e.message?e.message:'error')+'</div><div class="muted" style="margin-top:.3rem"><button class="linklike" onclick="loadHiringFunnel()">try again</button></div>'; }
 }
 
 /* ---------------- Financials & sale goal ---------------- */
@@ -1329,6 +1336,127 @@ function renderCockpit(){
   c.innerHTML='<div style="display:flex;gap:.8rem;flex-wrap:wrap">'+tile('Inquiries',A.inquiries,B.inquiries)+tile('Said yes',A.won,B.won)+tile('First shift',A.started,B.started)+'</div>'
     +'<div class="muted" style="margin-top:.45rem">Families who first called each month, from the CC Hub leads. The full funnel and referral sources are on Growth &amp; Value.</div>';
 }
+/* ============ CONTENT SCORECARD (2026-11-09, her "Yes, build it") ============
+   Did our posts and videos turn into families and caregivers? Four steps, this month vs last:
+   Seen (views; not connected yet, said so), Visited (the website's own cookie-free counter, website_events),
+   Reached out (website forms and phone taps, new families from the CC Hub leads, job applications) and
+   Became (said yes, first shift, caregivers started). Then what brought this month's families (lead.heard_about).
+   Counts only. Anything that cannot be read says so in red instead of showing a zero. */
+let SITE_EV=null, HIRE_D=null;
+function siteChannel(r){
+  /* the same names the website's own tracker records in props.from (assets/site-events.js); a tagged link like
+     ?from=fb-starter or ?from=yt-cc01 is folded into its channel */
+  const norm=t=>{ t=String(t||'').toLowerCase();
+    if(/^(youtube|yt)([-_]|$)/.test(t)) return 'youtube';
+    if(/^(facebook|fb)([-_]|$)/.test(t)) return 'facebook';
+    if(/^(instagram|ig)([-_]|$)/.test(t)) return 'instagram';
+    if(['google','other_search','nextdoor','direct','other_site'].includes(t)) return t;
+    return 'tagged'; };
+  const f=r&&r.props&&r.props.from; if(f) return norm(f);
+  let h=''; try{ h=r.referrer?new URL(r.referrer).hostname.toLowerCase():''; }catch(_){}
+  if(!h||/(^|\.)mo-care\.com$/.test(h)) return 'direct';
+  if(/(^|\.)(youtube\.com|youtu\.be)$/.test(h)) return 'youtube';
+  if(/(^|\.)(facebook\.com|fb\.com|fb\.me|messenger\.com)$/.test(h)) return 'facebook';
+  if(/(^|\.)instagram\.com$/.test(h)) return 'instagram';
+  if(/(^|\.)google\.[a-z.]+$/.test(h)||/googlequicksearchbox/.test(h)) return 'google';
+  if(/(^|\.)(bing\.com|duckduckgo\.com|search\.yahoo\.com)$/.test(h)) return 'other_search';
+  if(/(^|\.)nextdoor\.com$/.test(h)) return 'nextdoor';
+  return 'other_site';
+}
+async function loadSiteEvents(){
+  const now=new Date(), from=new Date(now.getFullYear(),now.getMonth()-1,1);
+  try{
+    const rows=[]; const PAGE=1000;
+    for(let i=0;i<60;i++){
+      const { data, error } = await sb.from('website_events').select('session_id,event,referrer,props,created_at')
+        .gte('created_at',from.toISOString()).in('event',['page_view','lead_submitted','call_click','apply_click','book_click'])
+        .order('created_at',{ascending:true}).range(i*PAGE,i*PAGE+PAGE-1);
+      if(error) throw new Error(error.message||'could not read');
+      rows.push(...(data||[]));
+      if(!data||data.length<PAGE) break;
+      if(i===59) throw new Error('more than 60,000 rows, too many to count here');
+    }
+    SITE_EV={ rows };
+  }catch(e){ SITE_EV={ error:(e&&e.message)||'error' }; }
+  renderContentScore();
+}
+function siteNumbers(rows,f,t){
+  const inP=rows.filter(r=>{ const d=new Date(r.created_at); return d>=f&&d<t; });
+  const visits=new Set(), byCh={}, forms=new Set(), calls=new Set(), applies=new Set();
+  const chOf={};
+  for(const r of inP){
+    const sid=r.session_id||'?';
+    if(r.event==='page_view'){ if(!visits.has(sid)){ visits.add(sid); const c=siteChannel(r); chOf[sid]=c; byCh[c]=(byCh[c]||0)+1; } }
+    else if(r.event==='lead_submitted') forms.add(sid);
+    else if(r.event==='call_click') calls.add(sid);
+    else if(r.event==='apply_click') applies.add(sid);
+  }
+  const formsBy={}; forms.forEach(sid=>{ const c=chOf[sid]||'direct'; formsBy[c]=(formsBy[c]||0)+1; });
+  return { visits:visits.size, byCh, forms:forms.size, formsBy, calls:calls.size, applies:applies.size };
+}
+function renderContentScore(){
+  const box=document.getElementById('cockpit-content'); if(!box) return;
+  const esc=ckEsc, n=ckNum;
+  const now=new Date(), mStart=new Date(now.getFullYear(),now.getMonth(),1), pStart=new Date(now.getFullYear(),now.getMonth()-1,1), nowPlus=new Date(now.getTime()+86400000);
+  const monthName=d=>d.toLocaleDateString('en-US',{month:'long'});
+  const red=t=>'<span style="color:var(--red);font-size:.8rem">'+t+'</span>';
+  const wait='<span class="muted">counting…</span>';
+  /* website */
+  let A=null,B=null,siteErr=null;
+  if(SITE_EV&&SITE_EV.error) siteErr=SITE_EV.error;
+  else if(SITE_EV){ A=siteNumbers(SITE_EV.rows,mStart,nowPlus); B=siteNumbers(SITE_EV.rows,pStart,mStart); }
+  /* families */
+  let FA=null,FB=null;
+  if(typeof LeadRules!=='undefined'){
+    const hours=LeadRules.responseHours(OPS_SET||{});
+    const F=(f,t)=>LeadRules.periodNumbers(LEADS,hours,f.toISOString(),t.toISOString(),now.toISOString(),{orgs:ORGS||{}}).funnel||{};
+    FA=F(mStart,nowPlus); FB=F(pStart,mStart);
+  }
+  /* caregivers: the hiring funnel's months (YYYY-MM) */
+  const ym=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+  const hm=k=>HIRE_D&&HIRE_D.months?(HIRE_D.months.find(m=>m.month===k)||null):null;
+  const HA=hm(ym(mStart)), HB=hm(ym(pStart));
+  const cell=(v)=>'<td style="padding:.35rem .4rem;text-align:right;font-weight:700">'+v+'</td>';
+  const row=(label,a,b,note)=>'<tr style="border-top:1px solid var(--border)"><td style="padding:.35rem .4rem">'+label+(note?'<div class="muted" style="font-size:.7rem">'+note+'</div>':'')+'</td>'+cell(a)+cell(b)+'</tr>';
+  const step=t=>'<tr><td colspan="3" style="padding:.7rem .4rem .2rem;font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;font-weight:800;color:var(--navy)">'+t+'</td></tr>';
+  const siteV=(f)=>siteErr?red('could not read'):(A?n(f(A)):wait);
+  const siteW=(f)=>siteErr?'':(B?n(f(B)):wait);
+  const fam=(o,k)=>typeof LeadRules==='undefined'?red('rules file did not load'):n(o[k]);
+  const hire=(o,k)=>HIRE_D&&HIRE_D.error?red('could not count'):(!HIRE_D?wait:n(o?o[k]||0:0));
+  const CH=[['google','Google'],['other_search','Bing, DuckDuckGo or Yahoo'],['facebook','Facebook'],['youtube','YouTube'],['instagram','Instagram'],['nextdoor','Nextdoor'],['tagged','Other tagged links'],['direct','Typed the address, or an app'],['other_site','Other websites']];
+  let h='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:.85rem;min-width:380px"><thead><tr style="color:#5A6B7E"><th style="text-align:left;padding:.3rem .4rem"></th><th style="text-align:right;padding:.3rem .4rem">'+esc(monthName(mStart))+' so far</th><th style="text-align:right;padding:.3rem .4rem">'+esc(monthName(pStart))+'</th></tr></thead><tbody>';
+  h+=step('1 Seen');
+  h+=row('Facebook and YouTube views','<span class="muted" style="font-weight:500">not connected yet</span>','',  'The scheduled posts start going out this month. Their views will show here once they are connected.');
+  h+=step('2 Visited the website');
+  h+=row('Visits',siteV(x=>x.visits),siteW(x=>x.visits),'One visit = one browser tab, however many pages. Where they came from:');
+  for(const [k,lab] of CH){ if(siteErr||!A) break; const a=A.byCh[k]||0, b=(B&&B.byCh[k])||0; if(a||b) h+=row('<span style="padding-left:1rem" class="muted">'+lab+'</span>',n(a),n(b)); }
+  h+=step('3 Reached out');
+  h+=row('Website forms filled in',siteV(x=>x.forms),siteW(x=>x.forms));
+  h+=row('Phone number tapped on the website',siteV(x=>x.calls),siteW(x=>x.calls),'They may or may not have finished the call.');
+  h+=row('New families (every way they reached us)',FA?fam(FA,'inquiries'):fam({}, 'inquiries'),FB?fam(FB,'inquiries'):'','From the CC Hub leads.');
+  h+=row('Job applications',hire(HA,'applied'),hire(HB,'applied'),'From the hiring funnel on Growth &amp; Value.');
+  h+=step('4 Became');
+  h+=row('Families who said yes',FA?fam(FA,'won'):'',FB?fam(FB,'won'):'');
+  h+=row('Families with a first shift',FA?fam(FA,'started'):'',FB?fam(FB,'started'):'');
+  h+=row('Caregivers started',hire(HA,'started'),hire(HB,'started'),'Counted in the month they applied.');
+  h+='</tbody></table></div>';
+  if(siteErr) h+='<div style="color:var(--red);font-size:.82rem;margin-top:.5rem">The website numbers could not be read ('+esc(siteErr)+'), so they are not shown rather than guessed. Tell Claude. <button class="linklike" onclick="SITE_EV=null;renderContentScore();loadSiteEvents()">try again</button></div>';
+  /* what brought this month's families */
+  if(typeof HeardAbout!=='undefined'&&typeof LeadRules!=='undefined'){
+    /* the same families as New families above: created this month, spam left out (LeadRules.periodNumbers) */
+    const mine=(LEADS||[]).filter(l=>{ if(!l||(l.spam&&l.spam.at)||!l.created_at) return false; const d=new Date(l.created_at); return d>=mStart&&d<nowPlus; });
+    const C=HeardAbout.count(mine);
+    const parts=HeardAbout.OPTIONS.filter(o=>C.by[o[0]]).map(o=>esc(o[1])+' <b>'+C.by[o[0]]+'</b>');
+    h+='<div style="margin-top:.8rem;font-size:.84rem"><b>What brought '+esc(monthName(mStart))+'\'s families:</b> '
+      +(parts.length?parts.join(' · '):'<span class="muted">nobody recorded yet</span>')
+      +(C.not_asked?' <span class="muted">· not asked yet <b>'+C.not_asked+'</b></span>':'')+'</div>'
+      +'<div class="muted" style="font-size:.74rem;margin-top:.2rem">From "How did they hear about us?" on Add lead in the CC Hub.</div>';
+  } else if(typeof HeardAbout==='undefined'){
+    h+='<div style="color:var(--red);font-size:.8rem;margin-top:.6rem">The list file (cc.mo-care.com/heard-about.js) did not load, so what brought families is not shown. Reload the page.</div>';
+  }
+  h+='<div class="muted" style="margin-top:.5rem">Counts only, never a person. The visit numbers come from our own website counter, which uses no cookies.</div>';
+  box.innerHTML=h;
+}
 function ckEdit(){
   const f=document.getElementById('ck-form'); if(!f) return;
   if(f.style.display==='block'){ f.style.display='none'; return; }
@@ -1379,7 +1507,7 @@ async function boot(){
   document.getElementById('app').style.display='block';
   await loadAll();
   renderDiscipline(); renderOffboarding(); renderAudits(); renderOwnersFeedback();
-  renderMoney(); renderBudget(); renderFunnel(); renderSpeed(); renderLeadDesk(); renderAiTag(); renderRelationships(); renderGheScorecard(); renderGrievanceLog(); renderOwnerInbox(); renderCockpit(); loadGrowthPulse(); loadHiringFunnel();
+  renderMoney(); renderBudget(); renderFunnel(); renderSpeed(); renderLeadDesk(); renderAiTag(); renderRelationships(); renderGheScorecard(); renderGrievanceLog(); renderOwnerInbox(); renderCockpit(); loadGrowthPulse(); loadHiringFunnel(); loadSiteEvents();
 }
 boot();
 </script>
