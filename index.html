@@ -772,10 +772,13 @@ async function loadTrainingPulse(){
     const data = await r.json();
     if(!Array.isArray(data)) return;
     let compliant=0, inprog=0, notstarted=0;
+    /* Orientation only (Samantha, 2026-10-15): Agency Orientation is the one required course. Optional courses
+       (dementia, on-the-job, in-service) never make anyone pending. */
     for(const cg of data){
       const ts = cg.trainings||[];
-      if(ts.length && ts.every(t=>t.status==='complete'||t.status==='waived')) compliant++;
-      else if(ts.some(t=>t.status==='in_progress'||t.status==='complete')) inprog++;
+      const or = ts.find(t=>t.slug==='agency-orientation');
+      if(or && (or.status==='complete'||or.status==='waived')) compliant++;
+      else if(or && or.status==='in_progress') inprog++;
       else notstarted++;
     }
     sub.textContent = `${data.length} caregivers · ${compliant} ✓ · ${inprog + notstarted} pending`;
