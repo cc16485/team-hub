@@ -8,7 +8,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cc.mo-care.com/lead-rules.js?v=15"></script>
 <script src="https://cc.mo-care.com/speed-rules.js?v=1"></script><script src="https://cc.mo-care.com/heard-about.js?v=1"></script><!-- How did they hear about us? (2026-11-09, content scorecard): the same list the CC Hub Add lead form uses --><!-- Speed to lead (2026-10-22, her design): the same numbers the CC Hub's My speed tab uses -->
-<script src="owner-money.js?v=2"></script><script src="https://cc.mo-care.com/partner-rules.js?v=1"></script><script src="https://cc.mo-care.com/writeup-rules.js?v=4"></script><!-- Who approves a write-up (HR decisions and the step 6 required items, 2026-10-18): the same rules file the CC Hub runs --><script src="https://cc.mo-care.com/ghe-forms-rules.js?v=1"></script><!-- GHE scorecard (GHE fix slice 4, 2026-10-08): the same rules file the CC Hub's Nurse Scheduling runs --><!-- Referral Partner Desk (2026-10-08): owners, tiers and timing, the same file the CC Hub desk runs --><!-- Leads intake desk Stage 5 (2026-10-07): the same rules file the CC Hub runs; the owners' numbers come from it -->
+<script src="owner-money.js?v=3"></script><script src="owner-profit.js?v=1"></script><script src="https://cc.mo-care.com/partner-rules.js?v=1"></script><script src="https://cc.mo-care.com/writeup-rules.js?v=4"></script><!-- Who approves a write-up (HR decisions and the step 6 required items, 2026-10-18): the same rules file the CC Hub runs --><script src="https://cc.mo-care.com/ghe-forms-rules.js?v=1"></script><!-- GHE scorecard (GHE fix slice 4, 2026-10-08): the same rules file the CC Hub's Nurse Scheduling runs --><!-- Referral Partner Desk (2026-10-08): owners, tiers and timing, the same file the CC Hub desk runs --><!-- Leads intake desk Stage 5 (2026-10-07): the same rules file the CC Hub runs; the owners' numbers come from it -->
 <style>
   :root{ --navy:#0D365F; --navy2:#0D365F; --teal:#54BDB8; --gold:#F0A63A; --red:#DC2626; --red-bg:#FEE2E2;
     --amber:#B45309; --amber-bg:#FEF3C7; --green:#16A34A; --green-bg:#DCFCE7;
@@ -87,7 +87,7 @@
 <header>
   <div>
     <h1>🏛️ Owners Hub</h1>
-    <div class="sub">Cockpit · Money · Growth · Financials · Discipline · Offboarding · Audits</div>
+    <div class="sub">Cockpit · Money · Growth · Profit &amp; Plan · Discipline · Offboarding · Audits</div>
   </div>
   <span style="flex:1"></span>
   <span class="muted" id="who" style="color:#B9CBDD"></span>
@@ -102,7 +102,7 @@
   <button data-t="cockpit" class="active" onclick="go('cockpit',this)"><svg aria-hidden="true" style="width:1.05em;height:1.05em;vertical-align:-0.16em;display:inline-block;"><use href="icons.svg#i-target"/></svg> Cockpit</button>
   <button data-t="cash" onclick="go('cash',this)"><svg aria-hidden="true" style="width:1.05em;height:1.05em;vertical-align:-0.16em;display:inline-block;"><use href="icons.svg#i-money"/></svg> Money</button>
   <button data-t="growth" onclick="go('growth',this)"><svg aria-hidden="true" style="width:1.05em;height:1.05em;vertical-align:-0.16em;display:inline-block;"><use href="icons.svg#i-chart"/></svg> Growth &amp; Value</button>
-  <button data-t="money" onclick="go('money',this)"><svg aria-hidden="true" style="width:1.05em;height:1.05em;vertical-align:-0.16em;display:inline-block;"><use href="icons.svg#i-money"/></svg> Financials</button>
+  <button data-t="money" onclick="go('money',this)"><svg aria-hidden="true" style="width:1.05em;height:1.05em;vertical-align:-0.16em;display:inline-block;"><use href="icons.svg#i-money"/></svg> Profit &amp; Plan</button>
   <button data-t="discipline" onclick="go('discipline',this)"><svg aria-hidden="true" style="width:1.05em;height:1.05em;vertical-align:-0.16em;display:inline-block;"><use href="icons.svg#i-doc"/></svg> Discipline <span class="badge" id="b-disc" style="display:none"></span></button>
   <button data-t="offboarding" onclick="go('offboarding',this)"><svg aria-hidden="true" style="width:1.05em;height:1.05em;vertical-align:-0.16em;display:inline-block;"><use href="icons.svg#i-wave"/></svg> Offboarding <span class="badge" id="b-off" style="display:none"></span></button>
   <button data-t="audits" onclick="go('audits',this)"><svg aria-hidden="true" style="width:1.05em;height:1.05em;vertical-align:-0.16em;display:inline-block;"><use href="icons.svg#i-search"/></svg> Monthly Audits <span class="badge" id="b-aud" style="display:none"></span></button>
@@ -118,6 +118,7 @@
   <h2>Cockpit</h2>
   <div class="muted" style="margin-bottom:1rem">Your growth goals and where each business stands. The details live in the other tabs.</div>
   <div id="owner-inbox"></div>
+  <div id="cockpit-profit"></div>
   <div id="cockpit-springfield"><div class="card"><div class="muted">Pulling Springfield from AxisCare…</div></div></div>
   <div class="card">
     <div style="display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;justify-content:space-between">
@@ -185,47 +186,24 @@
   </div>
 </section>
 
-<!-- ============ FINANCIALS & SALE GOAL ============ -->
+<!-- ============ PROFIT & PLAN (2026-11-15, her "Yes, build it"; was Financials & Sale Goal) ============
+     Profit by month, the year's budget against actual, what the business could sell for, and the
+     sale-readiness checks. Numbers come from QuickBooks with the Money snapshot (owner-money function,
+     owners only); nothing financial is in this repo. See owner-profit.js. -->
 <section class="panel" id="panel-money">
-  <h2>Financials &amp; Sale Goal</h2>
-  <div class="muted" style="margin-bottom:1rem">Ten minutes a month: pull five numbers from QuickBooks, enter them here. The hub turns them into margins, EBITDA, and a live estimate of what the business is worth against your goal. Buyers want three clean years of this.</div>
-  <div id="money-goal"></div>
-  <div class="card noprint">
-    <b style="font-size:.95rem;color:var(--navy)">This month's numbers (from QuickBooks)</b>
-    <div style="display:flex;gap:.7rem;flex-wrap:wrap;align-items:end;margin-top:.5rem;font-size:.78rem">
-      <label>Month<br><input type="month" id="fs-month"></label>
-      <label>Revenue collected ($)<br><input type="number" id="fs-rev" style="width:110px"></label>
-      <label>Caregiver payroll ($)<br><input type="number" id="fs-cgpay" style="width:110px"></label>
-      <label>Office payroll ($)<br><input type="number" id="fs-office" style="width:110px"></label>
-      <label>All other expenses ($)<br><input type="number" id="fs-opex" style="width:110px"></label>
-      <label title="Owner salaries/personal expenses a buyer wouldn't have — added back for valuation">Owner add-backs ($)<br><input type="number" id="fs-addback" style="width:110px"></label>
-      <button class="btn" onclick="saveSnapshot()">Save month</button>
-    </div>
-  </div>
-  <div class="card">
-    <div style="display:flex;align-items:center;gap:.7rem;flex-wrap:wrap">
-      <b style="font-size:.95rem;color:var(--navy)">📊 Budget — major expenses</b>
-      <span class="muted">what things should cost vs what they did</span>
-      <span style="flex:1"></span>
-      <label class="muted">actuals for <input type="month" id="bud-month" onchange="renderBudget()" style="font-size:.78rem"></label>
-    </div>
-    <div class="noprint" style="display:flex;gap:.6rem;flex-wrap:wrap;align-items:center;margin:.6rem 0;padding:.6rem;background:var(--bg);border-radius:10px">
-      <input id="bud-name" placeholder="Expense (e.g. Office rent, AxisCare, Workers comp)" style="flex:1;min-width:200px">
-      <select id="bud-cat"><option>Payroll & taxes</option><option>Insurance</option><option>Software & phones</option><option>Office & rent</option><option>Marketing</option><option>Vehicle & mileage</option><option>Other</option></select>
-      <label style="font-size:.78rem;font-weight:600">Budget $/mo <input type="number" id="bud-amt" style="width:100px"></label>
-      <button class="btn" onclick="addBudgetLine()">Add</button>
-    </div>
-    <div id="budget-table"><div class="muted">No budget lines yet — add your major expenses above.</div></div>
-  </div>
-
-  <div class="card"><b style="font-size:.95rem;color:var(--navy)">Month by month</b><div id="money-table" style="margin-top:.5rem"></div></div>
+  <h2>Profit &amp; Plan</h2>
+  <div class="muted" style="margin-bottom:1rem">What the business really makes, month by month, against the year's budget, and what a buyer would pay for it. Claude fills it from QuickBooks at each monthly close.</div>
+  <div id="owner-profit"><div class="card"><div class="muted">Loading the profit numbers…</div></div></div>
   <div class="card">
     <div style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap">
-      <b style="font-size:.95rem;color:var(--navy)">Sale-readiness checklist</b>
-      <span class="muted">what buyers actually pay premiums for — check them off as they become true</span>
+      <b style="font-size:.95rem;color:var(--navy)">Ready to sell?</b>
+      <span class="muted">what a buyer checks first</span>
     </div>
-    <div id="money-ready" style="margin-top:.4rem"></div>
+    <div id="profit-checks" style="margin-top:.4rem"></div>
+    <div style="font-size:.8rem;font-weight:800;color:var(--muted);margin:.8rem 0 .2rem">Your own ticks</div>
+    <div id="money-ready"></div>
   </div>
+  <div id="money-typed"></div>
 </section>
 
 <!-- ============ DISCIPLINE CENTER ============ -->
@@ -761,42 +739,39 @@ const READY_ITEMS=[
   ['legal','Discipline & terminations documented and consistent — nothing that comes back on you'],
 ];
 async function toggleReady(k,checked){ OSET.ready=OSET.ready||{}; OSET.ready[k]=checked; await saveOset(); renderMoney(); }
+/* Profit & Plan (2026-11-15): the numbers come from QuickBooks with the Money snapshot (owner-profit.js).
+   Months typed by hand into the old Financials form (finance_snapshots) stay saved and are listed below
+   the tab, read only, so nothing typed earlier is lost. */
+let PROFIT_SNAP=null;
+document.addEventListener('owner-money:loaded', e=>{ PROFIT_SNAP=e.detail||{}; renderProfit(); });
+document.addEventListener('owner-money:failed', e=>{
+  const msg='<div class="card"><div style="color:var(--red);font-weight:700">Could not load the profit numbers: '+esc(e.detail)+'</div><div class="muted" style="margin-top:.3rem">Nothing was changed. Try again from the Money tab.</div></div>';
+  const box=document.getElementById('owner-profit'); if(box) box.innerHTML=msg;
+  const ck=document.getElementById('cockpit-profit'); if(ck) ck.innerHTML=msg; });
+function renderProfit(){
+  const box=document.getElementById('owner-profit');
+  if(box&&PROFIT_SNAP) OwnerProfit.render(box, PROFIT_SNAP, OSET);
+  const ck=document.getElementById('cockpit-profit');
+  if(ck&&PROFIT_SNAP) ck.innerHTML=OwnerProfit.cockpitHtml(PROFIT_SNAP);
+  const pc=document.getElementById('profit-checks');
+  if(pc) pc.innerHTML=PROFIT_SNAP&&PROFIT_SNAP.profit?OwnerProfit.checksHtml(PROFIT_SNAP.profit):'<div class="muted">Claude adds these checks with the profit numbers.</div>';
+}
+async function editReplacePay(){
+  const v=prompt('What would a manager cost a year, pay plus taxes, to do the work you and Zach do now? (just the number, e.g. 60000)', OSET.replace_pay!=null?OSET.replace_pay:'');
+  if(v===null) return; const n=String(v).replace(/[^0-9.]/g,'');
+  OSET.replace_pay=n===''?null:+n; await saveOset(); renderMoney();
+}
 function renderMoney(){
-  if(!document.getElementById('fs-month').value) document.getElementById('fs-month').value=new Date(Date.now()-15*86400000).toISOString().slice(0,7);
-  const sorted=SNAPS.slice().sort((a,b)=>String(b.month).localeCompare(String(a.month)));
-  // Annualize from the most recent up-to-3 months of adjusted EBITDA.
-  const recent=sorted.slice(0,3);
-  const annualAdj=recent.length?recent.reduce((t,s)=>t+snapCalc(s).adj,0)/recent.length*12:0;
-  const lo=annualAdj*OSET.mult_low, hi=annualAdj*OSET.mult_high, mid=(lo+hi)/2;
-  const goal=OSET.goal_price||0;
-  const pct=goal?Math.min(100,Math.max(0,Math.round(mid/goal*100))):0;
-  const needMonthly=goal?goal/(((OSET.mult_low+OSET.mult_high)/2)*12):0;
-  const goalHtml=
-    '<div class="card" style="border-color:#F0A63A;background:#FFFDF5">'
-    +'<div style="display:flex;align-items:center;gap:.7rem;flex-wrap:wrap">'
-    +'<b style="font-size:1rem;color:var(--navy)">🎯 Sale goal: '+(goal?fmt$(goal):'not set yet')+'</b>'
-    +'<button class="linklike" onclick="editGoal()">'+(goal?'change':'set your number')+'</button>'
-    +'<span style="flex:1"></span><span class="muted">multiples '+OSET.mult_low+'×–'+OSET.mult_high+'× adj. EBITDA · <button class="linklike" onclick="editMults()">adjust</button></span></div>'
-    +(recent.length
-      ?'<div style="margin-top:.6rem;font-size:.9rem">Today the business is worth roughly <b style="color:var(--navy)">'+fmt$(lo)+' – '+fmt$(hi)+'</b>'
-        +'<span class="muted"> (annualized adjusted EBITDA '+fmt$(annualAdj)+', from your last '+recent.length+' month'+(recent.length===1?'':'s')+')</span></div>'
-        +(goal?'<div style="height:10px;background:#faf9f6;border-radius:99px;overflow:hidden;margin:.5rem 0"><div style="height:100%;width:'+pct+'%;background:linear-gradient(90deg,var(--gold),var(--green))"></div></div>'
-          +'<div style="font-size:.82rem">'+pct+'% of the way. To sell for '+fmt$(goal)+' you need adjusted EBITDA of about <b>'+fmt$(needMonthly)+'/month</b>.</div>':'')
-      :'<div class="muted" style="margin-top:.5rem">Enter your first month below and the valuation math starts.</div>')
-    +'</div>';
-  document.getElementById('money-goal').innerHTML=goalHtml;
-  document.getElementById('money-table').innerHTML = sorted.length ? '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:.82rem">'
-    +'<tr style="text-align:left;color:var(--muted)"><th style="padding:.3rem .5rem">Month</th><th>Revenue</th><th>Caregiver pay</th><th>Gross margin</th><th>EBITDA</th><th>Adjusted</th></tr>'
-    +sorted.map(s=>{ const c=snapCalc(s);
-      return '<tr style="border-top:1px solid var(--border)"><td style="padding:.35rem .5rem"><b>'+esc(s.month)+'</b></td><td>'+fmt$(s.rev)+'</td><td>'+fmt$(s.cgpay)+'</td>'
-      +'<td>'+c.gm+'%</td><td style="color:'+(c.ebitda>=0?'var(--green)':'var(--red)')+';font-weight:700">'+fmt$(c.ebitda)+'</td><td>'+fmt$(c.adj)+'</td></tr>';}).join('')
-    +'</table></div><div class="muted" style="margin-top:.4rem">Healthy home-care benchmarks: gross margin 35–45%, EBITDA 10–20%. Re-saving a month overwrites it.</div>'
-    : '<div class="muted">No months entered yet.</div>';
+  renderProfit();
   const done=(OSET.ready||{});
-  document.getElementById('money-ready').innerHTML=READY_ITEMS.map(([k,label])=>
+  const ready=document.getElementById('money-ready');
+  if(ready) ready.innerHTML=READY_ITEMS.map(([k,label])=>
     '<div class="checkrow"><input type="checkbox" '+(done[k]?'checked':'')+' onchange="toggleReady(\''+k+'\',this.checked)">'
     +'<div style="'+(done[k]?'color:var(--muted)':'')+'">'+label+'</div></div>').join('')
-    +'<div class="muted" style="margin-top:.4rem">'+Object.values(done).filter(Boolean).length+'/'+READY_ITEMS.length+' — each one of these moves the multiple a buyer will pay.</div>';
+    +'<div class="muted" style="margin-top:.4rem">'+Object.values(done).filter(Boolean).length+'/'+READY_ITEMS.length+' ticked.</div>';
+  const typed=document.getElementById('money-typed');
+  if(typed) typed.innerHTML=SNAPS.length?'<div class="card"><b style="font-size:.9rem;color:var(--navy)">Months typed by hand earlier</b><div class="muted" style="margin:.2rem 0 .4rem">Kept for the record. The numbers above come from QuickBooks instead.</div>'
+    +SNAPS.slice().sort((a,b)=>String(b.month).localeCompare(String(a.month))).map(s=>{ const c=snapCalc(s); return '<div style="font-size:.82rem">'+esc(s.month)+': income '+fmt$(s.rev)+', EBITDA '+fmt$(c.ebitda)+'</div>'; }).join('')+'</div>':'';
 }
 
 /* ---------------- Owner inbox — messages sent 'to the Owners' ------------- */
@@ -854,6 +829,7 @@ async function setBudActual(lineId,val){
   renderBudget(true);
 }
 function renderBudget(keepFocus){
+  if(!document.getElementById('budget-table')) return; /* old typed budget form removed 2026-11-15; the budget is on Profit & Plan */
   const mEl=document.getElementById('bud-month'); if(!mEl) return;
   if(!mEl.value) mEl.value=new Date().toISOString().slice(0,7);
   const month=mEl.value;
@@ -1329,7 +1305,8 @@ function renderCockpit(){
   rows.push({ name:'Mustang, Oklahoma companion', now: S.ok_hours!=null?ckNum(S.ok_hours)+' hours a week':ckEsc(S.ok_status), goal: restGoal!=null?'about '+ckNum(restGoal/(S.ok_rate*52))+' hours a week (the rest)':'the rest', yNow:okNow, yGoal:restGoal, src:'typed in' });
   rows.push({ name:'Show-Me Neighbors (separate company)', now: S.smn_hours!=null?ckNum(S.smn_hours)+' hours a week':ckEsc(S.smn_status), goal:'its own plan', yNow:smnNow, yGoal:null, src:'typed in' });
   const total=rows.reduce((t,r)=>t+(r.yNow||0),0);
-  b.innerHTML='<div style="display:flex;flex-wrap:wrap;gap:.5rem;align-items:baseline;justify-content:space-between;margin-bottom:.35rem"><span style="font-size:1.5rem;font-weight:800;color:var(--navy)">'+ckM(total)+' <span style="font-size:.85rem;font-weight:600;color:var(--muted)">a year at today\'s pace</span></span><span class="muted">goal '+ckM(S.year_goal)+' a year</span></div>'
+  const anyRead=rows.some(r=>r.yNow!=null); /* nothing read or typed yet: say so, never $0 (2026-11-15) */
+  b.innerHTML='<div style="display:flex;flex-wrap:wrap;gap:.5rem;align-items:baseline;justify-content:space-between;margin-bottom:.35rem"><span style="font-size:1.5rem;font-weight:800;color:var(--navy)">'+(anyRead?ckM(total):'<span class="muted" style="font-size:1.1rem">not read yet</span>')+' <span style="font-size:.85rem;font-weight:600;color:var(--muted)">a year at today\'s pace</span></span><span class="muted">goal '+ckM(S.year_goal)+' a year</span></div>'
     +ckBar(total/S.year_goal*100,'var(--gold)')
     +'<div style="overflow-x:auto;margin-top:.8rem"><table style="width:100%;border-collapse:collapse;font-size:.8rem;min-width:620px"><thead><tr style="text-align:left;color:#5A6B7E"><th style="padding:.3rem .4rem">Business</th><th style="padding:.3rem .4rem">Today</th><th style="padding:.3rem .4rem">Goal</th><th style="padding:.3rem .4rem">A year today</th><th style="padding:.3rem .4rem">A year at goal</th></tr></thead><tbody>'
     +rows.map(r=>'<tr style="border-top:1px solid #DCE4EE"><td style="padding:.4rem"><b>'+r.name+'</b><div class="muted" style="font-size:.7rem">'+r.src+'</div></td><td style="padding:.4rem">'+r.now+'</td><td style="padding:.4rem">'+r.goal+'</td><td style="padding:.4rem">'+(r.yNow!=null?ckM(r.yNow):'<span class="muted">not yet</span>')+'</td><td style="padding:.4rem">'+(r.yGoal!=null?ckM(r.yGoal):'<span class="muted">not set</span>')+'</td></tr>').join('')
