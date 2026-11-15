@@ -34,7 +34,7 @@ with sync_playwright() as pw:
 k,c,s=res['krystal@mo-care.com'],res['casey@mo-care.com'],res['samantha@mo-care.com']
 OWNER_ONLY={'System status','Switches','Onboarding workflow','Who may do what','Missed call chasing','Care hub settings','Where everything lives'}
 checks=[('the lead gets in', k['app']=='block' and k['notadmin']=='none' and 'Springfield lead' in k['who']),
-        ('the lead sees Staff, Team, On call and the on-duty schedule', all(x in k['h2'] for x in ('Staff','Team','On call','On-duty schedule'))),
+        ('the lead sees Office staff, Team, On call and the on-duty schedule', all(x in k['h2'] for x in ('Office staff','Team','On call','On-duty schedule'))),
         ('the lead sees nothing owner-only (no switches, settings, status, Hub settings tab)', not (OWNER_ONLY & set(k['h2'])) and not k['tabs'] and not k['hs']),
         ('the lead view never reads ops_settings or ops_items', 'ops_settings' not in k['reads'] and 'ops_items' not in k['reads']),
         ('a Care Coordinator without the role is turned away and nothing is read', c['notadmin']=='flex' and c['app']!='block' and not c['reads']),
