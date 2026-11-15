@@ -147,8 +147,11 @@
       const d=await call(sb, anon, { mode:'read' });
       state.snap=d.snapshot||{}; state.answers=d.answers||{};
       render(box, state.snap, state.answers);
+      /* Profit & Plan and the Cockpit profit tiles read the same snapshot (snap.profit), so it is fetched once. */
+      if(typeof document!=='undefined'&&typeof CustomEvent!=='undefined') document.dispatchEvent(new CustomEvent('owner-money:loaded',{ detail:state.snap }));
     }catch(e){
       box.innerHTML='<div class="card"><div style="color:var(--red);font-weight:700">Could not load the Money numbers: '+esc(e.message||e)+'</div><div class="muted" style="margin-top:.3rem">Nothing was changed. <button class="linklike" data-omr="1">try again</button></div></div>';
+      if(typeof document!=='undefined'&&typeof CustomEvent!=='undefined') document.dispatchEvent(new CustomEvent('owner-money:failed',{ detail:String(e.message||e) }));
     }
   }
   async function answer(sb, anon, box, qid, text){
