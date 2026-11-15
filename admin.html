@@ -494,8 +494,11 @@ async function renderStaffAccess(){
   try{
     const { data, error } = await sb.rpc('staff_access_overview');
     if(error) throw error;
-    const rows=data||[];
-    if(!rows.length){
+    const all=data||[];
+    /* 2026-11-15 (her ask "need to remove cierra"): people who no longer work here are never deleted (their past work
+       keeps their name), but they are not on the everyday list. They sit behind "Show former staff". */
+    const former=all.filter(r=>!r.active), rows=renderStaffAccess.showFormer ? all : all.filter(r=>r.active);
+    if(!all.length){
       el.innerHTML='<p class="sub" style="margin:0">Nothing to show. Either nobody is '
         +'seeded yet, or this account does not hold Owner/Admin or Springfield lead. The database decides '
         +'that, not this page.</p>';
@@ -535,7 +538,12 @@ async function renderStaffAccess(){
       + '</tbody></table>'
       + '<p class="sub" style="margin:10px 0 0">'+rows.length+' person(s) · '
       + rows.filter(r=>(r.roles||[]).includes('owner_admin')).length+' Owner/Admin · '
-      + rows.filter(r=>!r.has_account).length+' without a sign-in account</p>';
+      + rows.filter(r=>!r.has_account).length+' without a sign-in account'
+      + (former.length ? ' · <button type="button" id="staffFormerToggle" style="font:inherit;border:0;background:none;padding:0;color:var(--teal,#0F7A73);text-decoration:underline;cursor:pointer">'
+          + (renderStaffAccess.showFormer ? 'Hide former staff' : 'Show former staff ('+former.length+')') + '</button>' : '')
+      + '</p>';
+    const tg=document.getElementById('staffFormerToggle');
+    if(tg) tg.onclick=()=>{ renderStaffAccess.showFormer=!renderStaffAccess.showFormer; renderStaffAccess(); };
   }catch(e){
     el.innerHTML='<p class="sub" style="margin:0;color:var(--red)">Could not load: '
       +esc(e.message||String(e))+'</p>';

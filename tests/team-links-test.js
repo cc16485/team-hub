@@ -17,6 +17,17 @@ const code = html.slice(html.indexOf('async function renderStaffAccess(){'), htm
   await ctx.__r();
   ck('each person has Hub access and Open role, opening the Hub in a new tab', el.innerHTML.includes('href="https://cc.mo-care.com/#myteam/access/kat%40mo-care.com"') && el.innerHTML.includes('href="https://cc.mo-care.com/#myteam/role/kat%40mo-care.com"') && /target="_blank" rel="noopener"/.test(el.innerHTML), el.innerHTML.slice(0, 600));
   ck('someone with no email gets no buttons, and typed HTML stays text', !el.innerHTML.includes('#myteam/access/"') && el.innerHTML.includes('&lt;b&gt;x&lt;/b&gt;'));
+  /* 2026-11-15 (her ask "need to remove cierra"): former staff are off the everyday list, behind Show former staff */
+  const el2 = { innerHTML: '', onclick: null }; let tgl = null;
+  const ctx2 = Object.assign({}, ctx, { document: { getElementById: (id) => id === 'staffFormerToggle' ? (tgl = tgl || {}) : el2 },
+    sb: { rpc: async () => ({ data: [{ full_name: 'Kat Smith', email: 'kat@mo-care.com', has_account: true, active: true, entities: ['cc_ihs'], hub_access: [], roles: [] },
+                                     { full_name: 'Former Person', email: 'former@mo-care.com', has_account: false, active: false, entities: ['cc_ihs'], hub_access: [], roles: [] }], error: null }) } });
+  vm.createContext(ctx2); vm.runInContext(code + '\nthis.__r=renderStaffAccess;', ctx2);
+  await ctx2.__r();
+  ck('someone who no longer works here is not on the list, and the count leaves them out', !el2.innerHTML.includes('Former Person') && el2.innerHTML.includes('1 person(s)') && el2.innerHTML.includes('Show former staff (1)'), el2.innerHTML.slice(-400));
+  tgl.onclick(); await new Promise((r) => setTimeout(r, 20));
+  ck('Show former staff brings them back, greyed and marked inactive', el2.innerHTML.includes('Former Person') && el2.innerHTML.includes('opacity:.5') && el2.innerHTML.includes('>inactive<') && el2.innerHTML.includes('Hide former staff'));
+  tgl.onclick = null; tgl = null; ctx2.__r.showFormer = false;
   ck('the Team section: "＋ Add staff member" and "Open the whole team"', html.includes('href="https://cc.mo-care.com/#myteam/add"') && html.includes('＋ Add staff member') && html.includes('<section id="team">') && !/— read only/.test(html.slice(html.indexOf('<section id="team">'), html.indexOf('<section id="team">') + 400)));
   ck('the Team Hub tells people to use the Admin page, not My Team', !idx.includes('Care Coordinator Hub → My Team') && idx.includes('Owners Hub Admin page → Team'));
   ck('no em dashes in anything new', !/—/.test(html.slice(html.indexOf('<section id="team">'), html.indexOf('</section>', html.indexOf('<section id="team">')))));
