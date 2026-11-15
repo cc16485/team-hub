@@ -11,7 +11,7 @@ MONTHS=[mo("2025-%02d"%k,10000,6000,1000,100,True) for k in (11,12)]+[mo("2026-%
 PROFIT={"as_of":"2026-11-15","closed_through":"2026-10","reconciled_through":"2025-12","status":"Test status.","by_business":"Test by business.",
   "lines":LINES,"outside":[{"key":"rent_in","label":"Rent received","why":"Not care."},{"key":"erc","label":"One-time refund","why":"Once."}],
   "months":MONTHS,"years":[{"y":2025,"v":{"income":100000,"wages":60000,"rent":12000,"interest":1000},"o":{"erc":5000},"reconciled":True}],
-  "budget":{"year":2026,"status":"draft","note":"Test budget.","months":[{"m":"2026-%02d"%k,"v":{"income":10000,"wages":6000,"rent":500,"interest":100},"o":{}} for k in range(1,13)]},
+  "budget":{"year":2026,"status":"draft","note":"Test budget.","after":{"owner_pay":20000,"loan_pay":10000},"months":[{"m":"2026-%02d"%k,"v":{"income":10000,"wages":6000,"rent":500,"interest":100},"o":{},"hours":500+k*10,"cds_consumers":k} for k in range(1,13)]},
   "checks":[{"state":"ok","label":"Clean months","text":"Twenty four."},{"state":"no","label":"Returns filed","text":"Not yet <b>x</b>."}]}
 SNAP={"saved_at":"2026-11-15T12:00:00Z","cash":{"status":"ok","total":5000},"profit":PROFIT}
 def run(pg):
@@ -66,6 +66,8 @@ ok=[('tab is called Profit & Plan', any('Profit & Plan' in t for t in r['tabs'])
     ('full-year row', 'All of 2025' in f),
     ('budget: draft chip, so-far columns, worse line flagged', 'draft, waiting on your targets' in f and 'Budget so far' in f and 'Through October 2026' in f),
     ('budget vs actual: profit 23,000 vs 34,000 so far = -11,000', '$34,000' in f and '$23,000' in f and '-$11,000' in f),
+    ('budget: targets for December shown', 'By December 2026: 620 billed hours a week and 12 CDS consumers' in f),
+    ('budget: owner pay and loans below the line, 40,800 - 20,000 - 10,000 = 10,800 left', 'Less owner pay' in f and '-$20,000' in f and '-$10,000' in f and 'Left for taxes and savings' in f and '$10,800' in f),
     ('outside items listed with reasons, kept out of profit', 'Kept out of operating profit' in f and 'Rent received' in f and 'Not care.' in f and '$5,000' in f),
     ('value: no manager pay set warns it is too high', 'Until the manager pay is set, the value above is too high' in f and '$90,000 to $150,000' in f),
     ('value with manager pay set: (30,000-30,000) gives no value', 'no value on today' in r['withPay']),

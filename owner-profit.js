@@ -94,13 +94,24 @@
     const cb=calc(p,bAll), cby=calc(p,bYtd), cay=calc(p,aYtd), d=cay.op-cby.op;
     const tot='<tr style="border-top:2px solid var(--navy);font-weight:800"><td style="padding:.35rem .4rem">Operating profit</td><td style="text-align:right">'+usd(cb.op)+'</td>'
       +(done.length?'<td style="text-align:right">'+usd(cby.op)+'</td><td style="text-align:right">'+usd(cay.op)+'</td><td style="text-align:right;color:'+(d>=0?GREEN:RED)+'">'+usd(d)+'</td>':'')+'</tr>';
-    const outside=(p.outside||[]).map(o=>{ const v=sumV(b.months.map(x=>x.o))[o.key]; return v?'<div class="muted">Plus '+esc(o.label.toLowerCase())+': '+usd(v)+' (kept out of operating profit)</div>':''; }).join('');
+    const bo=sumV(b.months.map(x=>x.o)), outSum=Object.values(bo).reduce((t,v)=>t+(num(v)||0),0);
+    const outside=(p.outside||[]).map(o=>{ const v=bo[o.key]; return v?'<div class="muted">Plus '+esc(o.label.toLowerCase())+': '+usd(v)+' (kept out of operating profit)</div>':''; }).join('');
+    /* Below the line: what the year's profit has to cover (2026-11-15, her owner pay target). Not costs; draws and loan principal. */
+    const af=b.after||{}, op=num(af.owner_pay), lp=num(af.loan_pay);
+    const left=cb.op+outSum-(op||0)-(lp||0);
+    const after=(op!==null||lp!==null)?'<table style="width:100%;max-width:560px;border-collapse:collapse;font-size:.84rem;margin-top:.6rem">'
+      +'<tr><td style="padding:.25rem 0">Operating profit for the year'+(outSum?', plus items kept out':'')+'</td><td style="text-align:right">'+usd(cb.op+outSum)+'</td></tr>'
+      +(op!==null?'<tr><td style="padding:.25rem 0">Less owner pay (you and Zach)</td><td style="text-align:right">'+usd(-op)+'</td></tr>':'')
+      +(lp!==null?'<tr><td style="padding:.25rem 0">Less loan payments</td><td style="text-align:right">'+usd(-lp)+'</td></tr>':'')
+      +'<tr style="border-top:2px solid var(--navy);font-weight:800"><td style="padding:.3rem 0">Left for taxes and savings</td><td style="text-align:right;color:'+(left<0?RED:GREEN)+'">'+usd(left)+'</td></tr></table>':'';
+    const lastB=b.months[b.months.length-1]||{};
+    const targets=(num(lastB.hours)!==null||num(lastB.cds_consumers)!==null)?'<div style="margin:.2rem 0 .5rem;font-size:.86rem">By '+esc(mName(lastB.m))+': <b>'+(num(lastB.hours)!==null?Math.round(lastB.hours).toLocaleString('en-US')+' billed hours a week':'')+'</b>'+(num(lastB.cds_consumers)!==null?' and <b>'+Math.round(lastB.cds_consumers)+' CDS consumers</b>':'')+'.</div>':'';
     return '<div class="card"><div style="display:flex;gap:.6rem;align-items:center;flex-wrap:wrap"><b style="font-size:.95rem;color:var(--navy)">'+esc(yr)+' budget</b>'
       +(b.status==='draft'?'<span class="chip" style="background:var(--amber-bg);color:var(--amber)">draft, waiting on your targets</span>':'')+'</div>'
-      +(b.note?'<div class="muted" style="margin:.3rem 0 .4rem">'+esc(b.note)+'</div>':'')
+      +targets+(b.note?'<div class="muted" style="margin:.3rem 0 .4rem">'+esc(b.note)+'</div>':'')
       +'<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:.82rem;min-width:'+(done.length?560:340)+'px"><thead><tr style="text-align:right;color:var(--muted)"><th style="text-align:left;padding:.3rem .4rem">Line</th><th>Budget, full year</th>'
       +(done.length?'<th>Budget so far</th><th>Actual so far</th><th>Better or worse</th>':'')+'</tr></thead><tbody>'
-      +(p.lines||[]).map(lineRow).join('')+tot+'</tbody></table></div>'+outside
+      +(p.lines||[]).map(lineRow).join('')+tot+'</tbody></table></div>'+outside+after
       +'<div class="muted" style="margin-top:.4rem">'+(done.length?'Through '+esc(mName(done[done.length-1]))+'. Red means a line is more than 10% worse than budget so far.':'Actuals start showing here once '+esc(mName(yr+'-01'))+' is closed.')+' To change the budget, ask Claude; every change is dated.</div></div>';
   }
   function outsideCard(p){
