@@ -160,7 +160,7 @@ const rows = (h) => h.split('<div class="swrow">').slice(1).map((r) => ({
 
   /* 2026-11-07 (Samantha): no Booking App any more: its switches are gone, and no switch mentions it */
   ck('the Booking App switches are gone (family_offer_live, family_choose_live) and no switch mentions the Booking App', !W.X.SWITCHES.flatMap((g) => g[1]).some((x) => ['family_offer_live', 'family_choose_live'].includes(x.k)) && !W.X.SWITCHES.flatMap((g) => g[1]).some((x) => /Booking App/.test([x.name, x.what, x.on, x.off].join(' '))) && !/Booking App/.test(W.box.innerHTML))
-  const added = cut('/* ── Switches', 'async function boot(){') + cut('<h2>Switches</h2>', '<h2>Staff</h2>');
+  const added = cut('/* ── Switches', 'async function boot(){') + cut('<h2>Switches</h2>', '<h2>Office staff</h2>');
   ck('no em dashes in anything new', !/—/.test(added));
   ck('"Where everything lives" no longer says Augusta or the Staffing Hub', !/Augusta, which books/.test(html) && !/Staffing Hub, Orientations tab/.test(html));
   console.log(`\n${pass} passed, ${fail} failed`); process.exit(fail ? 1 : 0);

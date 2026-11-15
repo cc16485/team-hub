@@ -122,6 +122,7 @@ html.embedded .topbar .brandword{ display:none; }
 
   <nav class="atabs" id="atabs" data-owner-only>
     <button data-t="admin" class="on" onclick="adminTab('admin')">Admin</button>
+    <button data-t="team" onclick="adminTab('team')">Office team</button>
     <button data-t="hubsettings" onclick="adminTab('hubsettings')">Hub settings</button>
   </nav>
   <main id="adminView">
@@ -157,9 +158,14 @@ html.embedded .topbar .brandword{ display:none; }
       <div class="card" id="authCard"><div class="sub" style="margin:0">Loading…</div></div>
     </section>
 
-    <section>
-      <h2>Staff</h2>
-      <p class="sub">One list, shared by every hub. The email must be the address they sign into the hubs with, and the phone is what escalation texts.</p>
+    <!-- 2026-11-14 (her ask: "pull the place that i can input new office staff in it's own stub tab thats easy to find"):
+         this list and the Team section below are the Office team tab. Owners see it as its own tab; anyone without the
+         tabs sees both sections where they always were. -->
+    <section id="staffSection">
+      <h2>Office staff</h2>
+      <p class="sub">Everyone who works in the office, one list shared by every hub. The email is the address they sign into
+        the hubs with, and the phone is what escalation texts. Someone on this list is never sent a caregiver check-in,
+        even if they also work shifts, and gets the office check-in instead (answers go only to Samantha and Zach).</p>
       <div class="card">
         <div id="staffTable"></div>
         <div class="row" style="grid-template-columns:1.2fr 1.6fr 1fr .9fr auto;margin-top:14px">
@@ -172,7 +178,7 @@ html.embedded .topbar .brandword{ display:none; }
               <option value="evening">Evening 5 to 9</option><option value="manager">Manager</option>
             </select>
           </div>
-          <div style="display:flex;align-items:flex-end"><button class="btn primary" onclick="addStaff()">Add</button></div>
+          <div style="display:flex;align-items:flex-end"><button class="btn primary" onclick="addStaff()">Add to the office</button></div>
         </div>
       </div>
     </section>
@@ -566,9 +572,16 @@ async function addStaff(){
     phone:document.getElementById('ns-phone').value.trim(),
     shift:document.getElementById('ns-shift').value };
   if(!(await saveItem('coordinator_staff',s))) return;
-  STAFF.push(s);
+  /* 2026-11-14: an add that said nothing but never reached the saved list (Angiel) is read back here, so a save that
+     does not stick is said out loud (her rule: no silent failures). */
+  let back=null; try{ back=await readKey('coordinator_staff'); }catch(e){}
+  if(!Array.isArray(back) || !back.some(x=>x && x.id===s.id)){
+    say('Not saved'); ccTell(name+' did not save to the office list (it was not there when read back). Nothing was added. Try again, and if it happens again tell Claude.'); return;
+  }
+  STAFF=back;
   ['ns-name','ns-email','ns-phone'].forEach(i=>document.getElementById(i).value='');
   renderStaff(); renderStatus();
+  ccTell('✓ '+name+' is on the office list.');
 }
 async function staffOut(id, ymd){
   const s=STAFF.find(x=>x.id===id); if(!s) return;
@@ -1492,13 +1505,16 @@ function hsShow(k){
   try{ history.replaceState(null,'','#hubsettings'+(k?'/'+k:'')); localStorage.setItem('admin_hs', k); }catch(e){}
   renderHubSettings();
 }
+/* Office team (2026-11-14): the office staff list and the Team section by themselves; the Admin tab shows the rest */
+function officeSplit(team){ document.querySelectorAll('#adminView > section').forEach(sec=>{ const mine=sec.id==='staffSection'||sec.id==='team'; sec.style.display=(team?mine:!mine)?'':'none'; }); }
 function adminTab(t){
-  const hs=t==='hubsettings';
+  const hs=t==='hubsettings', tm=t==='team';
   document.getElementById('adminView').style.display=hs?'none':'';
+  officeSplit(tm);
   document.getElementById('hsView').style.display=hs?'block':'none';
   document.querySelectorAll('#atabs button').forEach(b=>b.classList.toggle('on', b.dataset.t===t));
   if(hs){ let k=HS_CUR; if(k===null){ try{ k=localStorage.getItem('admin_hs'); }catch(e){} } if(k===null) k='missed-clockins'; hsShow(k); }
-  else { try{ history.replaceState(null,'',location.pathname); }catch(e){} }
+  else { try{ history.replaceState(null,'',location.pathname+(tm?'#officeteam':'')); }catch(e){} }
 }
 /* The Hub frame says how tall the setting is, so the page scrolls as one. */
 if(typeof window!=='undefined' && window.addEventListener) window.addEventListener('message', (e)=>{
@@ -1655,6 +1671,9 @@ async function boot(){
   renderStaff(); renderOnCall(); fillOps(); renderStatus(); renderSwitches(); renderHubSettings();
   renderOnboarding(); onbLoadPerms();   // Slice 0: the onboarding workflow settings (not awaited: a slow function must not hold the page)
   { const m=/^#hubsettings(?:\/([a-z-]*))?$/.exec(location.hash||''); if(m){ if(m[1]!==undefined) HS_CUR=m[1]; adminTab('hubsettings'); } }
+  /* #officeteam, and the older #team links (the Hub's Team page points here), open the Office team tab for an owner */
+  if(/^#(officeteam|team)$/.test(location.hash||'') && document.getElementById('atabs')) adminTab('team');
+  else if(document.getElementById('atabs')) officeSplit(false);
   // Read-only, and deliberately not awaited: a slow or missing RPC must not
   // hold up the rest of this page.
   renderStaffAccess();
